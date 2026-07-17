@@ -41,14 +41,18 @@ export class ImportsService {
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
       throw new UnsupportedFileTypeException(file.mimetype);
     }
+    // UUID généré côté application : la clé MinIO est déterministe, ce qui permet à
+    // l'OCR Worker de charger le document sans accès à PostgreSQL (TSPEC.04, ADR.07).
     const correlationId = generateCorrelationId();
+    const attachmentId = randomUUID();
     const checksum = createHash('sha256').update(file.buffer).digest('hex');
-    const storageKey = `attachments/${randomUUID()}`;
+    const storageKey = `attachments/${attachmentId}`;
 
     await this.minio.putObject(storageKey, file.buffer, file.mimetype);
 
     const job = await this.repository.createWithAttachment({
       attachment: {
+        id: attachmentId,
         type: 'IMAGE',
         originalName: file.originalname,
         contentType: file.mimetype,
@@ -73,14 +77,16 @@ export class ImportsService {
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */
   async importText(text: string): Promise<ImportJobWithAttachment> {
     const correlationId = generateCorrelationId();
+    const attachmentId = randomUUID();
     const buffer = Buffer.from(text, 'utf-8');
     const checksum = createHash('sha256').update(buffer).digest('hex');
-    const storageKey = `attachments/${randomUUID()}.txt`;
+    const storageKey = `attachments/${attachmentId}.txt`;
 
     await this.minio.putObject(storageKey, buffer, 'text/plain; charset=utf-8');
 
     const job = await this.repository.createWithAttachment({
       attachment: {
+        id: attachmentId,
         type: 'TEXT',
         originalName: null,
         contentType: 'text/plain',

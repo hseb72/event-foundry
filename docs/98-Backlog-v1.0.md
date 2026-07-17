@@ -120,14 +120,18 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 6 — OCR
 
-- [ ] OCR Worker
-- [ ] Document Loader
-- [ ] Image Processor
-- [ ] OpenCV
-- [ ] Tesseract
-- [ ] OCRResult
-- [ ] Retry
-- [ ] Monitoring
+- [x] OCR Worker
+- [x] Document Loader
+- [x] Image Processor _(abstraction + passthrough)_
+- [ ] OpenCV _(prétraitement à implémenter derrière l'abstraction ImageProcessor)_
+- [x] Tesseract
+- [x] OCRResult
+- [x] Retry _(BullMQ)_
+- [x] Monitoring _(logs structurés : durée, confiance, correlationId)_
+
+> Worker stateless, sans accès PostgreSQL (TSPEC.04) : consomme OCR_QUEUE, charge le
+> document MinIO par clé déterministe, produit un OCRResult publié sur CLASSIFICATION_QUEUE.
+> Pipeline interne par abstractions (ADR.07). Le prétraitement OpenCV reste à brancher.
 
 ---
 
