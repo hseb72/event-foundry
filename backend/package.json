@@ -13,8 +13,9 @@
     "test": "jest --passWithNoTests",
     "test:e2e": "jest --config test/jest-e2e.json --passWithNoTests",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:migrate": "dotenv -e ../.env -- prisma migrate dev",
+    "prisma:migrate:deploy": "dotenv -e ../.env -- prisma migrate deploy",
+    "prisma:seed": "dotenv -e ../.env -- ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@event-foundry/contracts": "*",
@@ -42,6 +43,7 @@
     "@types/jest": "^29.5.12",
     "@types/multer": "^1.4.12",
     "@types/node": "^20.14.0",
+    "dotenv-cli": "^7.4.2",
     "jest": "^29.7.0",
     "prisma": "^5.19.0",
     "ts-jest": "^29.2.0",
