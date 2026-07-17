@@ -105,12 +105,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 5 — Acquisition
 
-- [ ] Upload API
-- [ ] Drag & Drop
-- [ ] Validation formats
-- [ ] MinIO
-- [ ] Attachment
-- [ ] ImportJob
+- [x] Upload API
+- [ ] Drag & Drop _(UI — EPIC 11 ; l'endpoint accepte déjà le fichier)_
+- [x] Validation formats
+- [x] MinIO
+- [x] Attachment
+- [x] ImportJob
+
+> Backend : `POST /imports` (fichier) et `POST /imports/text`. Stockage MinIO, création
+> Attachment + ImportJob en transaction, publication BullMQ (image → OCR_QUEUE ; texte →
+> OCRResult de substitution sur CLASSIFICATION_QUEUE). Retour HTTP immédiat.
 
 ---
 

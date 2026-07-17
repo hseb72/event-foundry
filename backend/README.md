@@ -71,5 +71,23 @@ logique (`is_active = false`).
 Hiérarchie contrôlée par le Backend : une Activity appartient à un Domain, un
 EventType/EventFormat à une Activity, un alias à une Activity (valeur unique).
 
+## Acquisition / imports (EPIC 5)
+
+Le Backend **orchestre** le pipeline sans exécuter l'OCR ni la classification (TSPEC.06).
+Retour HTTP immédiat ; le traitement est asynchrone.
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| POST | `/api/v1/imports` | Upload fichier (`multipart/form-data`, champ `file`) — PNG/JPEG/PDF |
+| POST | `/api/v1/imports/text` | Import d'un texte brut (`{ "text": "..." }`) |
+| GET | `/api/v1/imports` | Liste paginée (`?skip=&take=`) |
+| GET | `/api/v1/imports/{id}` | Détail (document, statut, texte OCR) |
+
+Flux : document stocké dans MinIO → `Attachment` + `ImportJob` créés en transaction →
+publication BullMQ. **Image** → `OCR_QUEUE`. **Texte** → pas d'OCR : un `OCRResult` de
+substitution est publié directement sur `CLASSIFICATION_QUEUE` (FSPEC.01 RM-007).
+
+Prérequis d'exécution : `npm run infra:up` (PostgreSQL, Redis, MinIO).
+
 > Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
 > migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).

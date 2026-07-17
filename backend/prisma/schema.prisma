@@ -203,3 +203,41 @@ model Venue {
   @@index([organizerId])
   @@map("venues")
 }
+
+// --- Acquisition & pipeline d'import (EPIC 5) ---
+
+/// Document original importé, conservé dans MinIO (jamais en base — ARCHI.01).
+model Attachment {
+  id            String         @id @default(uuid()) @db.Uuid
+  type          AttachmentType
+  originalName  String?        @map("original_name")
+  contentType   String         @map("content_type")
+  sizeBytes     Int            @map("size_bytes")
+  checksum      String
+  storageBucket String         @map("storage_bucket")
+  storageKey    String         @map("storage_key")
+  importJob     ImportJob?
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([checksum])
+  @@map("attachments")
+}
+
+/// Suit le cycle technique d'un import (un Attachment = un ImportJob).
+model ImportJob {
+  id            String          @id @default(uuid()) @db.Uuid
+  attachmentId  String          @unique @map("attachment_id") @db.Uuid
+  status        ImportJobStatus @default(PENDING)
+  ocrText       String?         @map("ocr_text")
+  correlationId String          @map("correlation_id")
+  startedAt     DateTime?       @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime?       @map("finished_at") @db.Timestamptz(6)
+  attachment    Attachment      @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("import_jobs")
+}
