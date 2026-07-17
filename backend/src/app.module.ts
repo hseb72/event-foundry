@@ -17,7 +17,8 @@ import { UsersModule } from './users/users.module';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Charge le .env racine (cwd = backend/ en dev) ; en prod, secrets injectés par K8s.
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../.env', '.env'] }),
     PrismaModule,
     MinioModule,
     QueueModule,
