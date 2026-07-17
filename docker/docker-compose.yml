@@ -2,7 +2,13 @@
 # Services d'infrastructure uniquement (PostgreSQL, Redis, MinIO).
 # Les composants applicatifs (backend, workers, frontend) se lancent séparément.
 #
-# Démarrage : npm run infra:up   (docker compose -f docker/docker-compose.yml up -d)
+# Démarrage : npm run infra:up   (docker compose --env-file .env -f docker/docker-compose.yml up -d)
+#
+# Nom de projet explicite : évite la collision de projet/réseau avec d'autres dépôts
+# qui utilisent aussi un docker/docker-compose.yml (sinon tous nommés « docker »).
+# Les ports hôtes sont paramétrables (voir .env) pour cohabiter avec d'autres stacks.
+
+name: event-foundry
 
 services:
   postgres:
