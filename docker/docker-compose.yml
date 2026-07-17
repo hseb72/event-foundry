@@ -1,0 +1,57 @@
+# Environnement de développement local EventFoundry.
+# Services d'infrastructure uniquement (PostgreSQL, Redis, MinIO).
+# Les composants applicatifs (backend, workers, frontend) se lancent séparément.
+#
+# Démarrage : npm run infra:up   (docker compose -f docker/docker-compose.yml up -d)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ef-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-eventfoundry}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eventfoundry}
+      POSTGRES_DB: ${POSTGRES_DB:-eventfoundry}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-eventfoundry}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ef-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ef-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-eventfoundry}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-eventfoundry}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - ./data/minio:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5

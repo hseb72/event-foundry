@@ -1,0 +1,60 @@
+// Schéma Prisma EventFoundry — référence unique du modèle de données (TSPEC.02).
+// Conventions : tables au pluriel snake_case, modèles PascalCase, champs camelCase + @map,
+// clés primaires UUID générées côté application, dates en UTC (timestamptz).
+//
+// Les modèles complets seront ajoutés à l'EPIC 4 (Persistance), conformément à ARCHI.03 :
+//   User, Attachment, ImportJob, EventCandidate, Event,
+//   Domain, Activity, EventType, EventFormat, Alias, Organizer, Venue, UserParticipation.
+// Chaque évolution passe par une migration Prisma Migrate.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Énumérations (miroir de @event-foundry/contracts) ---
+
+enum ImportJobStatus {
+  PENDING
+  OCR_RUNNING
+  OCR_DONE
+  CLASSIFICATION_RUNNING
+  READY_FOR_VALIDATION
+  COMPLETED
+  FAILED
+}
+
+enum EventCandidateStatus {
+  PENDING
+  CORRECTED
+  VALIDATED
+  REJECTED
+}
+
+enum EventSource {
+  IMPORT
+  MANUAL
+}
+
+enum AttachmentType {
+  IMAGE
+  TEXT
+}
+
+enum ReservationStatus {
+  NONE
+  RESERVED
+  WAITLIST
+  CANCELLED
+}
+
+enum PaymentStatus {
+  NONE
+  PENDING
+  PAID
+  REFUNDED
+}

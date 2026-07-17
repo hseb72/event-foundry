@@ -1,0 +1,13 @@
+/**
+ * Cycle de vie technique d'un ImportJob.
+ * Référence : ARCHI.02 (Domain), FSPEC.01, TSPEC.03.
+ */
+export enum ImportJobStatus {
+  PENDING = 'PENDING',
+  OCR_RUNNING = 'OCR_RUNNING',
+  OCR_DONE = 'OCR_DONE',
+  CLASSIFICATION_RUNNING = 'CLASSIFICATION_RUNNING',
+  READY_FOR_VALIDATION = 'READY_FOR_VALIDATION',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+}

@@ -1,0 +1,34 @@
+{
+  "name": "event-foundry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Transformer des annonces d'événements (image/texte) en événements structurés et consultables dans un calendrier.",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "shared/*",
+    "backend",
+    "ocr-worker",
+    "classifier-worker",
+    "frontend"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint \"{shared,backend,ocr-worker,classifier-worker}/**/*.ts\"",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "contracts:build": "npm run build --workspace shared/contracts",
+    "infra:up": "docker compose -f docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f docker/docker-compose.yml down"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0"
+  }
+}

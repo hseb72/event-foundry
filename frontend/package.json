@@ -1,0 +1,10 @@
+{
+  "name": "@event-foundry/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Frontend Angular EventFoundry (placeholder). Workspace Angular à initialiser à l'EPIC 11.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "placeholder": "echo \"Frontend Angular à initialiser (ng new) — EPIC 11.\""
+  }
+}
