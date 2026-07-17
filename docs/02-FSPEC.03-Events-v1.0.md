@@ -253,5 +253,4 @@ Elle disparaît des listes de création mais reste visible sur les anciens Event
 | Version | Description |
 |----------|-------------|
 | 0.1 | Première rédaction. |
-| 1.0 | Domain déduit de l'Activity, ajout de la provenance, clarification Organizer/Venue et gestion des référentiels inactifs. |
-| 1.0 | Spécification validée pour la V1. |
+| 1.0 | Domain déduit de l'Activity, ajout de la provenance, clarification Organizer/Venue, gestion des référentiels inactifs ; spécification validée pour la V1. |

@@ -21,27 +21,27 @@ L'ordre proposé respecte les dépendances techniques.
 
 ## Infrastructure
 
-- [ ] Créer le monorepo
-- [ ] Configurer Angular
-- [ ] Configurer NestJS
-- [ ] Configurer Prisma
-- [ ] Configurer PostgreSQL
-- [ ] Configurer Redis
-- [ ] Configurer BullMQ
-- [ ] Configurer MinIO
-- [ ] Configurer Docker Compose
-- [ ] Configurer Kubernetes
-- [ ] Configurer CI/CD
+- [x] Créer le monorepo
+- [ ] Configurer Angular _(placeholder — initialisé à l'EPIC 11)_
+- [x] Configurer NestJS
+- [x] Configurer Prisma
+- [x] Configurer PostgreSQL
+- [x] Configurer Redis
+- [x] Configurer BullMQ
+- [x] Configurer MinIO
+- [x] Configurer Docker Compose
+- [x] Configurer Kubernetes _(base Kustomize ; manifests applicatifs à l'EPIC 15)_
+- [x] Configurer CI/CD
 
 ---
 
 ## Shared
 
-- [ ] Créer `shared/contracts`
-- [ ] Créer `shared/libraries`
-- [ ] Créer les contrats de base
-- [ ] Configurer ESLint
-- [ ] Configurer Prettier
+- [x] Créer `shared/contracts`
+- [x] Créer `shared/libraries`
+- [x] Créer les contrats de base
+- [x] Configurer ESLint
+- [x] Configurer Prettier
 
 ---
 

@@ -1,0 +1,8 @@
+# Base Kustomize EventFoundry.
+# Les manifests applicatifs (Deployments, Services, HPA, sondes) et les overlays
+# d'environnement seront ajoutés à l'EPIC 15 — Déploiement.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml

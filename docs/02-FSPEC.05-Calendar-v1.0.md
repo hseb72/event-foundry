@@ -462,5 +462,4 @@ Ces sujets sont documentés dans le Backlog.
 | Version | Description |
 |----------|-------------|
 | 0.1 | Première rédaction. |
-| 1.0 | Ajout des vues rapides, clarification du rôle du calendrier, règles d'inclusion, statut WAITLIST, palette officielle V1 et synchronisation immédiate avec la participation. |
-| 1.0 | Spécification validée pour la V1. |
+| 1.0 | Ajout des vues rapides, clarification du rôle du calendrier, règles d'inclusion, statut WAITLIST, palette officielle V1, synchronisation immédiate avec la participation ; spécification validée pour la V1. |

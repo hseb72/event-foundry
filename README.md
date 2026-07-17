@@ -39,6 +39,7 @@ Pipeline asynchrone : `ImportRequest → OCRResult → ClassificationResult → 
 | `ocr-worker/` | Worker OCR |
 | `classifier-worker/` | Worker de classification experte |
 | `shared/contracts/` | Contrats d'échange partagés (ADR.03) |
+| `shared/libraries/` | Utilitaires transverses partagés (sans logique métier) |
 | `docker/` | Environnement de dev (PostgreSQL, Redis, MinIO) |
 | `k8s/` | Déploiement Kubernetes |
 | `scripts/` | Outillage |
@@ -51,7 +52,7 @@ Pipeline asynchrone : `ImportRequest → OCRResult → ClassificationResult → 
 cp .env.example .env
 npm install                 # npm workspaces
 npm run infra:up            # PostgreSQL + Redis + MinIO
-npm run contracts:build     # build de @event-foundry/contracts
+npm run shared:build        # build de @event-foundry/contracts et /libraries
 npm run start:dev --workspace @event-foundry/backend
 ```
 
@@ -71,6 +72,7 @@ Docker / Kubernetes.
 
 ## État
 
-Documentation VISION/ARCHI/FSPEC/TSPEC validée (V1). Monorepo initialisé (EPIC 1) :
-outillage, `shared/contracts`, environnement Docker et squelettes des composants.
-Développement à venir selon l'ordre du Backlog.
+Documentation VISION/ARCHI/FSPEC/TSPEC validée (V1). **EPIC 1 finalisé** : monorepo npm
+workspaces, outillage (ESLint/Prettier/tsconfig), `shared/contracts` + `shared/libraries`,
+environnement Docker (PostgreSQL/Redis/MinIO), base Kubernetes, CI GitHub Actions et
+squelettes des composants. Prochaine étape : EPIC 2 — Authentification.
