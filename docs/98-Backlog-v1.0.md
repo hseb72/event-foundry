@@ -64,28 +64,31 @@ L'ordre proposé respecte les dépendances techniques.
 
 ## Domain
 
-- [ ] CRUD
+- [x] CRUD
 
 ## Activity
 
-- [ ] CRUD
-- [ ] Alias
+- [x] CRUD
+- [x] Alias
 
 ## EventType
 
-- [ ] CRUD
+- [x] CRUD
 
 ## EventFormat
 
-- [ ] CRUD
+- [x] CRUD
 
 ## Venue
 
-- [ ] CRUD
+- [x] CRUD
 
 ## Organizer
 
-- [ ] CRUD
+- [x] CRUD
+
+> Suppression logique via `is_active` (ARCHI.03/FSPEC.07). Lecture ouverte aux utilisateurs
+> authentifiés (valeurs actives ; `?includeInactive=true` pour l'admin) ; écritures ADMIN.
 
 ---
 

@@ -97,3 +97,109 @@ model UserRole {
   @@id([userId, roleId])
   @@map("user_roles")
 }
+
+// --- Référentiels métier (EPIC 3) ---
+// Hiérarchie : Domain -> Activity -> EventType / EventFormat(optionnel).
+// Suppression logique via is_active (ARCHI.03, FSPEC.07) : les valeurs inactives ne sont
+// plus proposées mais restent référencées par les Events historiques.
+
+model Domain {
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String     @unique
+  isActive   Boolean    @default(true) @map("is_active")
+  activities Activity[]
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("domains")
+}
+
+model Activity {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  domainId     String        @map("domain_id") @db.Uuid
+  isActive     Boolean       @default(true) @map("is_active")
+  domain       Domain        @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  eventTypes   EventType[]
+  eventFormats EventFormat[]
+  aliases      Alias[]
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([domainId, name])
+  @@index([domainId])
+  @@map("activities")
+}
+
+model EventType {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  activityId String   @map("activity_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([activityId, name])
+  @@index([activityId])
+  @@map("event_types")
+}
+
+model EventFormat {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  activityId String   @map("activity_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([activityId, name])
+  @@index([activityId])
+  @@map("event_formats")
+}
+
+/// Écriture alternative reconnue par le moteur expert (ex. « MTG » -> Magic).
+/// La valeur est unique : une écriture ne référence qu'une seule valeur métier (FSPEC.07).
+model Alias {
+  id         String   @id @default(uuid()) @db.Uuid
+  value      String   @unique
+  activityId String   @map("activity_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([activityId])
+  @@map("aliases")
+}
+
+model Organizer {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  website   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  venues    Venue[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organizers")
+}
+
+model Venue {
+  id          String     @id @default(uuid()) @db.Uuid
+  organizerId String?    @map("organizer_id") @db.Uuid
+  name        String
+  address     String?
+  postalCode  String?    @map("postal_code")
+  city        String?
+  latitude    Float?
+  longitude   Float?
+  isActive    Boolean    @default(true) @map("is_active")
+  organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizerId])
+  @@map("venues")
+}

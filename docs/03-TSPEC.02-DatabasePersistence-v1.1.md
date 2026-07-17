@@ -1,8 +1,8 @@
 # Base de données & Persistance
 
 **Document** : TSPEC.02  
-**Fichier** : 03-TSPEC.02-DatabasePersistence-v1.0.md  
-**Version** : 1.0  
+**Fichier** : 03-TSPEC.02-DatabasePersistence-v1.1.md  
+**Version** : 1.1  
 **Statut** : Validé
 
 ---
@@ -249,8 +249,6 @@ deleted_at
 Concerné :
 
 - Event
-- Organizer
-- Venue
 
 ---
 
@@ -270,6 +268,8 @@ Concerné :
 - Activity
 - EventType
 - EventFormat
+- Organizer
+- Venue
 
 ---
 
@@ -586,3 +586,4 @@ ADR — Shared Contracts
 | 0.1 | Première rédaction avec adoption de Prisma. |
 | 0.2 | Encapsulation complète de Prisma dans les Repositories, ajout de BaseRepository, intégration de l'organisation `shared/contracts` et clarification des responsabilités de la couche de persistance. |
 | 1.0 | Spécification validée pour la V1. |
+| 1.1 | Organizer/Venue rattachés à `is_active` (référentiels) au lieu de `deleted_at`, pour cohérence avec ARCHI.03 et FSPEC.07. |

@@ -51,5 +51,25 @@ RBAC par JWT. Guards globaux : `JwtAuthGuard` (authentifie, sauf routes `@Public
 Mots de passe hachés (bcrypt). Jetons d'accès et de rafraîchissement signés avec des
 secrets distincts. Rôles système et admin de dev créés par `npm run prisma:seed`.
 
+## Référentiels (EPIC 3)
+
+CRUD des référentiels métier (`reference-data`). Lecture ouverte aux utilisateurs
+authentifiés (valeurs actives par défaut, `?includeInactive=true` pour l'admin) ;
+écritures réservées au rôle **ADMIN**. La suppression (`DELETE`) est une désactivation
+logique (`is_active = false`).
+
+| Ressource | Routes |
+|-----------|--------|
+| Domains | `GET/POST /domains`, `PUT/DELETE /domains/{id}` |
+| Activities | `GET/POST /activities` (`?domainId=`), `PUT/DELETE /activities/{id}` |
+| EventTypes | `GET/POST /event-types` (`?activityId=`), `PUT/DELETE /event-types/{id}` |
+| EventFormats | `GET/POST /event-formats` (`?activityId=`), `PUT/DELETE /event-formats/{id}` |
+| Organizers | `GET/POST /organizers`, `PUT/DELETE /organizers/{id}` |
+| Venues | `GET/POST /venues`, `PUT/DELETE /venues/{id}` |
+| Alias | `GET/POST /activities/{activityId}/aliases`, `PUT/DELETE /aliases/{id}` |
+
+Hiérarchie contrôlée par le Backend : une Activity appartient à un Domain, un
+EventType/EventFormat à une Activity, un alias à une Activity (valeur unique).
+
 > Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
 > migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).

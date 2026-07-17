@@ -151,8 +151,9 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
 - **Dates : UTC**, type `timestamp with time zone`. Conversion fuseau uniquement en API/Front.
 - Toutes les tables métier : `created_at`, `updated_at` (+ `created_by`/`updated_by` si pertinent).
 - **Suppression logique** :
-  - données métier (Event, Organizer, Venue) → `deleted_at` (soft delete) ;
-  - référentiels (Domain, Activity, EventType, EventFormat) → `is_active`.
+  - donnée métier (Event) → `deleted_at` (soft delete) ;
+  - référentiels (Domain, Activity, EventType, EventFormat, Organizer, Venue) → `is_active`
+    (aligné sur ARCHI.03 / FSPEC.07 ; cf. TSPEC.02 v1.1).
 - Relations explicites, `RESTRICT` par défaut sur les données métier.
 - Nommage :
   - tables SQL : pluriel `snake_case` (`events`, `import_jobs`, `user_participation`) ;
