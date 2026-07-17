@@ -15,7 +15,10 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
   }
 
   findByIdWithAttachment(id: string): Promise<ImportJobWithAttachment | null> {
-    return this.prisma.importJob.findUnique({ where: { id }, include: { attachment: true } });
+    return this.prisma.importJob.findUnique({
+      where: { id },
+      include: { attachment: true, _count: { select: { candidates: true } } },
+    });
   }
 
   list(skip: number, take: number): Promise<ImportJobWithAttachment[]> {
@@ -23,7 +26,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
       orderBy: { createdAt: 'desc' },
       skip,
       take,
-      include: { attachment: true },
+      include: { attachment: true, _count: { select: { candidates: true } } },
     });
   }
 
@@ -46,7 +49,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
           correlationId: input.correlationId,
           ocrText: input.ocrText ?? null,
         },
-        include: { attachment: true },
+        include: { attachment: true, _count: { select: { candidates: true } } },
       });
     });
   }

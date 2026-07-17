@@ -7,8 +7,7 @@ export class ImportMapper {
       id: job.id,
       type: job.attachment.type,
       status: job.status,
-      // TODO(EPIC 8) : compter les EventCandidate rattachés à cet ImportJob.
-      candidateCount: 0,
+      candidateCount: job._count.candidates,
       startedAt: job.startedAt ? job.startedAt.toISOString() : null,
       finishedAt: job.finishedAt ? job.finishedAt.toISOString() : null,
       createdAt: job.createdAt.toISOString(),

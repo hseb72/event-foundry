@@ -162,11 +162,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 8 — Validation
 
-- [ ] EventCandidate
-- [ ] Validation UI
-- [ ] Corrections
-- [ ] Création Event
-- [ ] Historique
+- [x] EventCandidate
+- [ ] Validation UI _(EPIC 11)_
+- [x] Corrections
+- [x] Création Event
+- [x] Historique _(payload/confidence/correction conservés après validation ou rejet)_
+
+> Backend : consommateur RESULT_QUEUE → EventCandidate (PENDING) + ImportJob
+> READY_FOR_VALIDATION. Consultation/correction/validation/rejet ; la validation crée
+> l'Event (source=IMPORT) et fige le candidate en transaction. Transitions contrôlées
+> (VALIDATED/REJECTED immuables). Création manuelle d'Event (source=MANUAL) incluse.
 
 ---
 

@@ -123,6 +123,7 @@ model Activity {
   eventTypes   EventType[]
   eventFormats EventFormat[]
   aliases      Alias[]
+  events       Event[]
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -137,6 +138,7 @@ model EventType {
   activityId String   @map("activity_id") @db.Uuid
   isActive   Boolean  @default(true) @map("is_active")
   activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  events     Event[]
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -151,6 +153,7 @@ model EventFormat {
   activityId String   @map("activity_id") @db.Uuid
   isActive   Boolean  @default(true) @map("is_active")
   activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  events     Event[]
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -180,6 +183,7 @@ model Organizer {
   website   String?
   isActive  Boolean  @default(true) @map("is_active")
   venues    Venue[]
+  events    Event[]
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -197,6 +201,7 @@ model Venue {
   longitude   Float?
   isActive    Boolean    @default(true) @map("is_active")
   organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  events      Event[]
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -234,10 +239,69 @@ model ImportJob {
   startedAt     DateTime?       @map("started_at") @db.Timestamptz(6)
   finishedAt    DateTime?       @map("finished_at") @db.Timestamptz(6)
   attachment    Attachment      @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  candidates    EventCandidate[]
   createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([createdAt])
   @@map("import_jobs")
+}
+
+// --- Validation & Events (EPIC 8) ---
+
+/// Proposition d'événement issue du moteur expert, avant validation utilisateur.
+/// payload = brouillon d'Event ; confidence = un score par champ détecté (ARCHI.03).
+model EventCandidate {
+  id          String               @id @default(uuid()) @db.Uuid
+  importJobId String               @map("import_job_id") @db.Uuid
+  status      EventCandidateStatus  @default(PENDING)
+  payload     Json
+  confidence  Json
+  eventId     String?              @unique @map("event_id") @db.Uuid
+  correctedBy String?              @map("corrected_by") @db.Uuid
+  correctedAt DateTime?            @map("corrected_at") @db.Timestamptz(6)
+  importJob   ImportJob            @relation(fields: [importJobId], references: [id], onDelete: Restrict)
+  event       Event?               @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([importJobId])
+  @@map("event_candidates")
+}
+
+/// Événement officiel de la plateforme. source figée (IMPORT/MANUAL). Suppression logique.
+/// Le Domain n'est pas stocké : il est déduit de l'Activity.
+model Event {
+  id            String          @id @default(uuid()) @db.Uuid
+  source        EventSource
+  activityId    String          @map("activity_id") @db.Uuid
+  eventTypeId   String?         @map("event_type_id") @db.Uuid
+  eventFormatId String?         @map("event_format_id") @db.Uuid
+  organizerId   String?         @map("organizer_id") @db.Uuid
+  venueId       String?         @map("venue_id") @db.Uuid
+  title         String
+  description   String?
+  startsAt      DateTime        @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime?       @map("ends_at") @db.Timestamptz(6)
+  price         Float?
+  currency      String?
+  deletedAt     DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  eventType     EventType?      @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
+  eventFormat   EventFormat?    @relation(fields: [eventFormatId], references: [id], onDelete: SetNull)
+  organizer     Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  venue         Venue?          @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  candidate     EventCandidate?
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([startsAt])
+  @@index([venueId])
+  @@index([organizerId])
+  @@index([activityId])
+  @@index([source])
+  @@map("events")
 }

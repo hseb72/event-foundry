@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { EventCandidatesModule } from './event-candidates/event-candidates.module';
+import { EventsModule } from './events/events.module';
 import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
@@ -12,8 +14,9 @@ import { UsersModule } from './users/users.module';
  * Module racine du Backend.
  *
  * Capacités déjà câblées : authentification (`auth`), utilisateurs (`users`),
- * référentiels (`reference-data`) et acquisition (`imports`).
- * À venir (TSPEC.01) : event-candidates, events, search, participation, calendar.
+ * référentiels (`reference-data`), acquisition (`imports`), validation
+ * (`event-candidates`) et events (`events`).
+ * À venir (TSPEC.01) : search, participation, calendar.
  */
 @Module({
   imports: [
@@ -26,6 +29,8 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     ReferenceDataModule,
     ImportsModule,
+    EventsModule,
+    EventCandidatesModule,
   ],
 })
 export class AppModule {}

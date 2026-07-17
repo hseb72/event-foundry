@@ -89,5 +89,27 @@ substitution est publié directement sur `CLASSIFICATION_QUEUE` (FSPEC.01 RM-007
 
 Prérequis d'exécution : `npm run infra:up` (PostgreSQL, Redis, MinIO).
 
+## Validation & Events (EPIC 8)
+
+Le Backend consomme `RESULT_QUEUE` (`ClassificationResult`) : il crée l'`EventCandidate`
+(PENDING) et passe l'`ImportJob` en `READY_FOR_VALIDATION`.
+
+| Méthode | Route | Rôle |
+|---------|-------|------|
+| GET | `/api/v1/event-candidates` | Liste (`?status=&importJobId=&skip=&take=`) |
+| GET | `/api/v1/imports/{id}/event-candidates` | Candidates d'un import |
+| GET | `/api/v1/event-candidates/{id}` | Détail (payload, confidence, texte OCR) |
+| PUT | `/api/v1/event-candidates/{id}` | Correction → statut CORRECTED |
+| POST | `/api/v1/event-candidates/{id}/validate` | Crée l'Event (source=IMPORT) → VALIDATED |
+| POST | `/api/v1/event-candidates/{id}/reject` | Rejet → REJECTED |
+| POST | `/api/v1/events` | Création manuelle (source=MANUAL) |
+| GET | `/api/v1/events/{id}` | Détail d'un Event |
+
+Transitions contrôlées (un candidate VALIDATED/REJECTED est immuable). La validation crée
+l'Event et fige le candidate **dans une transaction**. Le Domain est déduit de l'Activity.
+
+> Nouvelle migration requise après cet EPIC : `npm run prisma:migrate --workspace
+> @event-foundry/backend` (p. ex. `--name add_events_and_candidates`).
+
 > Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
 > migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).

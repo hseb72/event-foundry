@@ -1,0 +1,23 @@
+import type { EventWithRefs } from '../entities/event.entity';
+import { EventResponseDto } from '../dto/event-response.dto';
+
+export class EventMapper {
+  static toResponse(event: EventWithRefs): EventResponseDto {
+    return {
+      id: event.id,
+      source: event.source,
+      title: event.title,
+      description: event.description,
+      activity: event.activity.name,
+      eventType: event.eventType ? event.eventType.name : null,
+      eventFormat: event.eventFormat ? event.eventFormat.name : null,
+      organizer: event.organizer ? event.organizer.name : null,
+      venue: event.venue ? event.venue.name : null,
+      city: event.venue ? event.venue.city : null,
+      startsAt: event.startsAt.toISOString(),
+      endsAt: event.endsAt ? event.endsAt.toISOString() : null,
+      price: event.price,
+      currency: event.currency,
+    };
+  }
+}
