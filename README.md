@@ -61,6 +61,19 @@ npm run start:dev --workspace @event-foundry/backend
 Angular · NestJS · Prisma · PostgreSQL · BullMQ · Redis · MinIO · Tesseract · OpenCV ·
 Docker / Kubernetes.
 
+## Intégration continue (CI)
+
+Le workflow `.github/workflows/ci.yml` (lint · build · test) s'exécute sur un **runner
+self-hosted enregistré au niveau du dépôt** (`runs-on: [self-hosted]`).
+
+Prérequis sur la machine du runner : Node.js accessible via `actions/setup-node`, un
+toolchain C/C++ (compilation native de `bcrypt`), Git. Le client Prisma est généré pendant
+le job (`prisma generate`, sans base de données requise).
+
+Enregistrement : Settings → Actions → Runners → *New self-hosted runner*. Un runner de
+dépôt ne sert que ce dépôt ; pour mutualiser une seule machine sur plusieurs dépôts sans
+la dupliquer, préférer un runner d'**organisation**.
+
 ## Documentation
 
 - `docs/00-vision-*` — vision produit

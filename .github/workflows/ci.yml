@@ -5,10 +5,19 @@ on:
     branches: ['**']
   pull_request:
 
+# Runner self-hosted aux ressources limitées : on annule les exécutions obsolètes
+# d'une même branche pour éviter l'empilement dans la file.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Lint · Build · Test
-    runs-on: ubuntu-latest
+    # Runner self-hosted enregistré au niveau du dépôt.
+    # Voir Settings > Actions > Runners. Ajoutez un label ici pour cibler une machine
+    # précise, p. ex. runs-on: [self-hosted, efoundry].
+    runs-on: [self-hosted]
     steps:
       - uses: actions/checkout@v4
 
