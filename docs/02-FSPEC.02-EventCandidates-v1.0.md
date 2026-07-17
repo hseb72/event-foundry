@@ -1,9 +1,9 @@
 # Gestion des EventCandidate
 
 **Document** : FSPEC.02  
-**Fichier** : 02-FSPEC.02-EventCandidates-v0.1.md  
-**Version** : 0.1  
-**Statut** : Draft
+**Fichier** : 02-FSPEC.02-EventCandidates-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -431,3 +431,4 @@ Les trois candidats peuvent être validés ou rejetés indépendamment.
 | Version | Description |
 |----------|-------------|
 | 0.1 | Première rédaction. |
+| 1.0 | Spécification validée pour la V1. |

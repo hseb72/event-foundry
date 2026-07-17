@@ -1,9 +1,9 @@
 # Base de données & Persistance
 
 **Document** : TSPEC.02  
-**Fichier** : 03-TSPEC.02-DatabasePersistence-v0.2.md  
-**Version** : 0.2  
-**Statut** : Draft
+**Fichier** : 03-TSPEC.02-DatabasePersistence-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -585,3 +585,4 @@ ADR — Shared Contracts
 |----------|-------------|
 | 0.1 | Première rédaction avec adoption de Prisma. |
 | 0.2 | Encapsulation complète de Prisma dans les Repositories, ajout de BaseRepository, intégration de l'organisation `shared/contracts` et clarification des responsabilités de la couche de persistance. |
+| 1.0 | Spécification validée pour la V1. |

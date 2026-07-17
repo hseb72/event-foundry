@@ -1,9 +1,9 @@
 # Pipeline d'Import
 
 **Document** : TSPEC.03
-**Fichier** : 03-TSPEC.03-ImportPipeline-v0.3.md
-**Version** : 0.3
-**Statut** : Draft
+**Fichier** : 03-TSPEC.03-ImportPipeline-v1.0.md
+**Version** : 1.0
+**Statut** : Validé
 
 ---
 
@@ -295,7 +295,7 @@ EventCandidate
 Le statut devient :
 
 ```
-TO_REVIEW
+PENDING
 ```
 
 ---
@@ -344,7 +344,13 @@ ImportJob
 ```
 PENDING
 
-PROCESSING
+OCR_RUNNING
+
+OCR_DONE
+
+CLASSIFICATION_RUNNING
+
+READY_FOR_VALIDATION
 
 COMPLETED
 
@@ -354,7 +360,9 @@ FAILED
 EventCandidate
 
 ```
-TO_REVIEW
+PENDING
+
+CORRECTED
 
 VALIDATED
 
@@ -522,3 +530,4 @@ ADR — Single Technology per Responsibility
 |0.1|Première rédaction.|
 |0.2|Acquisition, Drag & Drop, OCRResult.|
 |0.3|Architecture orientée contrats, ImportRequest, ClassificationResult, shared/contracts, conservation des artefacts.|
+| 1.0 | Spécification validée pour la V1. |

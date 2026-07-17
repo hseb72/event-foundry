@@ -1,9 +1,9 @@
 # Gestion des Référentiels
 
 **Document** : FSPEC.07  
-**Fichier** : 02-FSPEC.07-ReferenceData-v0.2.md  
-**Version** : 0.2  
-**Statut** : Draft
+**Fichier** : 02-FSPEC.07-ReferenceData-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -418,3 +418,4 @@ Les sujets suivants sont hors périmètre V1 :
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 0.2 | Ajout des référentiels actifs, suppression logique, rôle des référentiels dans le moteur expert et clarification du Domain comme donnée déduite. |
+| 1.0 | Spécification validée pour la V1. |

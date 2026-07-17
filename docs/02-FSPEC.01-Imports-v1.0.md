@@ -1,9 +1,9 @@
 # Gestion des Imports
 
 **Document** : FSPEC.01  
-**Fichier** : 02-FSPEC.01-Imports-v0.1.md  
-**Version** : 0.1  
-**Statut** : Draft
+**Fichier** : 02-FSPEC.01-Imports-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -389,3 +389,4 @@ Le document, le texte OCR et les EventCandidate sont visibles.
 | Version | Description |
 |----------|-------------|
 | 0.1 | Première rédaction. |
+| 1.0 | Spécification validée pour la V1. |

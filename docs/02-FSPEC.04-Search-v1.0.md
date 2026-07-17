@@ -1,9 +1,9 @@
 # Recherche des Events
 
 **Document** : FSPEC.04
-**Fichier** : 02-FSPEC.04-Search-v0.2.md
-**Version** : 0.2
-**Statut** : Draft
+**Fichier** : 02-FSPEC.04-Search-v1.0.md
+**Version** : 1.0
+**Statut** : Validé
 
 ---
 
@@ -326,3 +326,4 @@ Toutes les informations sont affichées.
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 0.2 | Suppression du Domain, ajout des filtres rapides, filtre "Mes événements", qualité des données et référentiels actifs. |
+| 1.0 | Spécification validée pour la V1. |

@@ -1,9 +1,9 @@
 # Gestion des Events
 
 **Document** : FSPEC.03  
-**Fichier** : 02-FSPEC.03-Events-v0.2.md  
+**Fichier** : 02-FSPEC.03-Events-v1.0.md  
 **Version** : 1.0  
-**Statut** : Draft
+**Statut** : Validé
 
 ---
 
@@ -254,3 +254,4 @@ Elle disparaît des listes de création mais reste visible sur les anciens Event
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 1.0 | Domain déduit de l'Activity, ajout de la provenance, clarification Organizer/Venue et gestion des référentiels inactifs. |
+| 1.0 | Spécification validée pour la V1. |

@@ -1,9 +1,9 @@
 # OCR Worker
 
 **Document** : TSPEC.04
-**Fichier** : 03-TSPEC.04-OCRWorker-v0.2.md
-**Version** : 0.2
-**Statut** : Draft
+**Fichier** : 03-TSPEC.04-OCRWorker-v1.0.md
+**Version** : 1.0
+**Statut** : Validé
 
 ---
 
@@ -324,3 +324,4 @@ ADR Single Technology
 |-------|-----------|
 |0.1|Première rédaction.|
 |0.2|Pipeline interne, contrats partagés, séparation Loader / Preprocessor / OCR / PostProcessor.|
+| 1.0 | Spécification validée pour la V1. |

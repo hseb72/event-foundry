@@ -1,9 +1,9 @@
 # Gestion de la Participation Utilisateur
 
 **Document** : FSPEC.06  
-**Fichier** : 02-FSPEC.06-Participation-v0.2.md  
-**Version** : 0.2  
-**Statut** : Draft
+**Fichier** : 02-FSPEC.06-Participation-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -458,3 +458,4 @@ Ces éléments seront documentés dans le Backlog.
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 0.2 | Clarification du lien avec le calendrier, indépendance complète des statuts, règles de suppression de participation et préparation des rôles V2. |
+| 1.0 | Spécification validée pour la V1. |

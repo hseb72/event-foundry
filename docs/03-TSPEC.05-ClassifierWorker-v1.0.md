@@ -1,9 +1,9 @@
 # Expert Classification Worker
 
 **Document** : TSPEC.05
-**Fichier** : 03-TSPEC.05-ClassifierWorker-v0.1.md
-**Version** : 0.1
-**Statut** : Draft
+**Fichier** : 03-TSPEC.05-ClassifierWorker-v1.0.md
+**Version** : 1.0
+**Statut** : Validé
 
 ---
 
@@ -386,3 +386,4 @@ ADR Single Technology
 |Version|Description|
 |-------|-----------|
 |0.1|Première rédaction.|
+| 1.0 | Spécification validée pour la V1. |

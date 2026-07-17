@@ -105,13 +105,13 @@ Cette structure est commune à l'ensemble des documents FSPEC.
 
 | ID | Document | Version | Statut |
 |----|----------|---------|--------|
-| FSPEC.01 | Gestion des Imports | 0.1 | 🚧 Rédaction |
-| FSPEC.02 | Gestion des EventCandidate | 0.1 | ⏳ À rédiger |
-| FSPEC.03 | Gestion des Events | 0.1 | ⏳ À rédiger |
-| FSPEC.04 | Recherche | 0.1 | ⏳ À rédiger |
-| FSPEC.05 | Calendrier | 0.1 | ⏳ À rédiger |
-| FSPEC.06 | Participation utilisateur | 0.1 | ⏳ À rédiger |
-| FSPEC.07 | Référentiels | 0.1 | ⏳ À rédiger |
+| FSPEC.01 | Gestion des Imports | 1.0 | ✅ Validé |
+| FSPEC.02 | Gestion des EventCandidate | 1.0 | ✅ Validé |
+| FSPEC.03 | Gestion des Events | 1.0 | ✅ Validé |
+| FSPEC.04 | Recherche | 1.0 | ✅ Validé |
+| FSPEC.05 | Calendrier | 1.0 | ✅ Validé |
+| FSPEC.06 | Participation utilisateur | 1.0 | ✅ Validé |
+| FSPEC.07 | Référentiels | 1.0 | ✅ Validé |
 
 ---
 

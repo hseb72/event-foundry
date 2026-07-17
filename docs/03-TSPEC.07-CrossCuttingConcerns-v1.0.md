@@ -1,9 +1,9 @@
 # Cross-Cutting Concerns
 
 **Document** : TSPEC.07
-**Fichier** : 03-TSPEC.07-CrossCuttingConcerns-v0.1.md
-**Version** : 0.1
-**Statut** : Draft
+**Fichier** : 03-TSPEC.07-CrossCuttingConcerns-v1.0.md
+**Version** : 1.0
+**Statut** : Validé
 
 ---
 
@@ -474,3 +474,4 @@ ADR — Messaging & Events (Draft)
 | Version | Description |
 |----------|-------------|
 | 0.1 | Première rédaction des règles techniques transversales. |
+| 1.0 | Spécification validée pour la V1. |

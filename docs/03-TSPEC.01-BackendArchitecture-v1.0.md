@@ -1,9 +1,9 @@
 # Architecture Backend
 
 **Document** : TSPEC.01  
-**Fichier** : 03-TSPEC.01-BackendArchitecture-v0.2.md  
-**Version** : 0.2  
-**Statut** : Draft
+**Fichier** : 03-TSPEC.01-BackendArchitecture-v1.0.md  
+**Version** : 1.0  
+**Statut** : Validé
 
 ---
 
@@ -538,3 +538,4 @@ ADR — Shared Contracts
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 0.2 | Ajout de `shared/contracts`, BaseRepository, encapsulation complète de Prisma et contrats typés entre composants. |
+| 1.0 | Spécification validée pour la V1. |
