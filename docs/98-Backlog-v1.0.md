@@ -137,21 +137,26 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 7 — Expert System
 
-- [ ] Rule Engine
-- [ ] ClassificationContext
-- [ ] DateRule
-- [ ] TimeRule
-- [ ] ActivityRule
-- [ ] OrganizerRule
-- [ ] VenueRule
-- [ ] EventTypeRule
-- [ ] EventFormatRule
-- [ ] UrlRule
-- [ ] PriceRule
-- [ ] CapacityRule
-- [ ] Confidence Engine
-- [ ] Diagnostics
-- [ ] ClassificationResult
+- [x] Rule Engine
+- [x] ClassificationContext
+- [x] DateRule
+- [x] TimeRule
+- [x] ActivityRule
+- [x] OrganizerRule
+- [x] VenueRule
+- [x] EventTypeRule
+- [x] EventFormatRule
+- [x] UrlRule
+- [x] PriceRule
+- [x] CapacityRule
+- [x] Confidence Engine _(score par champ, calculé par chaque règle)_
+- [x] Diagnostics
+- [x] ClassificationResult
+
+> Worker déterministe sans accès PostgreSQL (TSPEC.05, ADR.06) : chaîne de règles
+> indépendantes et réordonnables sur un contexte (texte OCR + instantané des référentiels
+> chargé via l'API Backend). Publie le ClassificationResult sur RESULT_QUEUE (consommé à
+> l'EPIC 8). Domain jamais recherché : déduit de l'Activity côté Backend.
 
 ---
 
