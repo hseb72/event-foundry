@@ -249,6 +249,15 @@ scraping, notifications, mobile, IA générative, OCR cloud, réseau social, com
 partage, recommandations, statistiques avancées, géoloc avancée, multi-tenant, API publique,
 rôles de participation, personnalisation des couleurs. → tout cela vit dans le Backlog.
 
+**Collection STRAT (`docs/10-STRAT.*`, Statut : Vision)** : vision produit, business model,
+go-to-market, roadmap. **Directionnelle uniquement** — le périmètre de développement reste
+gouverné par FSPEC/TSPEC. La roadmap situe la V1 en « Phase 1 — Prouver » (le pipeline).
+Attention à deux notions post-V1 à ne pas confondre avec la V1 :
+- la **persona « Organisateur »** (utilisateur qui publie) ≠ l'entité référentielle
+  `Organizer` de la V1 (simple fiche de données, sans compte) ; un futur rôle `ORGANIZER`
+  complètera `ADMIN`/`USER` ;
+- les **« suivis »** (organisateurs/lieux/activités) et recommandations sont hors V1.
+
 ---
 
 ## 12. Tests
