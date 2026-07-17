@@ -1,0 +1,19 @@
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+
+/**
+ * Unique propriétaire de Prisma Client dans le Backend.
+ *
+ * Aucun Controller, Service ou Worker n'importe Prisma Client directement : seuls les
+ * Repositories (via ce service) accèdent à PostgreSQL (ADR.02, ADR.07, TSPEC.02).
+ */
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  async onModuleInit(): Promise<void> {
+    await this.$connect();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.$disconnect();
+  }
+}

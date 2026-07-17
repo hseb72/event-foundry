@@ -14,7 +14,6 @@ import { QUEUES } from '@event-foundry/contracts';
  */
 async function bootstrap(): Promise<void> {
   // TODO(EPIC 6) : instancier le Worker BullMQ sur QUEUES.OCR.
-  // eslint-disable-next-line no-console
   console.log(`OCR Worker : à implémenter (consommation de ${QUEUES.OCR}).`);
 }
 

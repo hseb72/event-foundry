@@ -47,13 +47,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 2 — Authentification
 
-- [ ] Utilisateur
-- [ ] JWT
-- [ ] Login
-- [ ] Refresh Token
-- [ ] Roles
-- [ ] Guards
-- [ ] Permissions
+- [x] Utilisateur
+- [x] JWT
+- [x] Login
+- [x] Refresh Token
+- [x] Roles
+- [x] Guards
+- [x] Permissions _(RBAC par rôles ; permissions granulaires renvoyées en V2)_
+
+> Socle de persistance introduit avec cet EPIC (anticipe l'EPIC 4) : `PrismaService`
+> (accès unique), `BaseRepository`, modèles `User`/`Role`/`UserRole`, seed rôles + admin.
 
 ---
 

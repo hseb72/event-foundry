@@ -16,14 +16,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build shared packages
         run: |
           npm run build --workspace @event-foundry/contracts
           npm run build --workspace @event-foundry/libraries
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace @event-foundry/backend
 
       - name: Lint
         run: npm run lint

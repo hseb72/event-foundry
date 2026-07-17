@@ -13,7 +13,6 @@ import { QUEUES } from '@event-foundry/contracts';
  */
 async function bootstrap(): Promise<void> {
   // TODO(EPIC 7) : instancier le Worker BullMQ sur QUEUES.CLASSIFICATION et le Rule Pipeline Engine.
-  // eslint-disable-next-line no-console
   console.log(`Classifier Worker : à implémenter (consommation de ${QUEUES.CLASSIFICATION}).`);
 }
 

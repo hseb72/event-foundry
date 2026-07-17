@@ -35,3 +35,21 @@ npm run start:dev --workspace @event-foundry/backend
 ```
 
 API préfixée `/api/v1`, documentation Swagger sur `/docs`.
+
+## Authentification (EPIC 2)
+
+RBAC par JWT. Guards globaux : `JwtAuthGuard` (authentifie, sauf routes `@Public()`) puis
+`RolesGuard` (`@Roles(...)`).
+
+| Méthode | Route | Accès | Rôle |
+|---------|-------|-------|------|
+| POST | `/api/v1/auth/register` | public | crée un compte (rôle USER) → jetons |
+| POST | `/api/v1/auth/login` | public | e-mail + mot de passe → jetons |
+| POST | `/api/v1/auth/refresh` | public | jeton de rafraîchissement → nouveaux jetons |
+| GET | `/api/v1/users/me` | authentifié | profil courant |
+
+Mots de passe hachés (bcrypt). Jetons d'accès et de rafraîchissement signés avec des
+secrets distincts. Rôles système et admin de dev créés par `npm run prisma:seed`.
+
+> Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
+> migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).
