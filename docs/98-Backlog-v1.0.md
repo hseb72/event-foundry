@@ -209,19 +209,20 @@ L'ordre proposé respecte les dépendances techniques.
 
 - [x] Layout _(shell + responsive, thème consommateur)_
 - [x] Navigation _(routing + guard JWT + intercepteur)_
-- [ ] Dashboard _(tableaux de bord Admin/Organisateur)_
+- [x] Dashboard _(tableau de bord Admin du pipeline, exploite import_job_events)_
 - [x] Acquisition _(écran d'import fichier/texte)_
 - [x] Validation _(UI de correction/validation des EventCandidate + création manuelle)_
 - [x] Catalogue _(Découvrir : recherche, filtres, participation)_
 - [x] Event _(fiche détaillée dédiée)_
 - [x] Administration _(CRUD des référentiels, réservé ADMIN)_
 
-> Fondation Angular 21 standalone livrée et **buildable** : couche API typée, auth,
-> layout, et parcours consommateur (login, Découvrir, Mon planning, Importer, fiche Event)
-> avec les actions de participation. Parcours de contenu complété : création manuelle
-> d'Events et validation/correction/rejet des EventCandidate. Administration des
-> référentiels (6 entités, CRUD générique réservé ADMIN via garde de route + décodage du
-> rôle JWT). Restent (post-passe) les dashboards et le refresh token.
+> **EPIC 11 terminé.** Fondation Angular 21 standalone **buildable** : couche API typée,
+> auth, layout, parcours consommateur complet (login, Découvrir, fiche Event, participation,
+> Mon planning, Importer) et parcours de contenu (création manuelle d'Events, validation/
+> correction/rejet des EventCandidate). Surfaces admin réservées ADMIN (garde de route +
+> décodage du rôle JWT) : administration des 6 référentiels (CRUD générique) et tableau de
+> bord du pipeline d'import (volumes, passages entre états via `import_job_events`, durées),
+> servi par `GET /admin/import-stats`. Reste hors EPIC 11 : le refresh token (transverse).
 
 ---
 

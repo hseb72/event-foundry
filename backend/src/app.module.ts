@@ -10,6 +10,7 @@ import { ParticipationModule } from './participation/participation.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
+import { StatsModule } from './stats/stats.module';
 import { UsersModule } from './users/users.module';
 
 /**
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     EventCandidatesModule,
     ParticipationModule,
     CalendarModule,
+    StatsModule,
   ],
 })
 export class AppModule {}

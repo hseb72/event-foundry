@@ -97,6 +97,21 @@ export interface CreateEventInput {
   currency?: string;
 }
 
+export interface ImportStatsDto {
+  totalImports: number;
+  importsByStatus: Record<string, number>;
+  transitionsByStatus: Record<string, number>;
+  durations: {
+    avgOcrProcessingMs: number | null;
+    avgTotalMs: number | null;
+    sampleCount: number;
+  };
+  totalCandidates: number;
+  candidatesByStatus: Record<string, number>;
+  totalEvents: number;
+  eventsBySource: Record<string, number>;
+}
+
 /** Valeurs détectées (noms) proposées par le moteur expert, pour préremplir un formulaire. */
 export interface EventDraft {
   title?: string;
