@@ -8,6 +8,8 @@ import { OcrProcessor } from './ocr.processor';
 import { SharpImageProcessor } from './processing/sharp-image-processor';
 import { OcrPostProcessor } from './processing/ocr-post-processor';
 import { OcrResultPublisher } from './publisher/ocr-result-publisher';
+import { HttpReferenceLexiconProvider } from './reference/http-reference-lexicon.provider';
+import { OCR_LEXICON_PROVIDER } from './reference/reference-lexicon-provider.interface';
 import { OcrWorker } from './worker';
 
 /**
@@ -18,6 +20,7 @@ import { OcrWorker } from './worker';
   providers: [
     { provide: DOCUMENT_LOADER, useClass: MinioDocumentLoader },
     { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessor },
+    { provide: OCR_LEXICON_PROVIDER, useClass: HttpReferenceLexiconProvider },
     { provide: OCR_ENGINE, useClass: TesseractOcrEngine },
     OcrPostProcessor,
     OcrProcessor,

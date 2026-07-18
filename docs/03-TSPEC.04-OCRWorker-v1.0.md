@@ -147,6 +147,21 @@ modèles **« best »** (précision), **PSM** adapté aux affiches (texte épars
 préservation des espaces inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la
 qualité (confiance, rappel de mots-clés) pour régler ces paramètres.
 
+## Dictionnaire utilisateur issu des référentiels
+
+Pour fiabiliser la reconnaissance des **noms métier** (activités, types, formats,
+organisateurs, lieux, villes, alias), le moteur alimente le dictionnaire utilisateur de
+Tesseract (`user_words`) avec les mots des **référentiels**. Ces mots sont chargés via l'**API
+Backend** (le worker n'accède jamais à PostgreSQL, TSPEC.04/ADR.07), mis en cache par TTL, puis
+injectés (`writeText` + `reinitialize` avec `user_words_suffix`, dawgs activés). **Aucune liste
+métier n'est codée en dur** : tout provient des référentiels (règle d'or 1). Comportement
+défensif : Backend indisponible ⇒ liste vide ⇒ OCR standard ; activable/désactivable par
+`OCR_USER_WORDS`.
+
+> Réserve : avec le moteur purement LSTM (OEM 1), l'effet des `user_words` est plus limité
+> qu'avec le moteur legacy ; une correction lexicale post-OCR (côté classifier) reste une piste
+> complémentaire si nécessaire.
+
 ---
 
 # OCR Post Processor
