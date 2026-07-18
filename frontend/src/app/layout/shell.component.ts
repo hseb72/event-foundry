@@ -83,7 +83,6 @@ import { AuthService } from '../core/auth/auth.service';
           <a routerLink="/validation" routerLinkActive="active">Validation</a>
           <a routerLink="/create" routerLinkActive="active">Créer</a>
           @if (isAdmin) {
-            <a routerLink="/dashboard" routerLinkActive="active">Tableau de bord</a>
             <a routerLink="/admin" routerLinkActive="active">Administration</a>
           }
         </nav>

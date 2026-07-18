@@ -91,6 +91,21 @@ export class AuthService {
     return this.roles().includes('ADMIN');
   }
 
+  /** Identifiant de l'utilisateur courant (claim `sub` du JWT), ou null. */
+  userId(): string | null {
+    const token = this.accessToken;
+    if (!token) {
+      return null;
+    }
+    try {
+      const json = atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const decoded = JSON.parse(json) as { sub?: unknown };
+      return typeof decoded.sub === 'string' ? decoded.sub : null;
+    } catch {
+      return null;
+    }
+  }
+
   private storeTokens(tokens: AuthTokens): void {
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);

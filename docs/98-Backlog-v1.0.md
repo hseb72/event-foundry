@@ -230,10 +230,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 12 — Administration
 
-- [ ] Référentiels
-- [ ] Utilisateurs
-- [ ] Jobs
-- [ ] Monitoring
+- [x] Référentiels _(CRUD générique des 6 référentiels — livré à l'EPIC 11)_
+- [x] Utilisateurs _(liste, rôles, activation ; garde-fous anti-verrouillage)_
+- [x] Jobs _(liste globale des imports + journal des transitions par job)_
+- [x] Monitoring _(tableau de bord pipeline via `import_job_events` ; approfondi en EPIC 13)_
+
+> Espace `/admin` réservé ADMIN, sous-navigation Tableau de bord / Référentiels /
+> Utilisateurs / Imports. Backend : `GET /users`, `PATCH /users/:id/status`,
+> `PUT /users/:id/roles` (un admin ne peut ni se désactiver ni se retirer ADMIN) ;
+> `GET /imports` + `GET /imports/:id` passés en ADMIN, détail enrichi de la timeline
+> des transitions. Monitoring/observabilité fine (health, logs, métriques) → EPIC 13.
 
 ---
 

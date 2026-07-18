@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { ImportResponse } from '../models';
+import { ImportDetailDto, ImportResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ImportsApi {
@@ -20,5 +20,9 @@ export class ImportsApi {
 
   list(): Observable<ImportResponse[]> {
     return this.http.get<ImportResponse[]>(`${API_BASE}/imports`);
+  }
+
+  detail(id: string): Observable<ImportDetailDto> {
+    return this.http.get<ImportDetailDto>(`${API_BASE}/imports/${id}`);
   }
 }

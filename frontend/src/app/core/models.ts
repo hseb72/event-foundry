@@ -53,6 +53,37 @@ export interface ImportResponse {
   createdAt: string;
 }
 
+export interface ImportJobEventDto {
+  status: string;
+  occurredAt: string;
+  correlationId: string;
+}
+
+export interface OcrMetadataDto {
+  confidence: number | null;
+  language: string | null;
+  engine: string | null;
+  engineVersion: string | null;
+  pageCount: number | null;
+  processingTimeMs: number | null;
+}
+
+export interface ImportDetailDto extends ImportResponse {
+  attachment: { type: string; originalName: string | null; contentType: string; sizeBytes: number };
+  ocrText: string | null;
+  ocr: OcrMetadataDto | null;
+  timeline: ImportJobEventDto[];
+}
+
+export interface AdminUserDto {
+  id: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface ActivityDto {
   id: string;
   name: string;
