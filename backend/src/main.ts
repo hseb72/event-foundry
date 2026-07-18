@@ -16,7 +16,14 @@ async function bootstrap(): Promise<void> {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
 
-  app.enableCors({ origin: config.get<string>('CORS_ORIGIN', 'http://localhost:4200') });
+  // Plusieurs origines autorisées (liste séparée par des virgules). En dev, localhost et
+  // 127.0.0.1 sont des origines distinctes pour le navigateur.
+  const corsOrigins = config
+    .get<string>('CORS_ORIGIN', 'http://localhost:4200,http://127.0.0.1:4200')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: corsOrigins, credentials: true });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('EventFoundry API')
