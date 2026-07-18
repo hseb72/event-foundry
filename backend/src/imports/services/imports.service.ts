@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ImportJobStatus } from '@prisma/client';
-import { generateCorrelationId } from '@event-foundry/libraries';
+import { generateCorrelationId, getCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
@@ -44,7 +44,7 @@ export class ImportsService {
     }
     // UUID généré côté application : la clé MinIO est déterministe, ce qui permet à
     // l'OCR Worker de charger le document sans accès à PostgreSQL (TSPEC.04, ADR.07).
-    const correlationId = generateCorrelationId();
+    const correlationId = getCorrelationId() ?? generateCorrelationId();
     const attachmentId = randomUUID();
     const checksum = createHash('sha256').update(file.buffer).digest('hex');
     const storageKey = `attachments/${attachmentId}`;
@@ -87,7 +87,7 @@ export class ImportsService {
 
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */
   async importText(text: string): Promise<ImportJobWithAttachment> {
-    const correlationId = generateCorrelationId();
+    const correlationId = getCorrelationId() ?? generateCorrelationId();
     const attachmentId = randomUUID();
     const buffer = Buffer.from(text, 'utf-8');
     const checksum = createHash('sha256').update(buffer).digest('hex');

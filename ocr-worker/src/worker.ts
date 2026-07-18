@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { type ImportRequest, QUEUES } from '@event-foundry/contracts';
+import { runWithCorrelationId } from '@event-foundry/libraries';
 import { type Job, Worker } from 'bullmq';
 import { redisConnection } from './config';
 import { OcrProcessor } from './ocr.processor';
@@ -30,16 +31,19 @@ export class OcrWorker implements OnModuleDestroy {
     this.logger.log(`OCR Worker à l'écoute de ${QUEUES.OCR}`);
   }
 
-  private async handle(job: Job): Promise<{ importJobId: string }> {
+  private handle(job: Job): Promise<{ importJobId: string }> {
     const request = job.data as ImportRequest;
-    const startedAt = Date.now();
-    const result = await this.processor.process(request);
-    await this.publisher.publish(result);
-    this.logger.log(
-      `OCR ok importJob=${result.importJobId} correlationId=${request.correlationId} ` +
-        `durée=${Date.now() - startedAt}ms confiance=${result.confidence.toFixed(2)}`,
-    );
-    return { importJobId: result.importJobId };
+    // Contexte de corrélation du Job : les logs de ce traitement portent le correlationId.
+    return runWithCorrelationId(request.correlationId, async () => {
+      const startedAt = Date.now();
+      const result = await this.processor.process(request);
+      await this.publisher.publish(result);
+      this.logger.log(
+        `OCR ok importJob=${result.importJobId} durée=${Date.now() - startedAt}ms ` +
+          `confiance=${result.confidence.toFixed(2)}`,
+      );
+      return { importJobId: result.importJobId };
+    });
   }
 
   async onModuleDestroy(): Promise<void> {

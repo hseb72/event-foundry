@@ -245,11 +245,18 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 13 — Observabilité
 
-- [ ] Health Checks
-- [ ] Logs
-- [ ] Metrics
-- [ ] CorrelationId
-- [ ] Dashboard
+- [x] Health Checks _(Backend `/health` + `/health/ready` ; sondes HTTP dédiées sur chaque worker)_
+- [x] Logs _(logger structuré JSON partagé : timestamp UTC, niveau, composant, correlationId)_
+- [x] Metrics _(Prometheus `/metrics` : métriques process + compteur/durées HTTP)_
+- [x] CorrelationId _(middleware ALS : en-tête `x-correlation-id`, propagé API → BullMQ → Workers → logs)_
+- [x] Dashboard _(tableau de bord pipeline — livré aux EPIC 11/12)_
+
+> Observabilité transverse (TSPEC.07). Backend : sondes `/api/v1/health` (liveness) et
+> `/api/v1/health/ready` (PostgreSQL + Redis, 503 si dégradé), `/api/v1/metrics` (Prometheus),
+> logs JSON, correlationId de bout en bout. Workers (sans API) : petit serveur HTTP de santé
+> (`/health`, `/health/ready` pingant Redis) et mêmes logs structurés. Primitives partagées
+> (`AsyncLocalStorage`, formatteur de log, serveur de santé) dans `shared/libraries`.
+> Vérifié par des tests E2E (santé/metrics/correlationId sur base réelle).
 
 ---
 

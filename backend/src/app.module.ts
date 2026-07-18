@@ -1,6 +1,9 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { CorrelationMiddleware } from './common/correlation/correlation.middleware';
+import { HealthModule } from './health/health.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { EventsModule } from './events/events.module';
@@ -37,6 +40,13 @@ import { UsersModule } from './users/users.module';
     ParticipationModule,
     CalendarModule,
     StatsModule,
+    HealthModule,
+    MetricsModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Contexte de corrélation établi pour toute requête HTTP (propagé aux logs et aux Jobs).
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationMiddleware).forRoutes('*');
+  }
+}
