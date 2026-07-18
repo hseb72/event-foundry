@@ -26,7 +26,7 @@ export class TesseractOcrEngine implements OcrEngine, OnModuleDestroy {
       confidence: Math.max(0, Math.min(1, data.confidence / 100)),
       language: this.languages,
       engine: 'tesseract',
-      engineVersion: 'tesseract.js@5',
+      engineVersion: 'tesseract.js@7',
     };
   }
 

@@ -47,6 +47,7 @@ import { UsersModule } from './users/users.module';
 export class AppModule implements NestModule {
   // Contexte de corrélation établi pour toute requête HTTP (propagé aux logs et aux Jobs).
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(CorrelationMiddleware).forRoutes('*');
+    // Express 5 / path-to-regexp v8 : le joker nommé « {*path} » remplace l'ancien « * ».
+    consumer.apply(CorrelationMiddleware).forRoutes('{*path}');
   }
 }

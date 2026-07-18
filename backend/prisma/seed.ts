@@ -8,10 +8,13 @@
  *
  * Idempotent (upsert). Aucune donnée fonctionnelle (Events, ImportJobs...) n'est créée ici.
  */
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+});
 
 const SYSTEM_ROLES = ['ADMIN', 'USER'] as const;
 const SALT_ROUNDS = 12;

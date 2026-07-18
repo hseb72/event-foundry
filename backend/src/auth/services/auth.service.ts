@@ -1,6 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { UserWithRoles } from '../../users/entities/user.entity';
 import {
@@ -70,13 +70,15 @@ export class AuthService {
 
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.config.getOrThrow<string>('JWT_SECRET'),
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '3600s'),
+      // jsonwebtoken (via @nestjs/jwt 11) type `expiresIn` en durée littérale : la valeur
+      // vient de la config (env), on la transmet telle quelle.
+      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '3600s') as JwtSignOptions['expiresIn'],
     });
     const refreshToken = await this.jwtService.signAsync(
       { sub: user.id },
       {
         secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN', '7d'),
+        expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN', '7d') as JwtSignOptions['expiresIn'],
       },
     );
 

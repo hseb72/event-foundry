@@ -11,9 +11,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Prisma 7 : l'URL de connexion n'est plus dans le schéma. Elle est fournie à Migrate via
+// prisma.config.ts, et au client applicatif via un driver adapter (@prisma/adapter-pg).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // --- Énumérations (miroir de @event-foundry/contracts) ---

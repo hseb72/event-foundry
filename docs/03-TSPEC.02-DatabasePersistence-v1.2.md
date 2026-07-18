@@ -1,8 +1,8 @@
 # Base de données & Persistance
 
 **Document** : TSPEC.02  
-**Fichier** : 03-TSPEC.02-DatabasePersistence-v1.1.md  
-**Version** : 1.1  
+**Fichier** : 03-TSPEC.02-DatabasePersistence-v1.2.md  
+**Version** : 1.2  
 **Statut** : Validé
 
 ---
@@ -83,6 +83,8 @@ Il contient uniquement les contrats d'échange entre composants.
 ```text
 backend/
 
+prisma.config.ts   (Prisma 7 : config CLI + URL de connexion pour Migrate)
+
 prisma/
 
 schema.prisma
@@ -92,7 +94,17 @@ migrations/
 seed.ts
 ```
 
-Le fichier `schema.prisma` constitue la référence unique du modèle de données.
+Le fichier `schema.prisma` constitue la référence unique du **modèle** de données.
+
+## Connexion (Prisma 7)
+
+Depuis Prisma 7, l'URL de connexion n'est plus déclarée dans `schema.prisma` :
+
+- **Migrate / CLI** lit l'URL via `prisma.config.ts` (`datasource.url`), alimentée par
+  l'environnement (`DATABASE_URL`) ;
+- le **client applicatif** (`PrismaService`) se connecte via un *driver adapter*
+  (`@prisma/adapter-pg`, sur `pg`) construit à partir de `DATABASE_URL`, et non plus par le
+  moteur binaire. Le confinement de Prisma aux Repositories (ADR.02) reste inchangé.
 
 ---
 
@@ -587,3 +599,4 @@ ADR — Shared Contracts
 | 0.2 | Encapsulation complète de Prisma dans les Repositories, ajout de BaseRepository, intégration de l'organisation `shared/contracts` et clarification des responsabilités de la couche de persistance. |
 | 1.0 | Spécification validée pour la V1. |
 | 1.1 | Organizer/Venue rattachés à `is_active` (référentiels) au lieu de `deleted_at`, pour cohérence avec ARCHI.03 et FSPEC.07. |
+| 1.2 | Montée à Prisma 7 : URL de connexion sortie du schéma (Migrate via `prisma.config.ts`, client via driver adapter `@prisma/adapter-pg`). |

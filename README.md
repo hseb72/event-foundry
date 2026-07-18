@@ -48,7 +48,7 @@ Pipeline asynchrone : `ImportRequest → OCRResult → ClassificationResult → 
 ## Démarrage rapide
 
 ```bash
-# Prérequis : Node >= 20, Docker
+# Prérequis : Node >= 22, Docker
 cp .env.example .env
 npm install                 # npm workspaces
 npm run infra:up            # PostgreSQL + Redis + MinIO
