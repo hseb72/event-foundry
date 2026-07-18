@@ -1,6 +1,6 @@
 # @event-foundry/frontend
 
-Frontend **Angular 18** (standalone) d'EventFoundry — parcours consommateur V1.
+Frontend **Angular 21** (standalone) d'EventFoundry — parcours consommateur V1.
 
 Direction visuelle : `docs/11-UX.01-UIDesignDirection-v0.1.md` (accent consommateur = rose).
 
