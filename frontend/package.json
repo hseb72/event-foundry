@@ -2,9 +2,31 @@
   "name": "@event-foundry/frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "Frontend Angular EventFoundry (placeholder). Workspace Angular à initialiser à l'EPIC 11.",
+  "description": "Frontend Angular EventFoundry (parcours V1).",
   "license": "UNLICENSED",
   "scripts": {
-    "placeholder": "echo \"Frontend Angular à initialiser (ng new) — EPIC 11.\""
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "dependencies": {
+    "@angular/animations": "^18.2.0",
+    "@angular/common": "^18.2.0",
+    "@angular/compiler": "^18.2.0",
+    "@angular/core": "^18.2.0",
+    "@angular/forms": "^18.2.0",
+    "@angular/platform-browser": "^18.2.0",
+    "@angular/platform-browser-dynamic": "^18.2.0",
+    "@angular/router": "^18.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.14.10"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^18.2.21",
+    "@angular/cli": "^18.2.21",
+    "@angular/compiler-cli": "^18.2.0",
+    "typescript": "~5.5.2"
   }
 }

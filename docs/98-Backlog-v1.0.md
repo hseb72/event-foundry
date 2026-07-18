@@ -207,14 +207,19 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 11 — Frontend
 
-- [ ] Layout
-- [ ] Navigation
-- [ ] Dashboard
-- [ ] Acquisition
-- [ ] Validation
-- [ ] Catalogue
-- [ ] Event
-- [ ] Administration
+- [x] Layout _(shell + responsive, thème consommateur)_
+- [x] Navigation _(routing + guard JWT + intercepteur)_
+- [ ] Dashboard _(tableaux de bord Admin/Organisateur)_
+- [x] Acquisition _(écran d'import fichier/texte)_
+- [ ] Validation _(UI de correction/validation des EventCandidate)_
+- [x] Catalogue _(Découvrir : recherche, filtres, participation)_
+- [ ] Event _(fiche détaillée dédiée)_
+- [ ] Administration _(CRUD des référentiels)_
+
+> Fondation Angular 18 standalone livrée et **buildable** : couche API typée, auth,
+> layout, et parcours consommateur (login, Découvrir, Mon planning, Importer) avec les
+> actions de participation. Écrans restants (validation, fiche Event, admin, dashboards,
+> refresh token) à itérer dans les prochaines passes de l'EPIC 11.
 
 ---
 

@@ -7,7 +7,11 @@ node_modules/
 dist/
 build/
 out/
+out-tsc/
 *.tsbuildinfo
+
+# Angular
+.angular/
 
 # Prisma
 backend/prisma/*.db

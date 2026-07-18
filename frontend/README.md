@@ -1,17 +1,45 @@
 # @event-foundry/frontend
 
-Frontend **Angular** d'EventFoundry.
+Frontend **Angular 18** (standalone) d'EventFoundry — parcours consommateur V1.
 
-> ⏳ Placeholder. Le workspace Angular sera initialisé à l'**EPIC 11 — Frontend**
-> (`ng new`), une fois le Backend et les capacités métier disponibles.
+Direction visuelle : `docs/11-UX.01-UIDesignDirection-v0.1.md` (accent consommateur = rose).
 
-> 🎨 Direction visuelle (3 profils, code couleur, composants, périmètre V1) :
-> voir `docs/11-UX.01-UIDesignDirection-v0.1.md`.
+## Structure
 
-Responsabilités (ARCHI.01) : authentification, navigation, upload de documents, recherche
-d'événements, calendrier, validation des EventCandidate. Ne réalise jamais d'OCR, de
-classification ni de traitement métier complexe.
+```
+src/app/
+  core/
+    api/            services HTTP typés (events, imports, participation, reference-data)
+    auth/           AuthService, intercepteur Bearer, guard
+    models.ts       interfaces miroir des DTO backend
+  layout/           shell (sidebar + navigation)
+  features/         login, catalogue (Découvrir), calendar (Mon planning), import
+  shared/           event-card (+ actions de participation), utilitaires
+```
 
-Écrans V1 : Import, Liste/détail des imports, Liste/détail des EventCandidate, Catalogue
-(Découverte), fiche Event, Mon calendrier (vues Jour/Semaine/Mois/Agenda + 7/30 jours),
-Administration des référentiels.
+## Écrans couverts (V1)
+
+- **Login** (JWT, stockage local, redirection sur 401).
+- **Découvrir** (catalogue) : recherche + filtres (activité, période, participation) ; état
+  de participation visible ; actions Intéressé / Réservation / Paiement par carte.
+- **Mon planning** : événements ayant une participation.
+- **Importer** : upload fichier (PNG/JPG/PDF) ou texte → pipeline asynchrone.
+
+## À venir dans l'EPIC 11 (prochaines itérations)
+
+Écran de **validation** des EventCandidate (correction/validation/rejet), **fiche Event**
+détaillée, **administration** des référentiels, **tableaux de bord** Admin/Organisateur,
+flux de **refresh token**.
+
+## Démarrage
+
+```bash
+# 1. Backend + infra
+npm run infra:up
+npm run start:dev --workspace @event-foundry/backend
+
+# 2. Frontend (port 4200 ; le backend autorise CORS depuis :4200)
+npm run start --workspace @event-foundry/frontend
+```
+
+API ciblée : `http://localhost:3000/api/v1` (voir `src/app/core/api.config.ts`).

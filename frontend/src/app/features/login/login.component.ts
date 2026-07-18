@@ -1,0 +1,88 @@
+import { Component } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
+
+@Component({
+  selector: 'app-login',
+  standalone: true,
+  imports: [FormsModule],
+  styles: [
+    `
+      .wrap {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #2a1b3d, #db2777);
+        padding: 1rem;
+      }
+      .box {
+        width: 100%;
+        max-width: 380px;
+        display: grid;
+        gap: 0.9rem;
+      }
+      .brand {
+        font-size: 1.6rem;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 0.5rem;
+      }
+      .error {
+        color: var(--red);
+        font-size: 0.9rem;
+      }
+      label {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+    `,
+  ],
+  template: `
+    <div class="wrap">
+      <form class="card box" (ngSubmit)="submit()">
+        <div class="brand">EventFoundry</div>
+        <label for="email">E-mail</label>
+        <input id="email" class="input" type="email" name="email" [(ngModel)]="email" required />
+        <label for="password">Mot de passe</label>
+        <input
+          id="password"
+          class="input"
+          type="password"
+          name="password"
+          [(ngModel)]="password"
+          required
+        />
+        @if (error) {
+          <div class="error">{{ error }}</div>
+        }
+        <button class="btn btn-primary" type="submit" [disabled]="loading">
+          {{ loading ? 'Connexion…' : 'Se connecter' }}
+        </button>
+      </form>
+    </div>
+  `,
+})
+export class LoginComponent {
+  email = '';
+  password = '';
+  error = '';
+  loading = false;
+
+  constructor(
+    private readonly auth: AuthService,
+    private readonly router: Router,
+  ) {}
+
+  submit(): void {
+    this.loading = true;
+    this.error = '';
+    this.auth.login(this.email, this.password).subscribe({
+      next: () => void this.router.navigate(['/discover']),
+      error: () => {
+        this.error = 'Identifiants invalides.';
+        this.loading = false;
+      },
+    });
+  }
+}
