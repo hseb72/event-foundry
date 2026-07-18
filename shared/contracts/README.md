@@ -3,7 +3,7 @@
 Contrats d'échange **partagés** entre les composants EventFoundry (Backend, OCR Worker,
 Classifier Worker).
 
-Référence : `docs/99-ADR.03-SharedContracts-v1.0.md`, `docs/03-TSPEC.03-ImportPipeline-v1.0.md`.
+Référence : `docs/99-ADR.03-SharedContracts-v1.0.md`, `docs/03-TSPEC.03-ImportPipeline-v1.1.md`.
 
 ## Règle
 

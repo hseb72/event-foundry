@@ -45,5 +45,11 @@ export interface ClassificationResult {
   extractedFields: ExtractedEventFields;
   confidenceByField: ConfidenceByField;
   diagnostics: ClassificationDiagnostic[];
+  /**
+   * Texte OCR source (provenance). Repropagé jusqu'au Backend pour conservation sur
+   * l'`ImportJob` (traçabilité / rejouabilité), car les Workers n'accèdent jamais à
+   * PostgreSQL. Pour un import texte, c'est le texte importé (OCR de substitution).
+   */
+  ocrText: string;
   correlationId: string;
 }

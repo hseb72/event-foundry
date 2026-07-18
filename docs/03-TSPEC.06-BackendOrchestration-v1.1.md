@@ -1,8 +1,8 @@
 # Backend Orchestration
 
 **Document** : TSPEC.06
-**Fichier** : 03-TSPEC.06-BackendOrchestration-v1.0.md
-**Version** : 1.0
+**Fichier** : 03-TSPEC.06-BackendOrchestration-v1.1.md
+**Version** : 1.1
 **Statut** : Validé
 
 ---
@@ -103,6 +103,22 @@ Pour une acquisition :
 5. retour immédiat au client.
 
 Le Backend ne bloque jamais en attendant la fin du traitement.
+
+## Retour du pipeline et conservation du texte OCR
+
+Le Backend consomme `RESULT_QUEUE` (`ClassificationResult`) pour reprendre la main sur la
+persistance à l'issue du pipeline :
+
+1. création de l'`EventCandidate` (statut `PENDING`) à partir des champs extraits ;
+2. conservation du **texte OCR source** sur l'`ImportJob` (`ocr_text`) ;
+3. passage de l'`ImportJob` en `READY_FOR_VALIDATION`.
+
+Le texte OCR est repropagé jusqu'au Backend via le champ `ocrText` du `ClassificationResult`
+(provenance) : les Workers n'accédant jamais à PostgreSQL, c'est le Backend qui persiste ce
+texte. La conservation vaut aussi bien pour un import **image** (texte produit par l'OCR
+Worker) que pour un import **texte** (texte importé, OCR de substitution), garantissant la
+traçabilité et la rejouabilité du pipeline (règle d'or 9). Ce texte alimente notamment
+l'écran de validation, qui affiche l'annonce d'origine à côté du brouillon proposé.
 
 ---
 
@@ -246,3 +262,4 @@ ADR — Single Technology per Responsibility
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 1.0 | Spécification validée pour la V1. |
+| 1.1 | Explicitation du retour de pipeline (consommation de `RESULT_QUEUE`) et de la conservation du texte OCR sur l'`ImportJob` pour les imports image (repropagation via `ClassificationResult.ocrText`). |

@@ -42,8 +42,12 @@ export class ImportResultConsumer implements OnModuleInit, OnModuleDestroy {
       payload: result.extractedFields as unknown as Prisma.InputJsonValue,
       confidence: result.confidenceByField as unknown as Prisma.InputJsonValue,
     });
+    // Conservation du texte OCR pour les imports image : les Workers n'accèdent jamais à
+    // PostgreSQL, le texte source est donc repropagé via le ClassificationResult et persisté
+    // ici (traçabilité / rejouabilité, TSPEC.06). Pour un import texte il est déjà stocké.
     await this.importJobs.update(result.importJobId, {
       status: ImportJobStatus.READY_FOR_VALIDATION,
+      ocrText: result.ocrText,
     });
     this.logger.log(
       `EventCandidate créé importJob=${result.importJobId} correlationId=${result.correlationId}`,

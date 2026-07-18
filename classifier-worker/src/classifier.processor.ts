@@ -38,6 +38,7 @@ export class ClassifierProcessor {
       extractedFields: context.extractedFields,
       confidenceByField: context.confidenceByField,
       diagnostics: context.diagnostics,
+      ocrText: ocr.rawText,
       correlationId: ocr.correlationId,
     };
   }

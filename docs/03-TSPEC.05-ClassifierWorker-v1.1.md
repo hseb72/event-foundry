@@ -1,8 +1,8 @@
 # Expert Classification Worker
 
 **Document** : TSPEC.05
-**Fichier** : 03-TSPEC.05-ClassifierWorker-v1.0.md
-**Version** : 1.0
+**Fichier** : 03-TSPEC.05-ClassifierWorker-v1.1.md
+**Version** : 1.1
 **Statut** : Validé
 
 ---
@@ -233,6 +233,8 @@ interface ClassificationResult {
 
     diagnostics;
 
+    ocrText: string; // provenance : texte OCR source, persisté par le Backend
+
     correlationId: string;
 
 }
@@ -387,3 +389,4 @@ ADR Single Technology
 |-------|-----------|
 |0.1|Première rédaction.|
 | 1.0 | Spécification validée pour la V1. |
+| 1.1 | Ajout du champ `ocrText` (provenance) au `ClassificationResult` : le texte OCR source est repropagé jusqu'au Backend, qui le persiste sur l'`ImportJob` (le Worker n'accède jamais à PostgreSQL). |
