@@ -1,0 +1,35 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { API_BASE } from '../api.config';
+import {
+  CreateEventInput,
+  EventCandidateDetailDto,
+  EventCandidateDto,
+  EventDto,
+} from '../models';
+
+@Injectable({ providedIn: 'root' })
+export class EventCandidatesApi {
+  constructor(private readonly http: HttpClient) {}
+
+  list(status?: string): Observable<EventCandidateDto[]> {
+    const params: Record<string, string> = {};
+    if (status) {
+      params['status'] = status;
+    }
+    return this.http.get<EventCandidateDto[]>(`${API_BASE}/event-candidates`, { params });
+  }
+
+  detail(id: string): Observable<EventCandidateDetailDto> {
+    return this.http.get<EventCandidateDetailDto>(`${API_BASE}/event-candidates/${id}`);
+  }
+
+  validate(id: string, body: CreateEventInput): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/event-candidates/${id}/validate`, body);
+  }
+
+  reject(id: string): Observable<EventCandidateDto> {
+    return this.http.post<EventCandidateDto>(`${API_BASE}/event-candidates/${id}/reject`, {});
+  }
+}

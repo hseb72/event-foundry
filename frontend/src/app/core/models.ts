@@ -63,3 +63,51 @@ export interface ActivityDto {
 
 export type ReservationStatus = 'NONE' | 'RESERVED' | 'WAITLIST' | 'CANCELLED';
 export type PaymentStatus = 'NONE' | 'PENDING' | 'PAID' | 'REFUNDED';
+
+export interface ReferentialItem {
+  id: string;
+  name: string;
+}
+
+export interface EventCandidateDto {
+  id: string;
+  importJobId: string;
+  status: string;
+  payload: Record<string, unknown>;
+  confidence: Record<string, number>;
+  correctedAt: string | null;
+  createdAt: string;
+}
+
+export interface EventCandidateDetailDto extends EventCandidateDto {
+  ocrText: string | null;
+}
+
+export interface CreateEventInput {
+  activityId: string;
+  eventTypeId?: string;
+  eventFormatId?: string;
+  organizerId?: string;
+  venueId?: string;
+  title: string;
+  description?: string;
+  startsAt: string;
+  endsAt?: string;
+  price?: number;
+  currency?: string;
+}
+
+/** Valeurs détectées (noms) proposées par le moteur expert, pour préremplir un formulaire. */
+export interface EventDraft {
+  title?: string;
+  description?: string;
+  startsAt?: string;
+  endsAt?: string;
+  price?: number;
+  currency?: string;
+  activityName?: string;
+  eventTypeName?: string;
+  eventFormatName?: string;
+  organizerName?: string;
+  venueName?: string;
+}

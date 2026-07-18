@@ -80,6 +80,8 @@ import { AuthService } from '../core/auth/auth.service';
           <a routerLink="/discover" routerLinkActive="active">Découvrir</a>
           <a routerLink="/calendar" routerLinkActive="active">Mon planning</a>
           <a routerLink="/import" routerLinkActive="active">Importer</a>
+          <a routerLink="/validation" routerLinkActive="active">Validation</a>
+          <a routerLink="/create" routerLinkActive="active">Créer</a>
         </nav>
         <button class="btn logout" (click)="logout()">Se déconnecter</button>
       </aside>

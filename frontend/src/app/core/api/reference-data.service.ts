@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { ActivityDto } from '../models';
+import { ActivityDto, ReferentialItem } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReferenceDataApi {
@@ -10,5 +10,25 @@ export class ReferenceDataApi {
 
   activities(): Observable<ActivityDto[]> {
     return this.http.get<ActivityDto[]>(`${API_BASE}/activities`);
+  }
+
+  eventTypes(activityId: string): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-types`, {
+      params: { activityId },
+    });
+  }
+
+  eventFormats(activityId: string): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-formats`, {
+      params: { activityId },
+    });
+  }
+
+  organizers(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/organizers`);
+  }
+
+  venues(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/venues`);
   }
 }
