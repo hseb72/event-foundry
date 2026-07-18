@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
+import { AdminComponent } from './features/admin/admin.component';
 import { CalendarComponent } from './features/calendar/calendar.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
@@ -22,6 +24,7 @@ export const routes: Routes = [
       { path: 'validation', component: ValidationComponent },
       { path: 'create', component: CreateEventComponent },
       { path: 'events/:id', component: EventDetailComponent },
+      { path: 'admin', component: AdminComponent, canActivate: [adminGuard] },
       { path: '', redirectTo: 'discover', pathMatch: 'full' },
     ],
   },

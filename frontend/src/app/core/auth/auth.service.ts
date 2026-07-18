@@ -40,6 +40,26 @@ export class AuthService {
     return this.hasToken();
   }
 
+  /** Rôles portés par le JWT (décodage local du payload, sans vérification de signature). */
+  roles(): string[] {
+    const token = this.accessToken;
+    if (!token) {
+      return [];
+    }
+    try {
+      const payload = token.split('.')[1];
+      const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      const decoded = JSON.parse(json) as { roles?: unknown };
+      return Array.isArray(decoded.roles) ? decoded.roles.map(String) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  isAdmin(): boolean {
+    return this.roles().includes('ADMIN');
+  }
+
   private storeTokens(tokens: AuthTokens): void {
     localStorage.setItem(ACCESS_KEY, tokens.accessToken);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);

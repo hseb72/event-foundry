@@ -82,6 +82,9 @@ import { AuthService } from '../core/auth/auth.service';
           <a routerLink="/import" routerLinkActive="active">Importer</a>
           <a routerLink="/validation" routerLinkActive="active">Validation</a>
           <a routerLink="/create" routerLinkActive="active">Créer</a>
+          @if (isAdmin) {
+            <a routerLink="/admin" routerLinkActive="active">Administration</a>
+          }
         </nav>
         <button class="btn logout" (click)="logout()">Se déconnecter</button>
       </aside>
@@ -92,10 +95,14 @@ import { AuthService } from '../core/auth/auth.service';
   `,
 })
 export class ShellComponent {
+  readonly isAdmin: boolean;
+
   constructor(
     private readonly auth: AuthService,
     private readonly router: Router,
-  ) {}
+  ) {
+    this.isAdmin = this.auth.isAdmin();
+  }
 
   logout(): void {
     this.auth.logout();

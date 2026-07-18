@@ -214,14 +214,14 @@ L'ordre proposé respecte les dépendances techniques.
 - [x] Validation _(UI de correction/validation des EventCandidate + création manuelle)_
 - [x] Catalogue _(Découvrir : recherche, filtres, participation)_
 - [x] Event _(fiche détaillée dédiée)_
-- [ ] Administration _(CRUD des référentiels)_
+- [x] Administration _(CRUD des référentiels, réservé ADMIN)_
 
 > Fondation Angular 21 standalone livrée et **buildable** : couche API typée, auth,
 > layout, et parcours consommateur (login, Découvrir, Mon planning, Importer, fiche Event)
 > avec les actions de participation. Parcours de contenu complété : création manuelle
-> d'Events et validation/correction/rejet des EventCandidate. Écrans restants
-> (administration des référentiels, dashboards, refresh token) à itérer dans les
-> prochaines passes de l'EPIC 11.
+> d'Events et validation/correction/rejet des EventCandidate. Administration des
+> référentiels (6 entités, CRUD générique réservé ADMIN via garde de route + décodage du
+> rôle JWT). Restent (post-passe) les dashboards et le refresh token.
 
 ---
 
