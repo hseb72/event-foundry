@@ -9,18 +9,20 @@
     "start": "node dist/main.js",
     "start:dev": "dotenv -e ../.env -- ts-node src/main.ts",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "eval": "dotenv -e ../.env -- ts-node eval/run-eval.ts"
   },
   "dependencies": {
     "@event-foundry/contracts": "*",
+    "@event-foundry/libraries": "*",
     "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.28",
     "bullmq": "^5.80.8",
+    "ioredis": "^5.4.1",
     "minio": "^8.0.7",
     "reflect-metadata": "^0.2.2",
-    "tesseract.js": "^7.0.0",
-    "ioredis": "^5.4.1",
-    "@event-foundry/libraries": "*"
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

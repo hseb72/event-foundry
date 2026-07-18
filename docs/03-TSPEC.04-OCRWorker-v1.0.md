@@ -112,16 +112,23 @@ Il ne réalise aucun traitement d'image.
 
 Responsabilités :
 
-- rotation ;
+- rotation (auto-orientation) ;
 - deskew ;
 - grayscale ;
 - contraste ;
 - binarisation ;
-- réduction du bruit.
+- réduction du bruit ;
+- upscaling (texte trop petit).
 
-Chaque filtre est indépendant.
+Chaque filtre est indépendant. L'ordre des filtres est configurable.
 
-L'ordre des filtres est configurable.
+Le préprocesseur renvoie **une ou plusieurs variantes** (ex. « grayscale-normalized » et
+« binarized ») : l'OCR est tenté sur chacune et la meilleure confiance est retenue
+(multi-passes déterministe). Les variantes restent traçables.
+
+> **Implémentation (2026-07)** : réalisée avec **`sharp`** à titre d'essai (dérogation
+> temporaire à ADR.04 « Traitement d'image | OpenCV » — cf. note d'ADR.04). Le deskew avancé
+> et l'analyse de composantes relèveraient d'OpenCV et restent à trancher.
 
 ---
 
@@ -134,6 +141,11 @@ Responsabilités :
 - produire les informations techniques.
 
 Aucune correction n'est réalisée ici.
+
+Réglages Tesseract (surchargables par variables d'environnement) : moteur **LSTM** (OEM 1),
+modèles **« best »** (précision), **PSM** adapté aux affiches (texte épars par défaut),
+préservation des espaces inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la
+qualité (confiance, rappel de mots-clés) pour régler ces paramètres.
 
 ---
 

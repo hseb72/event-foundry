@@ -50,7 +50,7 @@ générique pour d'autres domaines sans changement du modèle métier.
 | Cache               | Redis                |
 | Stockage objet      | MinIO                |
 | OCR                 | Tesseract            |
-| Traitement d'image  | OpenCV               |
+| Traitement d'image  | OpenCV *(prétraitement OCR à l'essai avec `sharp` — cf. note ADR.04)* |
 | Validation DTO      | class-validator / class-transformer |
 | Auth                | JWT                  |
 | Doc API             | OpenAPI / Swagger    |

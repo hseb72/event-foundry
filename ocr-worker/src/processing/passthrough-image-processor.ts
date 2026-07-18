@@ -1,16 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import type { ImageProcessor } from '../interfaces/image-processor.interface';
+import type { ImageProcessor, PreprocessedVariant } from '../interfaces/image-processor.interface';
 
 /**
- * Implémentation par défaut sans transformation.
- *
- * TODO(ADR.04) : remplacer par un prétraitement OpenCV (grayscale, deskew, contraste,
- * binarisation, réduction du bruit) — TSPEC.04. Cette abstraction permet le remplacement
- * sans impacter le reste du worker (ADR.07).
+ * Implémentation neutre (sans transformation), conservée comme repli et pour les tests.
+ * En production, le worker est câblé sur SharpImageProcessor (voir ocr.module.ts).
  */
 @Injectable()
 export class PassthroughImageProcessor implements ImageProcessor {
-  async preprocess(input: Buffer): Promise<Buffer> {
-    return input;
+  async preprocess(input: Buffer): Promise<PreprocessedVariant[]> {
+    return [{ label: 'original', buffer: input }];
   }
 }

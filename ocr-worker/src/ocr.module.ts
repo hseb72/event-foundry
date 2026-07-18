@@ -5,7 +5,7 @@ import { IMAGE_PROCESSOR } from './interfaces/image-processor.interface';
 import { OCR_ENGINE } from './interfaces/ocr-engine.interface';
 import { MinioDocumentLoader } from './loaders/minio-document-loader';
 import { OcrProcessor } from './ocr.processor';
-import { PassthroughImageProcessor } from './processing/passthrough-image-processor';
+import { SharpImageProcessor } from './processing/sharp-image-processor';
 import { OcrPostProcessor } from './processing/ocr-post-processor';
 import { OcrResultPublisher } from './publisher/ocr-result-publisher';
 import { OcrWorker } from './worker';
@@ -17,7 +17,7 @@ import { OcrWorker } from './worker';
 @Module({
   providers: [
     { provide: DOCUMENT_LOADER, useClass: MinioDocumentLoader },
-    { provide: IMAGE_PROCESSOR, useClass: PassthroughImageProcessor },
+    { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessor },
     { provide: OCR_ENGINE, useClass: TesseractOcrEngine },
     OcrPostProcessor,
     OcrProcessor,
