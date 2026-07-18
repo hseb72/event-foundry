@@ -111,5 +111,22 @@ l'Event et fige le candidate **dans une transaction**. Le Domain est déduit de 
 > Nouvelle migration requise après cet EPIC : `npm run prisma:migrate --workspace
 > @event-foundry/backend` (p. ex. `--name add_events_and_candidates`).
 
+## Catalogue / recherche (EPIC 9)
+
+`GET /api/v1/events` — recherche paginée, filtres cumulables (FSPEC.04) :
+
+| Paramètre | Effet |
+|-----------|-------|
+| `activityId`, `eventTypeId`, `eventFormatId`, `organizerId`, `venueId` | filtres référentiels |
+| `city` | ville du Venue (insensible à la casse) |
+| `q` | plein texte (titre + description) |
+| `period` | `today` · `this-week` · `this-month` · `next-7-days` · `next-30-days` |
+| `from` / `to` | période personnalisée (ISO 8601) |
+| `skip` / `take` | pagination (take ≤ 100) |
+
+Réponse : `{ items, total, skip, take }`. Par défaut, événements à venir. Les Events
+supprimés logiquement et les EventCandidate ne sont jamais retournés ; le Domain n'est
+jamais un critère. `GET /api/v1/events/{id}` pour le détail.
+
 > Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
 > migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).

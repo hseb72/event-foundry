@@ -177,10 +177,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 9 — Catalogue
 
-- [ ] Recherche
-- [ ] Filtres
-- [ ] Détails
-- [ ] Pagination
+- [x] Recherche
+- [x] Filtres
+- [x] Détails
+- [x] Pagination
+
+> `GET /events` : filtres cumulables (Activity, EventType, EventFormat, Organizer, Venue,
+> ville, texte libre) + presets temporels (today, this-week, this-month, next-7/30-days)
+> ou période personnalisée. Événements à venir par défaut ; supprimés/candidates jamais
+> retournés ; Domain jamais filtre. Le filtre « Mes événements » arrive à l'EPIC 10
+> (dépend de UserParticipation).
 
 ---
 

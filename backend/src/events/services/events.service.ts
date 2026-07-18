@@ -10,7 +10,9 @@ import { EventFormatRepository } from '../../reference-data/event-formats/event-
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
+import { computeDateRange } from '../date-range.util';
 import { CreateEventDto } from '../dto/create-event.dto';
+import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
 import type { EventWithRefs } from '../entities/event.entity';
 import {
   EventNotFoundException,
@@ -36,6 +38,34 @@ export class EventsService {
       throw new EventNotFoundException(id);
     }
     return event;
+  }
+
+  /** Recherche paginée (FSPEC.04). Filtres cumulables ; par défaut, événements à venir. */
+  async search(query: SearchEventsQueryDto): Promise<{
+    items: EventWithRefs[];
+    total: number;
+    skip: number;
+    take: number;
+  }> {
+    const range = computeDateRange({ period: query.period, from: query.from, to: query.to });
+    const skip = query.skip ?? 0;
+    const take = query.take ?? 20;
+
+    const { items, total } = await this.repository.searchPaginated({
+      activityId: query.activityId,
+      eventTypeId: query.eventTypeId,
+      eventFormatId: query.eventFormatId,
+      organizerId: query.organizerId,
+      venueId: query.venueId,
+      city: query.city,
+      text: query.q,
+      startsFrom: range.startsFrom,
+      startsTo: range.startsTo,
+      skip,
+      take,
+    });
+
+    return { items, total, skip, take };
   }
 
   /** Création manuelle (source = MANUAL). */
