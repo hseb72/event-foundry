@@ -255,10 +255,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 14 — Tests
 
-- [ ] Unitaires
-- [ ] Intégration
-- [ ] End-to-End
-- [ ] Performance
+- [x] Unitaires _(services, mappers, moteur de règles, garde-fous ; 50 tests)_
+- [x] Intégration _(repositories sur PostgreSQL réel — journal des transitions, cascade)_
+- [x] End-to-End _(API réelle via supertest : auth, refresh, RBAC référentiels, admin users)_
+- [ ] Performance _(charge/latence — reporté post-MVP, hors périmètre outillage V1)_
+
+> Tests unitaires (Prisma mocké) exécutés partout via `npm test`. Tests d'intégration
+> (`test:int`) et E2E (`test:e2e`) sur une vraie base PostgreSQL + Redis, regroupés dans
+> `backend/test/`, MinIO remplacé par un stub. La CI démarre PostgreSQL + Redis (compose),
+> applique les migrations, puis lance intégration + E2E. Les tests de performance
+> (k6/artillery) restent à cadrer — hors périmètre V1.
 
 ---
 

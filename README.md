@@ -59,6 +59,21 @@ npm run dev                 # backend + ocr-worker + classifier-worker
 npm run dev:all             # idem + frontend Angular
 ```
 
+### Tests
+
+```bash
+npm test                    # tests unitaires (tous les workspaces, Prisma mocké)
+
+# Tests d'intégration + E2E : nécessitent PostgreSQL + Redis (npm run infra:up)
+npm run infra:up
+npm run prisma:migrate:deploy --workspace @event-foundry/backend
+npm run test:int --workspace @event-foundry/backend   # repositories sur base réelle
+npm run test:e2e --workspace @event-foundry/backend   # API réelle (supertest), MinIO stubbé
+```
+
+> Les tests DB (`backend/test/*.int-spec.ts`, `*.e2e-spec.ts`) tournent en série
+> (`--runInBand`) sur la base de dev. La CI les exécute automatiquement.
+
 > `dev`/`dev:all` co-lancent des **process indépendants** via `concurrently` : les workers
 > restent stateless et répliquables (ADR.04, règle d'or 4), ils ne sont pas embarqués dans
 > le process backend. Chaque composant peut aussi être lancé seul avec `npm run start:dev
