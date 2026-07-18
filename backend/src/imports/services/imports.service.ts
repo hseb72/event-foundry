@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ImportJobStatus } from '@prisma/client';
 import { generateCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
 import { MinioService } from '../../infra/minio/minio.service';
@@ -71,6 +72,16 @@ export class ImportsService {
       correlationId,
     });
 
+    // Le job entre dans l'étape OCR : transition historisée (le Backend orchestre chaque
+    // étape et enregistre les passages d'état). L'OCR Worker renverra son OCRResult au
+    // Backend, qui poursuivra le pipeline.
+    const startedAt = new Date();
+    await this.repository.transition(job.id, ImportJobStatus.OCR_RUNNING, correlationId, {
+      startedAt,
+    });
+    job.status = ImportJobStatus.OCR_RUNNING;
+    job.startedAt = startedAt;
+
     return job;
   }
 
@@ -95,12 +106,13 @@ export class ImportsService {
         storageBucket: this.minio.bucketName,
         storageKey,
       },
-      status: 'OCR_DONE',
+      status: 'PENDING',
       correlationId,
       ocrText: text,
     });
 
-    // OCRResult de substitution : le texte importé est directement classé.
+    // Import texte : aucun OCR (RM-007). Le Backend fabrique un OCRResult de substitution
+    // et passe directement à la classification, en historisant la transition.
     await this.queue.enqueueClassification({
       importJobId: job.id,
       rawText: text,
@@ -112,6 +124,16 @@ export class ImportsService {
       engineVersion: '1',
       correlationId,
     });
+
+    const startedAt = new Date();
+    await this.repository.transition(
+      job.id,
+      ImportJobStatus.CLASSIFICATION_RUNNING,
+      correlationId,
+      { startedAt },
+    );
+    job.status = ImportJobStatus.CLASSIFICATION_RUNNING;
+    job.startedAt = startedAt;
 
     return job;
   }

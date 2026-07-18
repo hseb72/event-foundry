@@ -73,24 +73,31 @@ Utilisateur → Frontend (Angular)
                           └── Classifier Worker   (moteur de règles)
 ```
 
-- Les workers ne communiquent **jamais** directement entre eux : tout passe par BullMQ.
+- Les workers ne communiquent **jamais** directement entre eux ni ne se chaînent : chacun
+  renvoie son résultat au Backend, qui **orchestre** l'étape suivante et **historise chaque
+  transition** d'état de l'ImportJob (règle d'or 4 ; stats sur les passages entre états).
 - Les workers sont **stateless**, idempotents, répliquables horizontalement.
 - Les workers ne sont **jamais** exposés publiquement.
-- Deux files : `OCR_QUEUE`, `CLASSIFICATION_QUEUE`.
+- Quatre files : `OCR_QUEUE` (Backend→OCR), `OCR_RESULT_QUEUE` (OCR→Backend),
+  `CLASSIFICATION_QUEUE` (Backend→Classifier), `IMPORT_RESULT_QUEUE` (Classifier→Backend).
 
 ### Pipeline d'import (asynchrone de bout en bout)
 
 ```
 Acquisition → Attachment (MinIO) → ImportJob (PENDING)
-   → ImportRequest sur OCR_QUEUE
-   → OCR Worker → OCRResult → CLASSIFICATION_QUEUE
-   → Classifier Worker → ClassificationResult
-   → Backend crée EventCandidate (PENDING)
+   → ImportRequest sur OCR_QUEUE           → OCR_RUNNING
+   → OCR Worker → OCRResult sur OCR_RESULT_QUEUE
+   → Backend conserve l'OCRResult          → OCR_DONE
+   → OCRResult sur CLASSIFICATION_QUEUE     → CLASSIFICATION_RUNNING
+   → Classifier Worker → ClassificationResult sur IMPORT_RESULT_QUEUE
+   → Backend crée EventCandidate (PENDING) → READY_FOR_VALIDATION
    → Validation utilisateur → Event (source=IMPORT)
 ```
 
 Le frontend n'attend **jamais** la fin du traitement (retour HTTP immédiat).
-Un import **texte** ne déclenche jamais l'OCR (classification directe).
+Un import **texte** ne déclenche jamais l'OCR : classification directe
+(PENDING → CLASSIFICATION_RUNNING → READY_FOR_VALIDATION).
+Chaque transition est journalisée dans `import_job_events` (audit + statistiques par étape).
 
 ---
 
@@ -165,6 +172,7 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
 - `seed.ts` initialise uniquement référentiels + rôles + admin de dev. Aucune donnée fonctionnelle.
 - Index à prévoir : Events(`starts_at`, `venue_id`, `organizer_id`, `activity_id`, `source`),
   EventCandidates(`status`, `created_at`), ImportJobs(`status`, `created_at`),
+  ImportJobEvents(`import_job_id`, `status`, `occurred_at`),
   Attachments(`checksum`), UserParticipation(`user_id`, `event_id`) + `UNIQUE(user_id, event_id)`.
 
 ---
@@ -175,9 +183,12 @@ Hiérarchie référentielle : `Domain → Activity → EventType / EventFormat(o
 - Une Activity appartient à un Domain ; un EventType/EventFormat appartient à une Activity.
 - Un Event peut ne pas avoir de EventFormat.
 
-Entités : `User`, `Attachment`, `ImportJob`, `EventCandidate`, `Event`, `Domain`,
-`Activity`, `EventType`, `EventFormat`, `Organizer`, `Venue`, `UserParticipation`.
+Entités : `User`, `Attachment`, `ImportJob`, `ImportJobEvent`, `EventCandidate`, `Event`,
+`Domain`, `Activity`, `EventType`, `EventFormat`, `Organizer`, `Venue`, `UserParticipation`.
 
+- `ImportJobEvent` : journal d'audit des transitions d'état d'un ImportJob (une ligne par
+  passage d'état), alimenté par le Backend qui orchestre chaque étape. Base des statistiques
+  sur les passages entre états et les durées par étape.
 - `Organizer` et `Venue` sont indépendants (lien optionnel, jamais forcé).
 - `EventCandidate` : `payload` (JSONB, brouillon d'Event) + `confidence` (JSONB, **un score
   par champ**, aucun score global côté API — le front peut faire une synthèse visuelle).

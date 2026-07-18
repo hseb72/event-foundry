@@ -5,8 +5,8 @@ import { OcrModule } from './ocr.module';
 import { OcrWorker } from './worker';
 
 /**
- * Point d'entrée de l'OCR Worker : consomme OCR_QUEUE, produit un OCRResult et publie
- * sur CLASSIFICATION_QUEUE. Aucune connaissance métier, aucun accès à PostgreSQL.
+ * Point d'entrée de l'OCR Worker : consomme OCR_QUEUE, produit un OCRResult et le renvoie
+ * au Backend sur OCR_RESULT_QUEUE. Aucune connaissance métier, aucun accès à PostgreSQL.
  */
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(OcrModule);

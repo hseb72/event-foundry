@@ -7,7 +7,7 @@ import { MinioDocumentLoader } from './loaders/minio-document-loader';
 import { OcrProcessor } from './ocr.processor';
 import { PassthroughImageProcessor } from './processing/passthrough-image-processor';
 import { OcrPostProcessor } from './processing/ocr-post-processor';
-import { ClassificationPublisher } from './publisher/classification-publisher';
+import { OcrResultPublisher } from './publisher/ocr-result-publisher';
 import { OcrWorker } from './worker';
 
 /**
@@ -21,7 +21,7 @@ import { OcrWorker } from './worker';
     { provide: OCR_ENGINE, useClass: TesseractOcrEngine },
     OcrPostProcessor,
     OcrProcessor,
-    ClassificationPublisher,
+    OcrResultPublisher,
     OcrWorker,
   ],
 })

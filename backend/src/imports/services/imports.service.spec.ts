@@ -10,7 +10,7 @@ function fakeJob(overrides: Partial<ImportJobWithAttachment> = {}): ImportJobWit
   return {
     id: 'job-1',
     attachmentId: 'att-1',
-    status: 'OCR_DONE',
+    status: 'PENDING',
     ocrText: 'texte',
     correlationId: 'corr-1',
     startedAt: null,
@@ -34,7 +34,9 @@ function fakeJob(overrides: Partial<ImportJobWithAttachment> = {}): ImportJobWit
 }
 
 describe('ImportsService', () => {
-  let repository: jest.Mocked<Pick<ImportJobRepository, 'createWithAttachment' | 'list' | 'findByIdWithAttachment'>>;
+  let repository: jest.Mocked<
+    Pick<ImportJobRepository, 'createWithAttachment' | 'list' | 'findByIdWithAttachment' | 'transition'>
+  >;
   let minio: jest.Mocked<Pick<MinioService, 'putObject' | 'bucketName'>>;
   let queue: jest.Mocked<Pick<QueueService, 'enqueueImport' | 'enqueueClassification'>>;
   let service: ImportsService;
@@ -44,6 +46,7 @@ describe('ImportsService', () => {
       createWithAttachment: jest.fn().mockResolvedValue(fakeJob()),
       list: jest.fn(),
       findByIdWithAttachment: jest.fn(),
+      transition: jest.fn().mockResolvedValue(fakeJob()),
     };
     minio = { putObject: jest.fn().mockResolvedValue(undefined), bucketName: 'bucket' } as never;
     queue = {
@@ -78,6 +81,13 @@ describe('ImportsService', () => {
     expect(minio.putObject).toHaveBeenCalledTimes(1);
     expect(queue.enqueueImport).toHaveBeenCalledTimes(1);
     expect(queue.enqueueClassification).not.toHaveBeenCalled();
+    // Le Backend historise l'entrée dans l'étape OCR.
+    expect(repository.transition).toHaveBeenCalledWith(
+      'job-1',
+      'OCR_RUNNING',
+      expect.any(String),
+      expect.objectContaining({ startedAt: expect.any(Date) }),
+    );
   });
 
   it('classe directement un import texte, sans OCR', async () => {
@@ -87,5 +97,12 @@ describe('ImportsService', () => {
     const [[payload]] = queue.enqueueClassification.mock.calls;
     expect(payload.engine).toBe('text-passthrough');
     expect(payload.rawText).toBe('Tournoi Magic samedi');
+    // Import texte : pas d'OCR, transition directe vers la classification.
+    expect(repository.transition).toHaveBeenCalledWith(
+      'job-1',
+      'CLASSIFICATION_RUNNING',
+      expect.any(String),
+      expect.objectContaining({ startedAt: expect.any(Date) }),
+    );
   });
 });

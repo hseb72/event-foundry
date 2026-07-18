@@ -3,7 +3,7 @@ import { type ImportRequest, QUEUES } from '@event-foundry/contracts';
 import { type Job, Worker } from 'bullmq';
 import { redisConnection } from './config';
 import { OcrProcessor } from './ocr.processor';
-import { ClassificationPublisher } from './publisher/classification-publisher';
+import { OcrResultPublisher } from './publisher/ocr-result-publisher';
 
 /**
  * Consommateur BullMQ de OCR_QUEUE. Stateless, idempotent, répliquable. Le retry et le
@@ -16,7 +16,7 @@ export class OcrWorker implements OnModuleDestroy {
 
   constructor(
     private readonly processor: OcrProcessor,
-    private readonly publisher: ClassificationPublisher,
+    private readonly publisher: OcrResultPublisher,
   ) {}
 
   start(): void {

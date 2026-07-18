@@ -251,12 +251,31 @@ model ImportJob {
   finishedAt    DateTime?       @map("finished_at") @db.Timestamptz(6)
   attachment    Attachment      @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
   candidates    EventCandidate[]
+  events        ImportJobEvent[]
   createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([createdAt])
   @@map("import_jobs")
+}
+
+/// Journal des transitions d'état d'un ImportJob (une ligne par passage d'état). Le Backend
+/// orchestrant chaque étape du pipeline, il historise chaque transition : cela permet les
+/// statistiques sur les passages entre états et les durées par étape (TSPEC.06 / ARCHI.02).
+/// Sous-entité d'audit : supprimée avec son ImportJob (Cascade).
+model ImportJobEvent {
+  id            String          @id @default(uuid()) @db.Uuid
+  importJobId   String          @map("import_job_id") @db.Uuid
+  status        ImportJobStatus
+  correlationId String          @map("correlation_id")
+  occurredAt    DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  importJob     ImportJob       @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@index([importJobId])
+  @@index([status])
+  @@index([occurredAt])
+  @@map("import_job_events")
 }
 
 // --- Validation & Events (EPIC 8) ---

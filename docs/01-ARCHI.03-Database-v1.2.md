@@ -13,7 +13,9 @@ Version 1.2
 
 - conservation des métadonnées de l'OCRResult source sur l'ImportJob
   (`ocr_confidence`, `ocr_language`, `ocr_engine`, `ocr_engine_version`,
-  `ocr_page_count`, `ocr_processing_time_ms`), en complément de `ocr_text`.
+  `ocr_page_count`, `ocr_processing_time_ms`), en complément de `ocr_text` ;
+- ajout de la table `import_job_events` (journal des transitions d'état d'un
+  ImportJob) pour les statistiques sur les passages entre états.
 
 Version 1.1
 
@@ -123,6 +125,25 @@ Ces informations permettent le calcul :
 - durée OCR ;
 - durée Classification ;
 - durée totale d'un import.
+
+---
+
+# ImportJobEvents
+
+Journal des transitions d'état d'un ImportJob : une ligne est ajoutée à **chaque** passage
+d'état. Le Backend orchestrant chaque étape du pipeline, il est le seul à écrire ce journal.
+
+Colonnes
+
+- id
+- import_job_id
+- status
+- correlation_id
+- occurred_at
+
+Cette table est une sous-entité d'audit de l'ImportJob (suppression en cascade avec lui).
+Elle permet les statistiques sur les passages entre états (comptages, taux d'échec,
+durées par étape) sans se limiter à l'état courant de l'ImportJob.
 
 ---
 

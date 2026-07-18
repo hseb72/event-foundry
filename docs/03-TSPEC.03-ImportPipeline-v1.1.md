@@ -64,6 +64,12 @@ Le pipeline respecte les principes suivants :
 
                   OCRResult
 
+                      │  (OCR_RESULT_QUEUE → Backend)
+
+                      ▼
+
+             Backend (OCR_DONE → CLASSIFICATION_RUNNING)
+
                       │
 
                       ▼
@@ -187,7 +193,9 @@ Responsabilités :
 - charger le document ;
 - prétraiter l'image ;
 - exécuter OCR ;
-- publier OCRResult.
+- publier OCRResult **sur `OCR_RESULT_QUEUE`, à destination du Backend** (le Worker ne se
+  chaîne pas directement au Classifier : le Backend orchestre l'étape suivante et historise
+  la transition d'état).
 
 Le Worker ne connaît aucun élément métier.
 
@@ -533,4 +541,4 @@ ADR — Single Technology per Responsibility
 |0.2|Acquisition, Drag & Drop, OCRResult.|
 |0.3|Architecture orientée contrats, ImportRequest, ClassificationResult, shared/contracts, conservation des artefacts.|
 | 1.0 | Spécification validée pour la V1. |
-| 1.1 | Ajout du champ `ocr` (OCRResult source, provenance) au `ClassificationResult`, pour la conservation du texte OCR **et de ses métadonnées** sur l'`ImportJob` par le Backend (imports image comme texte). |
+| 1.1 | Ajout du champ `ocr` (OCRResult source, provenance) au `ClassificationResult`, pour la conservation du texte OCR **et de ses métadonnées** sur l'`ImportJob` par le Backend (imports image comme texte). L'OCR Worker publie désormais sur `OCR_RESULT_QUEUE` (retour au Backend), qui orchestre chaque étape et historise les transitions d'état (`import_job_events`). |

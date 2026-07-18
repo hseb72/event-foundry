@@ -42,7 +42,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
   }): Promise<ImportJobWithAttachment> {
     return this.prisma.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({ data: input.attachment });
-      return tx.importJob.create({
+      const job = await tx.importJob.create({
         data: {
           attachmentId: attachment.id,
           status: input.status,
@@ -51,6 +51,29 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
         },
         include: { attachment: true, _count: { select: { candidates: true } } },
       });
+      // Première entrée du journal des transitions (état initial).
+      await tx.importJobEvent.create({
+        data: { importJobId: job.id, status: job.status, correlationId: job.correlationId },
+      });
+      return job;
+    });
+  }
+
+  /**
+   * Applique une transition d'état et l'historise atomiquement (écriture multi-cohérente,
+   * CLAUDE.md §6). `data` porte les champs métier associés à l'étape (ex. timestamps,
+   * métadonnées OCR). L'historique alimente les statistiques sur les passages entre états.
+   */
+  transition(
+    id: string,
+    status: ImportJobStatus,
+    correlationId: string,
+    data: Prisma.ImportJobUpdateInput = {},
+  ): Promise<ImportJob> {
+    return this.prisma.$transaction(async (tx) => {
+      const job = await tx.importJob.update({ where: { id }, data: { ...data, status } });
+      await tx.importJobEvent.create({ data: { importJobId: id, status, correlationId } });
+      return job;
     });
   }
 }

@@ -94,15 +94,37 @@ Tous héritent de `BaseRepository`.
 
 # Orchestration du pipeline
 
-Pour une acquisition :
+Le Backend orchestre **chaque étape** du pipeline : les Workers ne se chaînent jamais entre
+eux ; chacun renvoie son résultat au Backend, qui décide de l'étape suivante et **historise
+la transition** d'état de l'`ImportJob` (table `import_job_events`). Quatre files : `OCR_QUEUE`
+(Backend→OCR), `OCR_RESULT_QUEUE` (OCR→Backend), `CLASSIFICATION_QUEUE` (Backend→Classifier),
+`RESULT_QUEUE` / `IMPORT_RESULT_QUEUE` (Classifier→Backend).
+
+Pour une acquisition **image** :
 
 1. création de `Attachment` ;
 2. stockage du document dans MinIO ;
-3. création d'`ImportJob` ;
-4. publication d'un `ImportRequest` dans `OCR_QUEUE` ;
+3. création d'`ImportJob` (statut `PENDING`) ;
+4. publication d'un `ImportRequest` dans `OCR_QUEUE`, passage en `OCR_RUNNING` (`started_at`) ;
 5. retour immédiat au client.
 
+Puis, à réception de l'`OCRResult` sur `OCR_RESULT_QUEUE` (consommé par le Backend) :
+
+6. conservation de l'OCRResult, passage en `OCR_DONE` ;
+7. publication de l'OCRResult dans `CLASSIFICATION_QUEUE`, passage en `CLASSIFICATION_RUNNING`.
+
+Un import **texte** ne déclenche pas d'OCR : le Backend fabrique un OCRResult de substitution
+et passe directement de `PENDING` à `CLASSIFICATION_RUNNING`.
+
 Le Backend ne bloque jamais en attendant la fin du traitement.
+
+## Journal des transitions et statistiques
+
+Chaque passage d'état de l'`ImportJob` est enregistré dans `import_job_events`
+(`status`, `correlation_id`, `occurred_at`), atomiquement avec la mise à jour du statut.
+Ce journal — rendu possible par le fait que le Backend orchestre chaque étape — permet les
+statistiques sur les passages entre états : comptages, taux d'échec par étape, durées OCR /
+Classification / totale, sans se limiter à l'état courant.
 
 ## Retour du pipeline et conservation de l'OCRResult
 
@@ -113,7 +135,7 @@ persistance à l'issue du pipeline :
 2. conservation de l'**OCRResult source** sur l'`ImportJob` : texte (`ocr_text`) **et
    métadonnées** (`ocr_confidence`, `ocr_language`, `ocr_engine`, `ocr_engine_version`,
    `ocr_page_count`, `ocr_processing_time_ms`) ;
-3. passage de l'`ImportJob` en `READY_FOR_VALIDATION`.
+3. passage de l'`ImportJob` en `READY_FOR_VALIDATION` (`finished_at`), transition historisée.
 
 L'OCRResult est repropagé jusqu'au Backend via le champ `ocr` du `ClassificationResult`
 (provenance complète) : les Workers n'accédant jamais à PostgreSQL, c'est le Backend qui le
@@ -266,4 +288,4 @@ ADR — Single Technology per Responsibility
 |----------|-------------|
 | 0.1 | Première rédaction. |
 | 1.0 | Spécification validée pour la V1. |
-| 1.1 | Explicitation du retour de pipeline (consommation de `RESULT_QUEUE`) et de la conservation de l'OCRResult source (texte + métadonnées) sur l'`ImportJob` pour les imports image comme texte (repropagation via `ClassificationResult.ocr`). |
+| 1.1 | Explicitation du retour de pipeline (consommation de `RESULT_QUEUE`) et de la conservation de l'OCRResult source (texte + métadonnées) sur l'`ImportJob` pour les imports image comme texte (repropagation via `ClassificationResult.ocr`). Orchestration de **chaque** étape par le Backend (nouvelle file `OCR_RESULT_QUEUE`, l'OCR Worker ne se chaîne plus au Classifier) et journalisation des transitions d'état (`import_job_events`) pour les statistiques. |

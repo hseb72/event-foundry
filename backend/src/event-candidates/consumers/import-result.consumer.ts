@@ -42,20 +42,25 @@ export class ImportResultConsumer implements OnModuleInit, OnModuleDestroy {
       payload: result.extractedFields as unknown as Prisma.InputJsonValue,
       confidence: result.confidenceByField as unknown as Prisma.InputJsonValue,
     });
-    // Conservation de l'OCRResult source (texte + métadonnées) sur l'ImportJob : les Workers
-    // n'accèdent jamais à PostgreSQL, la provenance est donc repropagée via le
-    // ClassificationResult et persistée ici (traçabilité / rejouabilité, TSPEC.06 / TSPEC.03).
-    // Vaut pour les imports image comme texte (OCR de substitution).
-    await this.importJobs.update(result.importJobId, {
-      status: ImportJobStatus.READY_FOR_VALIDATION,
-      ocrText: result.ocr.rawText,
-      ocrConfidence: result.ocr.confidence,
-      ocrLanguage: result.ocr.language,
-      ocrEngine: result.ocr.engine,
-      ocrEngineVersion: result.ocr.engineVersion,
-      ocrPageCount: result.ocr.pageCount,
-      ocrProcessingTimeMs: result.ocr.processingTimeMs,
-    });
+    // Fin du pipeline : transition historisée vers READY_FOR_VALIDATION (+ finishedAt). On
+    // reconserve l'OCRResult source (texte + métadonnées) — indispensable pour les imports
+    // texte (OCR de substitution, sans étape OCR_RESULT), idempotent pour les imports image.
+    // Les Workers n'accèdent jamais à PostgreSQL : la provenance transite par le résultat.
+    await this.importJobs.transition(
+      result.importJobId,
+      ImportJobStatus.READY_FOR_VALIDATION,
+      result.correlationId,
+      {
+        finishedAt: new Date(),
+        ocrText: result.ocr.rawText,
+        ocrConfidence: result.ocr.confidence,
+        ocrLanguage: result.ocr.language,
+        ocrEngine: result.ocr.engine,
+        ocrEngineVersion: result.ocr.engineVersion,
+        ocrPageCount: result.ocr.pageCount,
+        ocrProcessingTimeMs: result.ocr.processingTimeMs,
+      },
+    );
     this.logger.log(
       `EventCandidate créé importJob=${result.importJobId} correlationId=${result.correlationId}`,
     );
