@@ -222,7 +222,9 @@ L'ordre proposé respecte les dépendances techniques.
 > correction/rejet des EventCandidate). Surfaces admin réservées ADMIN (garde de route +
 > décodage du rôle JWT) : administration des 6 référentiels (CRUD générique) et tableau de
 > bord du pipeline d'import (volumes, passages entre états via `import_job_events`, durées),
-> servi par `GET /admin/import-stats`. Reste hors EPIC 11 : le refresh token (transverse).
+> servi par `GET /admin/import-stats`. Rafraîchissement transparent des jetons (transverse) :
+> l'intercepteur rejoue la requête après un `/auth/refresh` unique et partagé entre les 401
+> concurrents, et ne déconnecte qu'en cas d'échec.
 
 ---
 

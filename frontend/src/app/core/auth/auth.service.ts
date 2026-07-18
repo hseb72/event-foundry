@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { catchError, finalize, map, Observable, shareReplay, tap, throwError } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { AuthTokens } from '../models';
 
@@ -11,6 +11,9 @@ const REFRESH_KEY = 'ef.refreshToken';
 export class AuthService {
   /** Signal réactif de l'état d'authentification. */
   readonly authenticated = signal<boolean>(this.hasToken());
+
+  /** Rafraîchissement en cours, partagé pour dédupliquer les 401 concurrents. */
+  private refresh$: Observable<string> | null = null;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -34,6 +37,34 @@ export class AuthService {
 
   get accessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
+  }
+
+  hasRefreshToken(): boolean {
+    return Boolean(localStorage.getItem(REFRESH_KEY));
+  }
+
+  /**
+   * Échange le refresh token contre un nouveau couple de jetons. Les appels concurrents
+   * partagent la même requête (un seul /auth/refresh en vol). Émet le nouvel access token.
+   */
+  refreshTokens(): Observable<string> {
+    if (this.refresh$) {
+      return this.refresh$;
+    }
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) {
+      return throwError(() => new Error('Aucun refresh token.'));
+    }
+
+    this.refresh$ = this.http
+      .post<AuthTokens>(`${API_BASE}/auth/refresh`, { refreshToken })
+      .pipe(
+        tap((tokens) => this.storeTokens(tokens)),
+        map((tokens) => tokens.accessToken),
+        finalize(() => (this.refresh$ = null)),
+        shareReplay(1),
+      );
+    return this.refresh$;
   }
 
   isAuthenticated(): boolean {
