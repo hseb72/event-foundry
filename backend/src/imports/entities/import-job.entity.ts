@@ -6,3 +6,12 @@ export type { Attachment, ImportJob };
 export type ImportJobWithAttachment = Prisma.ImportJobGetPayload<{
   include: { attachment: true; _count: { select: { candidates: true } } };
 }>;
+
+/** Détail d'un ImportJob : Attachment, comptage et journal des transitions (import_job_events). */
+export type ImportJobDetail = Prisma.ImportJobGetPayload<{
+  include: {
+    attachment: true;
+    _count: { select: { candidates: true } };
+    events: true;
+  };
+}>;

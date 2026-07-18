@@ -5,7 +5,7 @@ import { generateCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
-import type { ImportJobWithAttachment } from '../entities/import-job.entity';
+import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
 import { ImportJobNotFoundException } from '../exceptions/import-job-not-found.exception';
 import { UnsupportedFileTypeException } from '../exceptions/unsupported-file-type.exception';
 import { ALLOWED_UPLOAD_MIME_TYPES } from '../imports.constants';
@@ -29,8 +29,8 @@ export class ImportsService {
     return this.repository.list(skip, take);
   }
 
-  async getDetailOrThrow(id: string): Promise<ImportJobWithAttachment> {
-    const job = await this.repository.findByIdWithAttachment(id);
+  async getDetailOrThrow(id: string): Promise<ImportJobDetail> {
+    const job = await this.repository.findDetailById(id);
     if (!job) {
       throw new ImportJobNotFoundException(id);
     }

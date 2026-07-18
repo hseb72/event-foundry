@@ -19,4 +19,8 @@ export class RoleRepository extends BaseRepository<Role> {
   findByName(name: string): Promise<Role | null> {
     return this.prisma.role.findUnique({ where: { name } });
   }
+
+  findByNames(names: string[]): Promise<Role[]> {
+    return this.prisma.role.findMany({ where: { name: { in: names } } });
+  }
 }

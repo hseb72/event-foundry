@@ -1,4 +1,4 @@
-import type { ImportJobWithAttachment } from '../entities/import-job.entity';
+import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
 
 export class ImportMapper {
@@ -14,7 +14,7 @@ export class ImportMapper {
     };
   }
 
-  static toDetail(job: ImportJobWithAttachment): ImportDetailResponseDto {
+  static toDetail(job: ImportJobDetail): ImportDetailResponseDto {
     return {
       ...this.toResponse(job),
       attachment: {
@@ -35,6 +35,11 @@ export class ImportMapper {
               pageCount: job.ocrPageCount,
               processingTimeMs: job.ocrProcessingTimeMs,
             },
+      timeline: job.events.map((event) => ({
+        status: event.status,
+        occurredAt: event.occurredAt.toISOString(),
+        correlationId: event.correlationId,
+      })),
     };
   }
 }

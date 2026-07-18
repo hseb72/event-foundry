@@ -30,6 +30,35 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
+  listWithRoles(): Promise<UserWithRoles[]> {
+    return this.prisma.user.findMany({
+      orderBy: { createdAt: 'asc' },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  setActive(id: string, isActive: boolean): Promise<UserWithRoles> {
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  /** Remplace l'ensemble des rôles d'un utilisateur (écriture multi-cohérente, transaction). */
+  replaceRoles(userId: string, roleIds: string[]): Promise<UserWithRoles> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { userId } });
+      await tx.userRole.createMany({
+        data: roleIds.map((roleId) => ({ userId, roleId })),
+      });
+      return tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
+      });
+    });
+  }
+
   createWithRole(input: {
     email: string;
     passwordHash: string;

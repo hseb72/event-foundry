@@ -57,12 +57,26 @@ export class OcrMetadataDto {
   processingTimeMs!: number | null;
 }
 
+export class ImportJobEventDto {
+  @ApiProperty({ description: 'État atteint lors de la transition.' })
+  status!: string;
+
+  @ApiProperty({ description: 'Horodatage de la transition (ISO 8601, UTC).' })
+  occurredAt!: string;
+
+  @ApiProperty()
+  correlationId!: string;
+}
+
 export class ImportDetailResponseDto extends ImportResponseDto {
   @ApiProperty({ type: ImportAttachmentDto })
   attachment!: ImportAttachmentDto;
 
   @ApiPropertyOptional({ nullable: true, description: 'Texte OCR (ou texte importé).' })
   ocrText!: string | null;
+
+  @ApiProperty({ type: [ImportJobEventDto], description: 'Journal des transitions d’état.' })
+  timeline!: ImportJobEventDto[];
 
   @ApiPropertyOptional({ type: OcrMetadataDto, nullable: true, description: "Métadonnées de l'OCRResult source (null tant que l'OCR n'a pas abouti)." })
   ocr!: OcrMetadataDto | null;

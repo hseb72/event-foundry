@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ImportJobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BaseRepository, CrudDelegate } from '../../infra/repositories/base.repository';
-import type { ImportJob, ImportJobWithAttachment } from '../entities/import-job.entity';
+import type { ImportJob, ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
 
 @Injectable()
 export class ImportJobRepository extends BaseRepository<ImportJob> {
@@ -18,6 +18,18 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     return this.prisma.importJob.findUnique({
       where: { id },
       include: { attachment: true, _count: { select: { candidates: true } } },
+    });
+  }
+
+  /** Détail avec le journal des transitions ordonné chronologiquement. */
+  findDetailById(id: string): Promise<ImportJobDetail | null> {
+    return this.prisma.importJob.findUnique({
+      where: { id },
+      include: {
+        attachment: true,
+        _count: { select: { candidates: true } },
+        events: { orderBy: { occurredAt: 'asc' } },
+      },
     });
   }
 
