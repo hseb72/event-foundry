@@ -233,7 +233,7 @@ interface ClassificationResult {
 
     diagnostics;
 
-    ocrText: string; // provenance : texte OCR source, persisté par le Backend
+    ocr: OCRResult; // provenance : OCRResult source (texte + métadonnées), persisté par le Backend
 
     correlationId: string;
 
@@ -389,4 +389,4 @@ ADR Single Technology
 |-------|-----------|
 |0.1|Première rédaction.|
 | 1.0 | Spécification validée pour la V1. |
-| 1.1 | Ajout du champ `ocrText` (provenance) au `ClassificationResult` : le texte OCR source est repropagé jusqu'au Backend, qui le persiste sur l'`ImportJob` (le Worker n'accède jamais à PostgreSQL). |
+| 1.1 | Ajout du champ `ocr` (OCRResult source, provenance) au `ClassificationResult` : texte et métadonnées OCR repropagés jusqu'au Backend, qui les persiste sur l'`ImportJob` (le Worker n'accède jamais à PostgreSQL). |

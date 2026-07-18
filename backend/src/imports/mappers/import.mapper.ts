@@ -24,6 +24,17 @@ export class ImportMapper {
         sizeBytes: job.attachment.sizeBytes,
       },
       ocrText: job.ocrText,
+      ocr:
+        job.ocrEngine === null && job.ocrConfidence === null
+          ? null
+          : {
+              confidence: job.ocrConfidence,
+              language: job.ocrLanguage,
+              engine: job.ocrEngine,
+              engineVersion: job.ocrEngineVersion,
+              pageCount: job.ocrPageCount,
+              processingTimeMs: job.ocrProcessingTimeMs,
+            },
     };
   }
 }

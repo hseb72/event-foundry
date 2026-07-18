@@ -37,10 +37,33 @@ export class ImportAttachmentDto {
   sizeBytes!: number;
 }
 
+export class OcrMetadataDto {
+  @ApiPropertyOptional({ nullable: true, description: 'Confiance OCR globale (0..1).' })
+  confidence!: number | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Langue détectée / utilisée.' })
+  language!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Moteur OCR (ex. "tesseract", "text-passthrough").' })
+  engine!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  engineVersion!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  pageCount!: number | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Durée du traitement OCR (ms).' })
+  processingTimeMs!: number | null;
+}
+
 export class ImportDetailResponseDto extends ImportResponseDto {
   @ApiProperty({ type: ImportAttachmentDto })
   attachment!: ImportAttachmentDto;
 
   @ApiPropertyOptional({ nullable: true, description: 'Texte OCR (ou texte importé).' })
   ocrText!: string | null;
+
+  @ApiPropertyOptional({ type: OcrMetadataDto, nullable: true, description: "Métadonnées de l'OCRResult source (null tant que l'OCR n'a pas abouti)." })
+  ocr!: OcrMetadataDto | null;
 }

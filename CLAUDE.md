@@ -216,7 +216,8 @@ interface ImportRequest        { importJobId; attachmentId; correlationId; }
 interface OCRResult            { importJobId; rawText; confidence; processingTimeMs;
                                  pageCount; language; engine; engineVersion; correlationId; }
 interface ClassificationResult { importJobId; extractedFields; confidenceByField;
-                                 diagnostics; correlationId; }
+                                 diagnostics; ocr /* OCRResult source, provenance */;
+                                 correlationId; }
 ```
 
 Moteur expert : chaîne de règles indépendantes implémentant

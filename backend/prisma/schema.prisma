@@ -236,6 +236,16 @@ model ImportJob {
   attachmentId  String          @unique @map("attachment_id") @db.Uuid
   status        ImportJobStatus @default(PENDING)
   ocrText       String?         @map("ocr_text")
+  // Métadonnées de l'OCRResult source, conservées pour la traçabilité / rejouabilité
+  // du pipeline (règle d'or 9 ; TSPEC.03 « Conservation des artefacts »). Nulles tant
+  // que l'OCR n'a pas abouti. Repropagées par le ClassificationResult (les Workers
+  // n'accèdent jamais à PostgreSQL).
+  ocrConfidence      Float?     @map("ocr_confidence")
+  ocrLanguage        String?    @map("ocr_language")
+  ocrEngine          String?    @map("ocr_engine")
+  ocrEngineVersion   String?    @map("ocr_engine_version")
+  ocrPageCount       Int?       @map("ocr_page_count")
+  ocrProcessingTimeMs Int?      @map("ocr_processing_time_ms")
   correlationId String          @map("correlation_id")
   startedAt     DateTime?       @map("started_at") @db.Timestamptz(6)
   finishedAt    DateTime?       @map("finished_at") @db.Timestamptz(6)

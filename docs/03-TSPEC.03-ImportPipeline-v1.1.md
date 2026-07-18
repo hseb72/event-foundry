@@ -271,7 +271,7 @@ export interface ClassificationResult {
 
     confidenceByField: ...
 
-    ocrText: string; // provenance : texte OCR source, persisté par le Backend
+    ocr: OCRResult; // provenance : OCRResult source (texte + métadonnées), persisté par le Backend
 
     correlationId: string;
 
@@ -533,4 +533,4 @@ ADR — Single Technology per Responsibility
 |0.2|Acquisition, Drag & Drop, OCRResult.|
 |0.3|Architecture orientée contrats, ImportRequest, ClassificationResult, shared/contracts, conservation des artefacts.|
 | 1.0 | Spécification validée pour la V1. |
-| 1.1 | Ajout du champ `ocrText` (provenance) au `ClassificationResult`, pour la conservation du texte OCR sur l'`ImportJob` par le Backend (imports image comme texte). |
+| 1.1 | Ajout du champ `ocr` (OCRResult source, provenance) au `ClassificationResult`, pour la conservation du texte OCR **et de ses métadonnées** sur l'`ImportJob` par le Backend (imports image comme texte). |

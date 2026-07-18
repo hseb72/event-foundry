@@ -1,3 +1,5 @@
+import type { OCRResult } from './ocr-result.contract';
+
 /**
  * Résultat produit par le Classifier Worker (moteur expert déterministe).
  * Aucune écriture Event n'est réalisée par le Worker : le Backend transforme ce
@@ -46,10 +48,12 @@ export interface ClassificationResult {
   confidenceByField: ConfidenceByField;
   diagnostics: ClassificationDiagnostic[];
   /**
-   * Texte OCR source (provenance). Repropagé jusqu'au Backend pour conservation sur
-   * l'`ImportJob` (traçabilité / rejouabilité), car les Workers n'accèdent jamais à
-   * PostgreSQL. Pour un import texte, c'est le texte importé (OCR de substitution).
+   * OCRResult source (provenance complète : texte + métadonnées moteur/langue/durée…).
+   * Repropagé jusqu'au Backend pour conservation sur l'`ImportJob`, car les Workers
+   * n'accèdent jamais à PostgreSQL. Assure la traçabilité et la rejouabilité du pipeline
+   * (règle d'or 9), y compris la comparaison des versions du moteur OCR. Pour un import
+   * texte, c'est l'OCRResult de substitution (engine `text-passthrough`).
    */
-  ocrText: string;
+  ocr: OCRResult;
   correlationId: string;
 }

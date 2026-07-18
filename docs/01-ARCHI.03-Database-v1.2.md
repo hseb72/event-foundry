@@ -1,13 +1,19 @@
 # Database Model
 
 **Document** : ARCHI.03
-**Fichier** : 01-ARCHI.03-Database-v1.1.md
-**Version** : 1.1
+**Fichier** : 01-ARCHI.03-Database-v1.2.md
+**Version** : 1.2
 **Statut** : Validé
 
 ---
 
 # Historique des modifications
+
+Version 1.2
+
+- conservation des métadonnées de l'OCRResult source sur l'ImportJob
+  (`ocr_confidence`, `ocr_language`, `ocr_engine`, `ocr_engine_version`,
+  `ocr_page_count`, `ocr_processing_time_ms`), en complément de `ocr_text`.
 
 Version 1.1
 
@@ -92,6 +98,12 @@ Colonnes
 - attachment_id
 - status
 - ocr_text
+- ocr_confidence
+- ocr_language
+- ocr_engine
+- ocr_engine_version
+- ocr_page_count
+- ocr_processing_time_ms
 - started_at
 - finished_at
 - created_at
@@ -100,6 +112,11 @@ Colonnes
 started_at correspond au démarrage réel du traitement.
 
 finished_at correspond à la fin complète du pipeline.
+
+Les colonnes `ocr_*` conservent l'OCRResult source (texte et métadonnées du moteur OCR).
+Elles restent nulles tant que l'OCR n'a pas abouti et sont renseignées par le Backend à la
+réception du `ClassificationResult` (les Workers n'accèdent jamais à PostgreSQL). Elles
+assurent la traçabilité, la rejouabilité et la comparaison des versions du moteur OCR.
 
 Ces informations permettent le calcul :
 
