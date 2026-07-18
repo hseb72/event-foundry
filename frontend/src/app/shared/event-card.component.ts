@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ParticipationApi } from '../core/api/participation.service';
 import { EventDto, ParticipationState, PaymentStatus, ReservationStatus } from '../core/models';
 import { formatDateTime } from './date-format';
@@ -8,7 +9,7 @@ import { participationColor, participationLabel } from './participation-color';
 @Component({
   selector: 'app-event-card',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   styles: [
     `
       .event {
@@ -19,6 +20,10 @@ import { participationColor, participationLabel } from './participation-color';
       .title {
         font-weight: 700;
         font-size: 1.05rem;
+        color: inherit;
+      }
+      .title:hover {
+        color: var(--accent);
       }
       .meta {
         color: var(--muted);
@@ -44,7 +49,7 @@ import { participationColor, participationLabel } from './participation-color';
   ],
   template: `
     <div class="card event" [style.--stripe]="color()">
-      <div class="title">{{ event.title }}</div>
+      <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
       <div class="meta">
         {{ displayDate() }} · {{ event.activity }}
         @if (event.eventType) {

@@ -211,15 +211,17 @@ L'ordre proposé respecte les dépendances techniques.
 - [x] Navigation _(routing + guard JWT + intercepteur)_
 - [ ] Dashboard _(tableaux de bord Admin/Organisateur)_
 - [x] Acquisition _(écran d'import fichier/texte)_
-- [ ] Validation _(UI de correction/validation des EventCandidate)_
+- [x] Validation _(UI de correction/validation des EventCandidate + création manuelle)_
 - [x] Catalogue _(Découvrir : recherche, filtres, participation)_
-- [ ] Event _(fiche détaillée dédiée)_
+- [x] Event _(fiche détaillée dédiée)_
 - [ ] Administration _(CRUD des référentiels)_
 
-> Fondation Angular 18 standalone livrée et **buildable** : couche API typée, auth,
-> layout, et parcours consommateur (login, Découvrir, Mon planning, Importer) avec les
-> actions de participation. Écrans restants (validation, fiche Event, admin, dashboards,
-> refresh token) à itérer dans les prochaines passes de l'EPIC 11.
+> Fondation Angular 21 standalone livrée et **buildable** : couche API typée, auth,
+> layout, et parcours consommateur (login, Découvrir, Mon planning, Importer, fiche Event)
+> avec les actions de participation. Parcours de contenu complété : création manuelle
+> d'Events et validation/correction/rejet des EventCandidate. Écrans restants
+> (administration des référentiels, dashboards, refresh token) à itérer dans les
+> prochaines passes de l'EPIC 11.
 
 ---
 
