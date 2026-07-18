@@ -42,6 +42,14 @@ export class SearchEventsQueryDto {
   @IsString()
   q?: string;
 
+  @ApiPropertyOptional({
+    enum: ['all', 'mine', 'none'],
+    description: 'Filtre de participation : tous, mes événements, sans participation.',
+  })
+  @IsOptional()
+  @IsIn(['all', 'mine', 'none'])
+  participation?: 'all' | 'mine' | 'none';
+
   @ApiPropertyOptional({ enum: PERIODS, description: 'Filtre temporel rapide.' })
   @IsOptional()
   @IsIn(PERIODS)

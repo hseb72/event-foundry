@@ -63,14 +63,15 @@ enum PaymentStatus {
 
 /// Utilisateur de la plateforme. Le mot de passe n'est jamais stocké en clair.
 model User {
-  id           String     @id @default(uuid()) @db.Uuid
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  displayName  String     @map("display_name")
-  isActive     Boolean    @default(true) @map("is_active")
-  roles        UserRole[]
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String              @id @default(uuid()) @db.Uuid
+  email          String              @unique
+  passwordHash   String              @map("password_hash")
+  displayName    String              @map("display_name")
+  isActive       Boolean             @default(true) @map("is_active")
+  roles          UserRole[]
+  participations UserParticipation[]
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
 }
@@ -293,10 +294,11 @@ model Event {
   eventType     EventType?      @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
   eventFormat   EventFormat?    @relation(fields: [eventFormatId], references: [id], onDelete: SetNull)
   organizer     Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
-  venue         Venue?          @relation(fields: [venueId], references: [id], onDelete: SetNull)
-  candidate     EventCandidate?
-  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  venue          Venue?              @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  candidate      EventCandidate?
+  participations UserParticipation[]
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([startsAt])
   @@index([venueId])
@@ -304,4 +306,24 @@ model Event {
   @@index([activityId])
   @@index([source])
   @@map("events")
+}
+
+/// Relation personnelle d'un utilisateur avec un Event (FSPEC.06). Trois axes indépendants.
+/// Un seul enregistrement par couple (user, event). Supprimé dès que tout redevient neutre.
+model UserParticipation {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  eventId           String            @map("event_id") @db.Uuid
+  interested        Boolean           @default(false)
+  reservationStatus ReservationStatus @default(NONE) @map("reservation_status")
+  paymentStatus     PaymentStatus     @default(NONE) @map("payment_status")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event             Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("user_participation")
 }

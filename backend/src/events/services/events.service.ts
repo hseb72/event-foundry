@@ -11,9 +11,10 @@ import { EventTypeRepository } from '../../reference-data/event-types/event-type
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { computeDateRange } from '../date-range.util';
+import { CalendarQueryDto } from '../dto/calendar-query.dto';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
-import type { EventWithRefs } from '../entities/event.entity';
+import type { EventWithRefs, EventWithRefsAndParticipation } from '../entities/event.entity';
 import {
   EventNotFoundException,
   InvalidEventFormatException,
@@ -41,8 +42,11 @@ export class EventsService {
   }
 
   /** Recherche paginée (FSPEC.04). Filtres cumulables ; par défaut, événements à venir. */
-  async search(query: SearchEventsQueryDto): Promise<{
-    items: EventWithRefs[];
+  async search(
+    userId: string,
+    query: SearchEventsQueryDto,
+  ): Promise<{
+    items: EventWithRefsAndParticipation[];
     total: number;
     skip: number;
     take: number;
@@ -52,6 +56,7 @@ export class EventsService {
     const take = query.take ?? 20;
 
     const { items, total } = await this.repository.searchPaginated({
+      userId,
       activityId: query.activityId,
       eventTypeId: query.eventTypeId,
       eventFormatId: query.eventFormatId,
@@ -59,6 +64,7 @@ export class EventsService {
       venueId: query.venueId,
       city: query.city,
       text: query.q,
+      participationScope: query.participation ?? 'all',
       startsFrom: range.startsFrom,
       startsTo: range.startsTo,
       skip,
@@ -66,6 +72,18 @@ export class EventsService {
     });
 
     return { items, total, skip, take };
+  }
+
+  /**
+   * Calendrier personnel (FSPEC.05) : événements ayant une participation de l'utilisateur.
+   * Par défaut, aucune borne temporelle (les événements passés restent consultables).
+   */
+  getCalendar(userId: string, query: CalendarQueryDto): Promise<EventWithRefsAndParticipation[]> {
+    const range =
+      query.period || query.from || query.to
+        ? computeDateRange({ period: query.period, from: query.from, to: query.to })
+        : {};
+    return this.repository.listCalendarForUser(userId, range.startsFrom, range.startsTo);
   }
 
   /** Création manuelle (source = MANUAL). */

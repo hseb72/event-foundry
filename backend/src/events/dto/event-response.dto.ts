@@ -1,5 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+/** État de participation de l'utilisateur courant pour un Event (FSPEC.06). */
+export class ParticipationStateDto {
+  @ApiProperty()
+  interested!: boolean;
+
+  @ApiProperty({ enum: ['NONE', 'RESERVED', 'WAITLIST', 'CANCELLED'] })
+  reservationStatus!: string;
+
+  @ApiProperty({ enum: ['NONE', 'PENDING', 'PAID', 'REFUNDED'] })
+  paymentStatus!: string;
+}
+
 /** Représentation publique d'un Event (les référentiels sont exposés par leur nom). */
 export class EventResponseDto {
   @ApiProperty()
@@ -43,4 +55,11 @@ export class EventResponseDto {
 
   @ApiPropertyOptional({ nullable: true })
   currency!: string | null;
+
+  @ApiPropertyOptional({
+    type: ParticipationStateDto,
+    nullable: true,
+    description: "Participation de l'utilisateur courant (null si aucune ou non contextualisé).",
+  })
+  participation!: ParticipationStateDto | null;
 }

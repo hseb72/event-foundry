@@ -126,7 +126,25 @@ l'Event et fige le candidate **dans une transaction**. Le Domain est déduit de 
 
 Réponse : `{ items, total, skip, take }`. Par défaut, événements à venir. Les Events
 supprimés logiquement et les EventCandidate ne sont jamais retournés ; le Domain n'est
-jamais un critère. `GET /api/v1/events/{id}` pour le détail.
+jamais un critère. `GET /api/v1/events/{id}` pour le détail. Chaque résultat inclut l'état
+de participation de l'utilisateur courant. Filtre `?participation=all|mine|none`.
+
+## Participation & calendrier (EPIC 10)
+
+| Méthode | Route | Rôle |
+|---------|-------|------|
+| PUT | `/api/v1/events/{id}/participation` | Met à jour la participation |
+| GET | `/api/v1/me/calendar` | Mon calendrier (`?period=` ou `?from=&to=`) |
+
+Participation = trois axes **indépendants** (`interested`, `reservationStatus`,
+`paymentStatus`), aucun déduit d'un autre (FSPEC.06). Les champs omis conservent leur
+valeur. Dès que tout redevient neutre (`false/NONE/NONE`), la participation est
+**supprimée** : l'événement quitte le calendrier mais reste trouvable en recherche. Le
+calendrier retourne les Events ayant une participation (état inclus) ; les événements
+passés restent consultables. Le rendu couleur (palette V1) relève de l'UI (EPIC 11).
+
+> Nouvelle migration requise après cet EPIC : `npm run prisma:migrate --workspace
+> @event-foundry/backend` (p. ex. `--name add_user_participation`).
 
 > Prisma Client doit être généré avant le build : `npm run prisma:generate`. La première
 > migration s'obtient avec `npm run prisma:migrate` (nommer p. ex. `init_auth`).

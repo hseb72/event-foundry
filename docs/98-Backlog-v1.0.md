@@ -192,10 +192,16 @@ L'ordre proposé respecte les dépendances techniques.
 
 # EPIC 10 — Participations
 
-- [ ] Interested
-- [ ] Reservation
-- [ ] Payment
-- [ ] Calendar
+- [x] Interested
+- [x] Reservation
+- [x] Payment
+- [x] Calendar
+
+> `PUT /events/{id}/participation` : trois axes indépendants ; suppression automatique
+> quand tout redevient neutre (l'Event quitte le calendrier mais reste en recherche).
+> `GET /me/calendar` : Events ayant une participation (+ son état), fenêtre temporelle
+> optionnelle, passés conservés. Filtre « Mes événements » (`?participation=mine|none`) et
+> état de participation ajoutés aux résultats de recherche. Rendu couleur = UI (EPIC 11).
 
 ---
 

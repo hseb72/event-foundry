@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { EventsModule } from './events/events.module';
 import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
+import { ParticipationModule } from './participation/participation.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
@@ -15,8 +17,8 @@ import { UsersModule } from './users/users.module';
  *
  * Capacités déjà câblées : authentification (`auth`), utilisateurs (`users`),
  * référentiels (`reference-data`), acquisition (`imports`), validation
- * (`event-candidates`) et events (`events`).
- * À venir (TSPEC.01) : search, participation, calendar.
+ * (`event-candidates`), events (`events`), participation et calendrier.
+ * Le parcours V1 complet est câblé.
  */
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { UsersModule } from './users/users.module';
     ImportsModule,
     EventsModule,
     EventCandidatesModule,
+    ParticipationModule,
+    CalendarModule,
   ],
 })
 export class AppModule {}

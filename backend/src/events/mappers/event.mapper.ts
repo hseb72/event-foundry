@@ -1,8 +1,11 @@
-import type { EventWithRefs } from '../entities/event.entity';
-import { EventResponseDto } from '../dto/event-response.dto';
+import type { EventWithRefs, UserParticipation } from '../entities/event.entity';
+import { EventResponseDto, ParticipationStateDto } from '../dto/event-response.dto';
 
 export class EventMapper {
-  static toResponse(event: EventWithRefs): EventResponseDto {
+  static toResponse(
+    event: EventWithRefs,
+    participation: UserParticipation | null = null,
+  ): EventResponseDto {
     return {
       id: event.id,
       source: event.source,
@@ -18,6 +21,15 @@ export class EventMapper {
       endsAt: event.endsAt ? event.endsAt.toISOString() : null,
       price: event.price,
       currency: event.currency,
+      participation: participation ? EventMapper.toParticipationState(participation) : null,
+    };
+  }
+
+  private static toParticipationState(participation: UserParticipation): ParticipationStateDto {
+    return {
+      interested: participation.interested,
+      reservationStatus: participation.reservationStatus,
+      paymentStatus: participation.paymentStatus,
     };
   }
 }
