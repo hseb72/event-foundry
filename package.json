@@ -20,13 +20,19 @@
     "contracts:build": "npm run build --workspace @event-foundry/contracts",
     "shared:build": "npm run build --workspace @event-foundry/contracts && npm run build --workspace @event-foundry/libraries",
     "infra:up": "docker compose --env-file .env -f docker/docker-compose.yml up -d",
-    "infra:down": "docker compose --env-file .env -f docker/docker-compose.yml down"
+    "infra:down": "docker compose --env-file .env -f docker/docker-compose.yml down",
+    "start:backend": "npm run start:dev --workspace backend",
+    "start:ocr": "npm run start:dev --workspace ocr-worker",
+    "start:classifier": "npm run start:dev --workspace classifier-worker",
+    "dev": "concurrently -n backend,ocr,classifier -c blue,magenta,green \"npm:start:backend\" \"npm:start:ocr\" \"npm:start:classifier\"",
+    "dev:all": "concurrently -n backend,ocr,classifier,frontend -c blue,magenta,green,cyan \"npm:start:backend\" \"npm:start:ocr\" \"npm:start:classifier\" \"npm run start --workspace frontend\""
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "concurrently": "^9.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.0",

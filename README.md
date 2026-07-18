@@ -53,8 +53,16 @@ cp .env.example .env
 npm install                 # npm workspaces
 npm run infra:up            # PostgreSQL + Redis + MinIO
 npm run shared:build        # build de @event-foundry/contracts et /libraries
-npm run start:dev --workspace @event-foundry/backend
+
+# Backend + les deux workers en une commande (process séparés, lancés ensemble) :
+npm run dev                 # backend + ocr-worker + classifier-worker
+npm run dev:all             # idem + frontend Angular
 ```
+
+> `dev`/`dev:all` co-lancent des **process indépendants** via `concurrently` : les workers
+> restent stateless et répliquables (ADR.04, règle d'or 4), ils ne sont pas embarqués dans
+> le process backend. Chaque composant peut aussi être lancé seul avec `npm run start:dev
+> --workspace <composant>`.
 
 ## Stack (une techno par responsabilité — ADR.04)
 
