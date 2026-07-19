@@ -143,16 +143,19 @@ Responsabilités :
 Aucune correction n'est réalisée ici.
 
 Réglages Tesseract (surchargables par variables d'environnement) : moteur **LSTM** (OEM 1),
-modèles **« fast »** (entiers) — seuls modèles **sûrs sur tous les cores WASM**. Les modèles
-« best » **et** « standard » sont **flottants** : ils importent `DotProductSSE`, fonction que
-seul le core WASM « relaxedsimd » fournit ; sur les autres cores (le thread *worker* de
-tesseract.js peut en charger un selon la plateforme — constaté sous **WSL2/Node 22**), l'appel
-provoque un crash `Aborted(missing function DotProductSSE)`. `OCR_TESSDATA=best` **ou**
-`standard` est donc **rebasculé sur « fast »**. Un modèle flottant n'est utilisable qu'en
-pointant explicitement `OCR_LANG_PATH` vers des modèles locaux compatibles. **PSM** adapté aux
-affiches (texte épars par défaut), préservation des espaces inter-mots. Un banc d'évaluation
-(`ocr-worker/eval`) mesure la qualité (confiance, rappel de mots-clés) pour régler ces
-paramètres.
+modèles **« standard »** par défaut (« best » pour plus de précision, « fast » pour plus de
+légèreté). **PSM** adapté aux affiches (texte épars par défaut), préservation des espaces
+inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la qualité (confiance, rappel de
+mots-clés) pour régler ces paramètres.
+
+> **Version de tesseract.js (2026-07)** : le worker est épinglé à **tesseract.js 6** (et non 7)
+> à dessein. La v7 a introduit un core WASM « relaxedsimd-lstm » dont le build publié
+> (`tesseract.js-core@7.0.0`) est **cassé** : la fonction `DotProductSSE` y est un *stub* qui
+> `abort`. La sélection de core (`getCore`) de la v7 choisit ce core dès que le CPU expose
+> relaxed-SIMD (constaté sous **WSL2 / Node 22**), d'où un crash systématique
+> `Aborted(missing function DotProductSSE)`, **quelle que soit la variante de modèle**. La v6 ne
+> connaît pas ce core : elle charge `tesseract-core-simd-lstm`, sain (aucune référence à
+> `DotProductSSE`). Repasser à la v7 devra attendre un core `relaxedsimd` corrigé en amont.
 
 ## Correction lexicale issue des référentiels
 
@@ -168,6 +171,8 @@ lexique vide ⇒ texte inchangé ; activable/désactivable par `OCR_LEXICON_CORR
 > Choix technique : la voie `user_words`/`reinitialize` de Tesseract a été écartée — elle
 > n'apporte quasiment rien au moteur LSTM et déstabilise le core WASM. La correction post-OCR,
 > déterministe et pilotée par les référentiels, atteint le même objectif sans toucher au moteur.
+
+Le contrat `OCRResult.engineVersion` reflète cette version (`tesseract.js@6`).
 
 ---
 

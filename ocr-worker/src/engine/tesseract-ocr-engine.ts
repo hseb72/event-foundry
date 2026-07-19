@@ -3,35 +3,29 @@ import { createWorker, OEM, PSM, type Worker as TesseractWorker } from 'tesserac
 import type { OcrEngine, OcrEngineResult } from '../interfaces/ocr-engine.interface';
 
 /**
- * URL des modèles Tesseract selon la variante.
+ * URL des modèles Tesseract (CDN projectnaptha) selon la variante demandée :
+ *  - « best »     → modèles flottants, les plus précis (plus lourds/lents) ;
+ *  - « standard » → modèles par défaut (`4.0.0`) ;
+ *  - « fast »     → modèles entiers, les plus légers/rapides.
  *
- * Les modèles **flottants** (« best » ET « standard »/`4.0.0`) importent la fonction
- * `DotProductSSE`. Seul le core WASM « relaxedsimd » de tesseract.js 7 la fournit ; les autres
- * cores (simd, baseline…) ne la fournissent pas. Or le thread *worker* de tesseract.js peut
- * charger un core sans cette fonction selon la plateforme (constaté sous WSL2/Node 22) → crash
- * `Aborted(missing function _ZN9tesseract13DotProductSSEEPKfS1_i)`.
- *
- * Les modèles **entiers** (« fast », et les modèles système Debian) n'appellent jamais
- * `DotProductSSE` : ils fonctionnent sur **tous** les cores. On les prend donc par défaut, et on
- * bascule « best »/« standard » vers « fast ». Un modèle flottant reste utilisable uniquement en
- * pointant explicitement `OCR_LANG_PATH` vers des modèles locaux compatibles.
+ * On reste sur **tesseract.js 6** : sa sélection de core WASM (`getCore`) ne dépend que du
+ * support **SIMD** et charge `tesseract-core-simd-lstm`. La version 7 a introduit un core
+ * « relaxedsimd-lstm » dont le build est cassé (la fonction `DotProductSSE` y est un *stub* qui
+ * abort) ; sur un CPU exposant relaxed-SIMD (constaté sous WSL2/Node 22), tesseract.js 7
+ * sélectionne ce core et crashe `Aborted(missing function DotProductSSE)`. Le core `simd-lstm`
+ * de la v6 ne référence jamais ce symbole : toutes les variantes de modèles fonctionnent.
  */
-function tessdataUrl(variant: string | undefined, logger: Logger): string {
+function tessdataUrl(variant: string | undefined): string {
   const base = 'https://tessdata.projectnaptha.com/4.0.0';
-  if (variant === 'best' || variant === 'standard') {
-    logger.warn(
-      `OCR_TESSDATA=${variant} utilise des modèles flottants qui importent DotProductSSE et ` +
-        'crashent (Aborted) sur les cores WASM sans cette fonction : bascule automatique sur ' +
-        'les modèles entiers « fast », sûrs sur tous les cores.',
-    );
-  }
-  return `${base}_fast`;
+  if (variant === 'fast') return `${base}_fast`;
+  if (variant === 'best') return `${base}_best`;
+  return base;
 }
 
 /**
- * Moteur OCR Tesseract (via tesseract.js). Le worker est créé paresseusement, réglé, réutilisé
+ * Moteur OCR Tesseract (via tesseract.js 6). Le worker est créé paresseusement, réglé, réutilisé
  * entre les Jobs, puis terminé à l'arrêt. Réglages (TSPEC.04) :
- *  - OEM LSTM et modèles « fast » (entiers) : sûrs sur tous les cores WASM (voir `tessdataUrl`) ;
+ *  - OEM LSTM et modèles « standard » par défaut (« best » possible pour plus de précision) ;
  *  - PSM adapté aux affiches (texte épars par défaut) ;
  *  - `preserve_interword_spaces` pour ne pas coller les mots.
  * Tout est surchargeable par variables d'environnement.
@@ -47,9 +41,8 @@ export class TesseractOcrEngine implements OcrEngine, OnModuleDestroy {
   private readonly languages = process.env.OCR_LANGUAGES ?? 'eng';
   private readonly oem = Number(process.env.OCR_OEM ?? OEM.LSTM_ONLY);
   private readonly psm = (process.env.OCR_PSM ?? PSM.SPARSE_TEXT) as PSM;
-  // Modèles « fast » (entiers) par défaut : sûrs sur tous les cores WASM de tesseract.js.
-  private readonly langPath =
-    process.env.OCR_LANG_PATH ?? tessdataUrl(process.env.OCR_TESSDATA, this.logger);
+  // Modèles « standard » par défaut ; « best »/« fast » via OCR_TESSDATA. Core v6 = simd-lstm.
+  private readonly langPath = process.env.OCR_LANG_PATH ?? tessdataUrl(process.env.OCR_TESSDATA);
   // Modèles distants (CDN) = .traineddata.gz ; modèles locaux (paquet système) = non gzippés.
   private readonly gzip = process.env.OCR_LANG_GZIP !== 'false';
 
@@ -76,7 +69,7 @@ export class TesseractOcrEngine implements OcrEngine, OnModuleDestroy {
       confidence: Math.max(0, Math.min(1, data.confidence / 100)),
       language: this.languages,
       engine: 'tesseract',
-      engineVersion: 'tesseract.js@7',
+      engineVersion: 'tesseract.js@6',
     };
   }
 
