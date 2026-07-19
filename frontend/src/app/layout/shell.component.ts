@@ -27,6 +27,7 @@ const EXPERIENCES: ExperienceMeta[] = [
 // changer d'expérience change les écrans proposés, sans jamais changer les droits.
 const NAV: NavItem[] = [
   { label: 'Découvrir', path: '/discover', experiences: ['EXPLORER'], permission: 'catalog.read' },
+  { label: 'Rechercher', path: '/search', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },
   { label: 'Mes événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Créer un événement', path: '/create', experiences: ['ORGANIZER'], permission: 'event.create' },

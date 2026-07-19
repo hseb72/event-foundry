@@ -16,6 +16,7 @@ import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
+import { SearchComponent } from './features/search/search.component';
 import { ValidationComponent } from './features/validation/validation.component';
 import { ShellComponent } from './layout/shell.component';
 
@@ -38,6 +39,7 @@ export const routes: Routes = [
         canActivate: [permissionGuard('event.create')],
       },
       { path: 'discover', component: CatalogueComponent },
+      { path: 'search', component: SearchComponent },
       { path: 'calendar', component: CalendarComponent },
       { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },
