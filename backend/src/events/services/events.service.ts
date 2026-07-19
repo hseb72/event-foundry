@@ -75,6 +75,7 @@ export class EventsService {
       municipalityId: query.municipalityId,
       tagId: query.tagId,
       createdById: query.createdByMe ? userId : undefined,
+      sort: query.sort,
       // Découverte : par défaut, seuls les événements publiés. Mais l'espace Organizer
       // (createdByMe) liste ses propres événements tous statuts confondus (sauf filtre explicite).
       status: query.status ?? (query.createdByMe ? undefined : EventStatus.PUBLISHED),

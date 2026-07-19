@@ -24,6 +24,7 @@ export interface SearchEventsFilter {
   tagId?: string;
   createdById?: string;
   status?: Prisma.EventWhereInput['status'];
+  sort?: 'upcoming' | 'newest' | 'title';
   city?: string;
   text?: string;
   participationScope?: ParticipationScope;
@@ -104,13 +105,25 @@ export class EventRepository extends BaseRepository<Event> {
       this.prisma.event.findMany({
         where,
         include: { ...EVENT_REFS_INCLUDE, participations: { where: { userId: filter.userId } } },
-        orderBy: { startsAt: 'asc' },
+        orderBy: this.buildOrderBy(filter.sort),
         skip: filter.skip,
         take: filter.take,
       }),
       this.prisma.event.count({ where }),
     ]);
     return { items, total };
+  }
+
+  /** Tri de la découverte : à venir (défaut), nouveautés, ordre alphabétique. */
+  private buildOrderBy(sort: SearchEventsFilter['sort']): Prisma.EventOrderByWithRelationInput {
+    switch (sort) {
+      case 'newest':
+        return { publishedAt: 'desc' };
+      case 'title':
+        return { title: 'asc' };
+      default:
+        return { startsAt: 'asc' };
+    }
   }
 
   /** Événements du calendrier personnel : ceux ayant une participation de l'utilisateur. */

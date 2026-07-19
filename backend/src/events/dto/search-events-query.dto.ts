@@ -91,6 +91,14 @@ export class SearchEventsQueryDto {
   @IsIn(['all', 'mine', 'none'])
   participation?: 'all' | 'mine' | 'none';
 
+  @ApiPropertyOptional({
+    enum: ['upcoming', 'newest', 'title'],
+    description: 'Tri : à venir (défaut), nouveautés, alphabétique.',
+  })
+  @IsOptional()
+  @IsIn(['upcoming', 'newest', 'title'])
+  sort?: 'upcoming' | 'newest' | 'title';
+
   @ApiPropertyOptional({ enum: PERIODS, description: 'Filtre temporel rapide.' })
   @IsOptional()
   @IsIn(PERIODS)
