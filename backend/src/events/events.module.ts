@@ -6,6 +6,7 @@ import { EventMediaRepository } from './repositories/event-media.repository';
 import { EventRepository } from './repositories/event.repository';
 import { EventMediaService } from './services/event-media.service';
 import { EventsService } from './services/events.service';
+import { PublishingService } from './services/publishing.service';
 
 /**
  * Gestion des Events (FSPEC.03 / TSPEC.01). La création valide la hiérarchie référentielle ;
@@ -15,7 +16,13 @@ import { EventsService } from './services/events.service';
 @Module({
   imports: [ReferenceDataModule],
   controllers: [EventsController, EventMediaController],
-  providers: [EventsService, EventRepository, EventMediaService, EventMediaRepository],
+  providers: [
+    EventsService,
+    EventRepository,
+    EventMediaService,
+    EventMediaRepository,
+    PublishingService,
+  ],
   exports: [EventsService],
 })
 export class EventsModule {}

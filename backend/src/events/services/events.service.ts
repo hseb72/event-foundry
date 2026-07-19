@@ -74,8 +74,10 @@ export class EventsService {
       categoryId: query.categoryId,
       municipalityId: query.municipalityId,
       tagId: query.tagId,
-      // Découverte : par défaut, seuls les événements publiés (archivés/brouillons masqués).
-      status: query.status ?? EventStatus.PUBLISHED,
+      createdById: query.createdByMe ? userId : undefined,
+      // Découverte : par défaut, seuls les événements publiés. Mais l'espace Organizer
+      // (createdByMe) liste ses propres événements tous statuts confondus (sauf filtre explicite).
+      status: query.status ?? (query.createdByMe ? undefined : EventStatus.PUBLISHED),
       city: query.city,
       text: query.q,
       participationScope: query.participation ?? 'all',
@@ -100,10 +102,16 @@ export class EventsService {
     return this.repository.listCalendarForUser(userId, range.startsFrom, range.startsTo);
   }
 
-  /** Création manuelle (source = MANUAL). */
-  async createManual(dto: CreateEventDto): Promise<EventWithRefs> {
+  /** Création manuelle (source = MANUAL) : l'organisateur crée un brouillon (workflow Publishing). */
+  async createManual(dto: CreateEventDto, actorId: string): Promise<EventWithRefs> {
     const data = await this.buildValidatedEventData(dto, EventSource.MANUAL);
-    return this.repository.createWithRefs(data);
+    const event = await this.repository.createWithRefs({
+      ...data,
+      status: EventStatus.DRAFT,
+      createdById: actorId,
+    });
+    await this.repository.recordStatusEvent(event.id, null, EventStatus.DRAFT, actorId);
+    return event;
   }
 
   /**
@@ -161,18 +169,6 @@ export class EventsService {
       currency: dto.currency ?? null,
       tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
     };
-  }
-
-  /** Archive un Event (retiré du catalogue actif, conservé). */
-  async archive(id: string): Promise<EventWithRefs> {
-    await this.getOrThrow(id);
-    return this.repository.setStatus(id, EventStatus.ARCHIVED);
-  }
-
-  /** Restaure un Event archivé (de nouveau publié). */
-  async restore(id: string): Promise<EventWithRefs> {
-    await this.getOrThrow(id);
-    return this.repository.setStatus(id, EventStatus.PUBLISHED);
   }
 
   /** Vérifie que tous les tags existent ; renvoie la liste dédoublonnée. */

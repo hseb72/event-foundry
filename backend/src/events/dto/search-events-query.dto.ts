@@ -1,6 +1,16 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 import type { DatePeriod } from '../date-range.util';
 
 const PERIODS: DatePeriod[] = ['today', 'this-week', 'this-month', 'next-7-days', 'next-30-days'];
@@ -54,6 +64,14 @@ export class SearchEventsQueryDto {
   @IsOptional()
   @IsIn(['DRAFT', 'PUBLISHED', 'ARCHIVED'])
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+  @ApiPropertyOptional({
+    description: "Ne retourner que mes événements (tous statuts par défaut). Espace Organizer.",
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  createdByMe?: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()

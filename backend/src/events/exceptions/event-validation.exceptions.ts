@@ -41,3 +41,17 @@ export class EventMediaNotFoundException extends NotFoundException {
     super(`Média introuvable : ${id}.`);
   }
 }
+
+/** Transition de statut non autorisée par le workflow de publication (HTTP 422). */
+export class InvalidStatusTransitionException extends UnprocessableEntityException {
+  constructor(from: string, to: string) {
+    super(`Transition de statut interdite : ${from} → ${to}.`);
+  }
+}
+
+/** L'Event ne satisfait pas les règles de publication (HTTP 422). */
+export class EventNotPublishableException extends UnprocessableEntityException {
+  constructor(reason: string) {
+    super(`Publication impossible : ${reason}.`);
+  }
+}

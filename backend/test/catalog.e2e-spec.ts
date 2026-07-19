@@ -63,7 +63,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
     await app.close();
   });
 
-  it('crée un Event avec catégorie, commune et tags, puis l’archive et le restaure', async () => {
+  it('crée un brouillon enrichi puis déroule le workflow de publication', async () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/events')
       .set('Authorization', `Bearer ${organizerToken}`)
@@ -77,26 +77,34 @@ describe('Catalog — Event enrichi (E2E)', () => {
       })
       .expect(201);
 
-    expect(created.body.status).toBe('PUBLISHED');
+    expect(created.body.status).toBe('DRAFT'); // création = brouillon (workflow Publishing)
     expect(created.body.category).toBeTruthy();
     expect(created.body.municipality).toBeTruthy();
-    expect(created.body.region).toBeTruthy();
-    expect(created.body.country).toBeTruthy();
     expect(created.body.tags).toHaveLength(1);
-
     const id = created.body.id as string;
 
-    const archived = await request(app.getHttpServer())
-      .post(`/api/v1/events/${id}/archive`)
-      .set('Authorization', `Bearer ${organizerToken}`)
-      .expect(200);
-    expect(archived.body.status).toBe('ARCHIVED');
+    const at = (path: string) =>
+      request(app.getHttpServer())
+        .post(`/api/v1/events/${id}/${path}`)
+        .set('Authorization', `Bearer ${organizerToken}`);
 
-    const restored = await request(app.getHttpServer())
-      .post(`/api/v1/events/${id}/restore`)
+    expect((await at('submit').expect(200)).body.status).toBe('SUBMITTED');
+    expect((await at('publish').expect(200)).body.status).toBe('PUBLISHED');
+    expect((await at('unpublish').expect(200)).body.status).toBe('DRAFT');
+    expect((await at('archive').expect(200)).body.status).toBe('ARCHIVED');
+    expect((await at('restore').expect(200)).body.status).toBe('DRAFT');
+
+    // Transition interdite : DRAFT → PUBLISHED est permis, mais SUBMITTED → SUBMITTED non
+    await at('unpublish').expect(422); // DRAFT → DRAFT interdit
+
+    // Historique tracé (au moins la création + les transitions)
+    const history = await request(app.getHttpServer())
+      .get(`/api/v1/events/${id}/history`)
       .set('Authorization', `Bearer ${organizerToken}`)
       .expect(200);
-    expect(restored.body.status).toBe('PUBLISHED');
+    expect(history.body.length).toBeGreaterThanOrEqual(6);
+    expect(history.body[0].fromStatus).toBeNull();
+    expect(history.body[0].toStatus).toBe('DRAFT');
   });
 
   it('filtre la recherche par catégorie, tag et commune, et masque les archivés', async () => {
@@ -113,6 +121,11 @@ describe('Catalog — Event enrichi (E2E)', () => {
       })
       .expect(201);
     const id = created.body.id as string;
+    // Publier pour qu'il apparaisse dans la recherche par défaut (PUBLISHED)
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/publish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
 
     const contains = async (queryString: string): Promise<boolean> => {
       const res = await request(app.getHttpServer())
@@ -187,6 +200,29 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .expect(200);
     expect(after.body.media).toHaveLength(0);
+  });
+
+  it('liste mes événements tous statuts via createdByMe (espace Organizer)', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Mon brouillon', startsAt: '2026-12-01T10:00:00.000Z' })
+      .expect(201);
+    const id = created.body.id as string;
+
+    // createdByMe inclut les brouillons (pas de filtre PUBLISHED implicite)
+    const mine = await request(app.getHttpServer())
+      .get('/api/v1/events?createdByMe=true')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(mine.body.items.map((e: { id: string }) => e.id)).toContain(id);
+
+    // L'Explorer (autre utilisateur) ne voit pas ce brouillon dans ses propres événements
+    const other = await request(app.getHttpServer())
+      .get('/api/v1/events?createdByMe=true')
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .expect(200);
+    expect(other.body.items.map((e: { id: string }) => e.id)).not.toContain(id);
   });
 
   it('rejette un tag inexistant (422)', async () => {

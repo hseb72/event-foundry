@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type EventStatus, type EventStatusEvent } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BaseRepository, CrudDelegate } from '../../infra/repositories/base.repository';
 import {
@@ -22,6 +22,7 @@ export interface SearchEventsFilter {
   categoryId?: string;
   municipalityId?: string;
   tagId?: string;
+  createdById?: string;
   status?: Prisma.EventWhereInput['status'];
   city?: string;
   text?: string;
@@ -54,8 +55,45 @@ export class EventRepository extends BaseRepository<Event> {
     return this.prisma.event.create({ data, include: EVENT_REFS_INCLUDE });
   }
 
-  setStatus(id: string, status: Prisma.EventUpdateInput['status']): Promise<EventWithRefs> {
-    return this.prisma.event.update({ where: { id }, data: { status }, include: EVENT_REFS_INCLUDE });
+  /** Journalise une transition de statut (audit). `from` null pour la création initiale. */
+  async recordStatusEvent(
+    eventId: string,
+    fromStatus: EventStatus | null,
+    toStatus: EventStatus,
+    actorId: string | null,
+  ): Promise<void> {
+    await this.prisma.eventStatusEvent.create({ data: { eventId, fromStatus, toStatus, actorId } });
+  }
+
+  listStatusEvents(eventId: string): Promise<EventStatusEvent[]> {
+    return this.prisma.eventStatusEvent.findMany({
+      where: { eventId },
+      orderBy: { occurredAt: 'asc' },
+    });
+  }
+
+  /**
+   * Applique une transition de statut de façon cohérente (écriture multi-cohérente, transaction) :
+   * met à jour le statut (+ publishedAt à la publication) et journalise le passage d'état.
+   */
+  applyTransition(
+    id: string,
+    fromStatus: EventStatus,
+    toStatus: EventStatus,
+    actorId: string | null,
+  ): Promise<EventWithRefs> {
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({
+        where: { id },
+        data: {
+          status: toStatus,
+          ...(toStatus === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+        },
+        include: EVENT_REFS_INCLUDE,
+      });
+      await tx.eventStatusEvent.create({ data: { eventId: id, fromStatus, toStatus, actorId } });
+      return event;
+    });
   }
 
   async searchPaginated(
@@ -119,6 +157,7 @@ export class EventRepository extends BaseRepository<Event> {
       venueId: filter.venueId,
       categoryId: filter.categoryId,
       municipalityId: filter.municipalityId,
+      createdById: filter.createdById,
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.tagId ? { tags: { some: { tagId: filter.tagId } } } : {}),
       ...(startsAt ? { startsAt } : {}),
