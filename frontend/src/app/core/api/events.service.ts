@@ -8,6 +8,7 @@ import {
   EventMediaDto,
   EventStatusEventDto,
   PaginatedEvents,
+  PlanningEntry,
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +25,10 @@ export class EventsApi {
 
   calendar(params: Record<string, string>): Observable<EventDto[]> {
     return this.http.get<EventDto[]>(`${API_BASE}/me/calendar`, { params });
+  }
+
+  planning(params: Record<string, string> = {}): Observable<PlanningEntry[]> {
+    return this.http.get<PlanningEntry[]>(`${API_BASE}/me/planning`, { params });
   }
 
   getById(id: string): Observable<EventDto> {

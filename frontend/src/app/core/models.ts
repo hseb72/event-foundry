@@ -26,6 +26,12 @@ export interface OrganizationAdmin {
   memberCount: number;
 }
 
+/** Entrée du planning personnel : un événement + ses conflits d'horaire. */
+export interface PlanningEntry {
+  event: EventDto;
+  conflictsWith: string[];
+}
+
 /** Entrée du journal des transitions de statut d'un Event. */
 export interface EventStatusEventDto {
   fromStatus: string | null;
