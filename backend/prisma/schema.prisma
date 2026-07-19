@@ -377,6 +377,28 @@ model Municipality {
   @@map("municipalities")
 }
 
+// --- Référentiels transverses (EPIC 02) : Category, Tag ---
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("tags")
+}
+
 // --- Acquisition & pipeline d'import (EPIC 5) ---
 
 /// Document original importé, conservé dans MinIO (jamais en base — ARCHI.01).

@@ -61,3 +61,15 @@ export class MunicipalityNotFoundException extends NotFoundException {
     super(`Municipality introuvable : ${id}.`);
   }
 }
+
+export class CategoryNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Category introuvable : ${id}.`);
+  }
+}
+
+export class TagNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Tag introuvable : ${id}.`);
+  }
+}

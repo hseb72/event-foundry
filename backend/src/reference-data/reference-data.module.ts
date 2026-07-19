@@ -5,6 +5,9 @@ import { ActivityRepository } from './activities/activity.repository';
 import { AliasRepository } from './aliases/alias.repository';
 import { AliasesController } from './aliases/aliases.controller';
 import { AliasesService } from './aliases/aliases.service';
+import { CategoriesController } from './categories/categories.controller';
+import { CategoriesService } from './categories/categories.service';
+import { CategoryRepository } from './categories/category.repository';
 import { CountriesController } from './countries/countries.controller';
 import { CountriesService } from './countries/countries.service';
 import { CountryRepository } from './countries/country.repository';
@@ -26,6 +29,9 @@ import { OrganizersService } from './organizers/organizers.service';
 import { RegionRepository } from './regions/region.repository';
 import { RegionsController } from './regions/regions.controller';
 import { RegionsService } from './regions/regions.service';
+import { TagRepository } from './tags/tag.repository';
+import { TagsController } from './tags/tags.controller';
+import { TagsService } from './tags/tags.service';
 import { VenueRepository } from './venues/venue.repository';
 import { VenuesController } from './venues/venues.controller';
 import { VenuesService } from './venues/venues.service';
@@ -48,6 +54,8 @@ import { VenuesService } from './venues/venues.service';
     CountriesController,
     RegionsController,
     MunicipalitiesController,
+    CategoriesController,
+    TagsController,
   ],
   providers: [
     DomainRepository,
@@ -70,6 +78,10 @@ import { VenuesService } from './venues/venues.service';
     RegionsService,
     MunicipalityRepository,
     MunicipalitiesService,
+    CategoryRepository,
+    CategoriesService,
+    TagRepository,
+    TagsService,
   ],
   exports: [
     DomainRepository,
@@ -82,6 +94,8 @@ import { VenuesService } from './venues/venues.service';
     CountryRepository,
     RegionRepository,
     MunicipalityRepository,
+    CategoryRepository,
+    TagRepository,
   ],
 })
 export class ReferenceDataModule {}
