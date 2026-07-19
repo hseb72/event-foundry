@@ -1,23 +1,135 @@
 /**
- * Seed EventFoundry (TSPEC.02).
+ * Seed EventFoundry (TSPEC.02 + Identity V2 / EPIC 01).
  *
- * Initialise UNIQUEMENT :
- *   - les rôles système (ADMIN, USER) ;
- *   - un administrateur de développement (jamais utilisé en production) ;
- *   - les référentiels de base (Domain TCG + Activities V1, quelques EventType et alias).
+ * Initialise UNIQUEMENT des référentiels et des comptes de développement :
+ *   - permissions atomiques (ADR.08) ;
+ *   - rôles V2 (Explorer, Organizer, Platform Operator, Customer Success, Finance) et leurs
+ *     grants de permissions, + rôles legacy V1 (ADMIN, USER) conservés pour compatibilité ;
+ *   - offres d'abonnement (Free / Pro / Premium — ADR.11) ;
+ *   - un administrateur de développement + une organisation de démonstration ;
+ *   - les référentiels métier de base (Domain TCG + Activities V1, quelques EventType et alias).
  *
- * Idempotent (upsert). Aucune donnée fonctionnelle (Events, ImportJobs...) n'est créée ici.
+ * Idempotent (upsert + ressynchronisation des grants). Aucune donnée fonctionnelle
+ * (Events, ImportJobs…) n'est créée ici.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { Experience, PrismaClient, RoleScope } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-const SYSTEM_ROLES = ['ADMIN', 'USER'] as const;
 const SALT_ROUNDS = 12;
+
+// Rôles legacy V1 conservés le temps de la transition vers le RBAC V2.
+const LEGACY_ROLES = ['ADMIN', 'USER'] as const;
+
+// --- Permissions atomiques (unité de contrôle du backend — ADR.08 / FSPEC.10) ---
+const PERMISSIONS: Record<string, string> = {
+  'catalog.read': 'Consulter le catalogue des événements',
+  'event.read': 'Consulter un événement',
+  'event.create': 'Créer un événement',
+  'event.update': 'Modifier un événement',
+  'event.publish': 'Publier / dépublier un événement',
+  'event.archive': 'Archiver un événement',
+  'import.create': 'Soumettre un document à importer',
+  'import.execute': "Exécuter le pipeline d'import (OCR / classification)",
+  'validation.review': "Valider / corriger les candidats issus de l'import",
+  'planning.manage': 'Gérer son planning personnel',
+  'reservation.manage': 'Gérer ses réservations',
+  'recommendation.view': 'Recevoir des recommandations',
+  'dashboard.view': 'Accéder à un tableau de bord',
+  'statistics.view': 'Consulter des statistiques',
+  'organization.manage': 'Gérer son organisation',
+  'reference.manage': 'Administrer les référentiels',
+  'pipeline.manage': 'Superviser le pipeline documentaire',
+  'user.manage': 'Administrer les utilisateurs et leurs rôles',
+  'account.support': 'Accompagner les comptes organisateurs',
+  'billing.manage': 'Gérer la facturation et les paiements',
+  'subscription.manage': 'Gérer les abonnements',
+};
+
+// --- Rôles V2 : responsabilité + expérience débloquée + grants (FSPEC.10) ---
+interface RoleSeed {
+  name: string;
+  description: string;
+  scope: RoleScope;
+  experience: Experience;
+  permissions: string[];
+}
+
+const ROLES: RoleSeed[] = [
+  {
+    name: 'Explorer',
+    description: "Utilisateur grand public : catalogue, planning, réservations, recommandations.",
+    scope: RoleScope.PLATFORM,
+    experience: Experience.EXPLORER,
+    permissions: [
+      'catalog.read',
+      'event.read',
+      'planning.manage',
+      'reservation.manage',
+      'recommendation.view',
+    ],
+  },
+  {
+    name: 'Organizer',
+    description: 'Publie et gère les événements de son organisation.',
+    scope: RoleScope.ORGANIZATION,
+    experience: Experience.ORGANIZER,
+    permissions: [
+      'catalog.read',
+      'event.read',
+      'event.create',
+      'event.update',
+      'event.publish',
+      'event.archive',
+      'import.create',
+      'import.execute',
+      'dashboard.view',
+      'statistics.view',
+      'organization.manage',
+    ],
+  },
+  {
+    name: 'Platform Operator',
+    description: 'Supervise le pipeline documentaire, les référentiels et les traitements.',
+    scope: RoleScope.PLATFORM,
+    experience: Experience.OPERATOR,
+    permissions: [
+      'catalog.read',
+      'event.read',
+      'import.execute',
+      'validation.review',
+      'reference.manage',
+      'pipeline.manage',
+      'dashboard.view',
+      'user.manage',
+    ],
+  },
+  {
+    name: 'Customer Success',
+    description: "Accompagne les organisateurs, sans permissions techniques.",
+    scope: RoleScope.PLATFORM,
+    experience: Experience.OPERATOR,
+    permissions: ['catalog.read', 'event.read', 'dashboard.view', 'statistics.view', 'account.support'],
+  },
+  {
+    name: 'Finance',
+    description: 'Gère les abonnements, la facturation et les paiements.',
+    scope: RoleScope.PLATFORM,
+    experience: Experience.OPERATOR,
+    permissions: ['dashboard.view', 'billing.manage', 'subscription.manage'],
+  },
+];
+
+// --- Offres d'abonnement (ADR.11) ---
+const SUBSCRIPTION_PLANS = [
+  { key: 'FREE', name: 'Free', level: 0 },
+  { key: 'PRO', name: 'Pro', level: 1 },
+  { key: 'PREMIUM', name: 'Premium', level: 2 },
+];
 
 // Activities TCG ciblées par la V1 (VISION).
 const TCG_ACTIVITIES = [
@@ -30,25 +142,111 @@ const TCG_ACTIVITIES = [
   'Riftbound',
 ];
 
-async function seedRolesAndAdmin(): Promise<void> {
-  for (const name of SYSTEM_ROLES) {
+async function seedPermissions(): Promise<void> {
+  for (const [key, description] of Object.entries(PERMISSIONS)) {
+    await prisma.permission.upsert({
+      where: { key },
+      update: { description },
+      create: { key, description },
+    });
+  }
+}
+
+async function seedRoles(): Promise<void> {
+  // Rôles legacy V1 (compatibilité guards existants).
+  for (const name of LEGACY_ROLES) {
     await prisma.role.upsert({ where: { name }, update: {}, create: { name } });
   }
 
+  // Rôles V2 + resynchronisation stricte de leurs grants (le seed fait autorité).
+  for (const roleSeed of ROLES) {
+    const role = await prisma.role.upsert({
+      where: { name: roleSeed.name },
+      update: {
+        description: roleSeed.description,
+        scope: roleSeed.scope,
+        experience: roleSeed.experience,
+      },
+      create: {
+        name: roleSeed.name,
+        description: roleSeed.description,
+        scope: roleSeed.scope,
+        experience: roleSeed.experience,
+      },
+    });
+
+    const permissions = await prisma.permission.findMany({
+      where: { key: { in: roleSeed.permissions } },
+      select: { id: true },
+    });
+    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+    await prisma.rolePermission.createMany({
+      data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+async function seedSubscriptionPlans(): Promise<void> {
+  for (const plan of SUBSCRIPTION_PLANS) {
+    await prisma.subscriptionPlan.upsert({
+      where: { key: plan.key },
+      update: { name: plan.name, level: plan.level },
+      create: plan,
+    });
+  }
+}
+
+async function seedAdminAndDemoOrg(): Promise<void> {
   const email = process.env.DEV_ADMIN_EMAIL ?? 'admin@event-foundry.local';
   const password = process.env.DEV_ADMIN_PASSWORD ?? 'change-me-dev-only';
-  const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: 'ADMIN' } });
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  await prisma.user.upsert({
+  // Rôles plateforme de l'admin de dev : Operator (back-office) + Explorer (grand public) + ADMIN legacy.
+  const [adminLegacy, operator, explorer, organizer] = await Promise.all([
+    prisma.role.findUniqueOrThrow({ where: { name: 'ADMIN' } }),
+    prisma.role.findUniqueOrThrow({ where: { name: 'Platform Operator' } }),
+    prisma.role.findUniqueOrThrow({ where: { name: 'Explorer' } }),
+    prisma.role.findUniqueOrThrow({ where: { name: 'Organizer' } }),
+  ]);
+
+  const admin = await prisma.user.upsert({
     where: { email },
     update: {},
-    create: {
-      email,
-      passwordHash,
-      displayName: 'Dev Admin',
-      roles: { create: [{ role: { connect: { id: adminRole.id } } }] },
-    },
+    create: { email, passwordHash, displayName: 'Dev Admin', activeExperience: Experience.OPERATOR },
+  });
+
+  for (const role of [adminLegacy, operator, explorer]) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: admin.id, roleId: role.id } },
+      update: {},
+      create: { userId: admin.id, roleId: role.id },
+    });
+  }
+
+  // Organisation de démonstration : l'admin y est Organizer (rôle d'organisation).
+  const freePlan = await prisma.subscriptionPlan.findUniqueOrThrow({ where: { key: 'FREE' } });
+  const demoOrg = await prisma.organization.upsert({
+    where: { slug: 'eventfoundry-demo' },
+    update: {},
+    create: { name: 'EventFoundry Demo', slug: 'eventfoundry-demo', subscriptionPlanId: freePlan.id },
+  });
+
+  const membership = await prisma.organizationMembership.upsert({
+    where: { userId_organizationId: { userId: admin.id, organizationId: demoOrg.id } },
+    update: {},
+    create: { userId: admin.id, organizationId: demoOrg.id },
+  });
+  await prisma.membershipRole.upsert({
+    where: { membershipId_roleId: { membershipId: membership.id, roleId: organizer.id } },
+    update: {},
+    create: { membershipId: membership.id, roleId: organizer.id },
+  });
+
+  // Expérience et contexte org actifs par défaut de l'admin (idempotent, même si l'user existait).
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { activeExperience: Experience.OPERATOR, activeOrganizationId: demoOrg.id },
   });
 }
 
@@ -89,9 +287,14 @@ async function seedReferenceData(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await seedRolesAndAdmin();
+  await seedPermissions();
+  await seedRoles();
+  await seedSubscriptionPlans();
+  await seedAdminAndDemoOrg();
   await seedReferenceData();
-  console.log('Seed terminé : rôles + admin de dev + référentiels TCG de base.');
+  console.log(
+    'Seed terminé : permissions + rôles V2 + abonnements + admin de dev + organisation démo + référentiels TCG.',
+  );
 }
 
 main()

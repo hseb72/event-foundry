@@ -60,35 +60,96 @@ enum PaymentStatus {
   REFUNDED
 }
 
+// --- Identity V2 (EPIC 01) : Roles / Permissions / Experiences / Subscriptions / Organizations.
+// Modèle aligné sur ADR.08 (RBAC), ADR.11 (Identity/Role/Experience/Subscription) et FSPEC.10.
+// Concepts volontairement indépendants : les rôles portent les permissions ; l'expérience ne
+// modifie jamais les permissions ; l'abonnement module le niveau de service, pas les droits.
+
+/// Portée d'un rôle : PLATFORM (Explorer, Operator, Finance…) ou ORGANIZATION (Organizer),
+/// auquel cas les permissions sont évaluées dans le contexte de l'organisation active (ADR.08).
+enum RoleScope {
+  PLATFORM
+  ORGANIZATION
+}
+
+/// Interface active de l'utilisateur (ADR.10/ADR.11). Une seule expérience active à la fois ;
+/// les expériences disponibles sont déduites des rôles. Le changement d'expérience ne modifie
+/// ni les rôles ni les permissions.
+enum Experience {
+  EXPLORER
+  ORGANIZER
+  OPERATOR
+}
+
 // --- Authentification & autorisation (EPIC 2) ---
 
 /// Utilisateur de la plateforme. Le mot de passe n'est jamais stocké en clair.
 model User {
-  id             String              @id @default(uuid()) @db.Uuid
-  email          String              @unique
-  passwordHash   String              @map("password_hash")
-  displayName    String              @map("display_name")
-  isActive       Boolean             @default(true) @map("is_active")
-  roles          UserRole[]
-  participations UserParticipation[]
-  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                   String                   @id @default(uuid()) @db.Uuid
+  email                String                   @unique
+  passwordHash         String                   @map("password_hash")
+  displayName          String                   @map("display_name")
+  isActive             Boolean                  @default(true) @map("is_active")
+  roles                UserRole[]
+  participations       UserParticipation[]
+  // Identity V2 : appartenances aux organisations, expérience active et contexte org actif.
+  memberships          OrganizationMembership[]
+  activeExperience     Experience?              @map("active_experience")
+  activeOrganizationId String?                  @map("active_organization_id") @db.Uuid
+  activeOrganization   Organization?            @relation("UserActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  // Préférences utilisateur (JSONB) : thème, langue, etc. Aucune donnée métier.
+  preferences          Json?                    @db.JsonB
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
 }
 
-/// Rôle système (donnée initialisée par le seed : ADMIN, USER).
+/// Rôle : responsabilité métier portant un ensemble de permissions (ADR.08). `scope` distingue
+/// les rôles plateforme (Explorer, Operator, Finance, Customer Success) des rôles d'organisation
+/// (Organizer). `experience` = expérience débloquée par ce rôle (FSPEC.10), sans fusionner les
+/// deux notions (ADR.11). Seed initial : ADMIN/USER (legacy V1) + rôles V2.
 model Role {
-  id        String     @id @default(uuid()) @db.Uuid
-  name      String     @unique
-  users     UserRole[]
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique
+  description String?
+  scope       RoleScope        @default(PLATFORM)
+  experience  Experience?
+  users       UserRole[]
+  permissions RolePermission[]
+  memberships MembershipRole[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("roles")
 }
 
-/// Affectation explicite d'un rôle à un utilisateur (relation N-N).
+/// Permission : capacité métier atomique (ex. `event.publish`). Unité de contrôle du backend
+/// (ADR.08). Accordée aux rôles, jamais directement aux utilisateurs.
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("permissions")
+}
+
+/// Rattachement N-N Role ↔ Permission.
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Affectation d'un rôle PLATEFORME à un utilisateur (Explorer, Operator, Finance…).
+/// Les rôles d'ORGANISATION passent par MembershipRole (contexte org).
 model UserRole {
   userId     String   @map("user_id") @db.Uuid
   roleId     String   @map("role_id") @db.Uuid
@@ -98,6 +159,65 @@ model UserRole {
 
   @@id([userId, roleId])
   @@map("user_roles")
+}
+
+/// Organisation : structure au sein de laquelle un Organizer publie (association, mairie,
+/// entreprise…). Les permissions d'un rôle d'organisation sont évaluées dans son contexte (ADR.08).
+model Organization {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  name               String
+  slug               String                   @unique
+  isActive           Boolean                  @default(true) @map("is_active")
+  subscriptionPlanId String?                  @map("subscription_plan_id") @db.Uuid
+  subscriptionPlan   SubscriptionPlan?        @relation(fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
+  memberships        OrganizationMembership[]
+  activeForUsers     User[]                   @relation("UserActiveOrganization")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organizations")
+}
+
+/// Appartenance d'un utilisateur à une organisation, porteuse de ses rôles d'organisation.
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roles          MembershipRole[]
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("organization_memberships")
+}
+
+/// Rôle d'ORGANISATION affecté au sein d'une appartenance (contexte org).
+model MembershipRole {
+  membershipId String                 @map("membership_id") @db.Uuid
+  roleId       String                 @map("role_id") @db.Uuid
+  assignedAt   DateTime               @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+/// Offre commerciale (Free/Pro/Premium — ADR.11). Ne définit jamais les permissions : module le
+/// niveau de service parmi les fonctionnalités autorisées. `level` ordonne les offres.
+model SubscriptionPlan {
+  id            String         @id @default(uuid()) @db.Uuid
+  key           String         @unique
+  name          String
+  level         Int            @default(0)
+  isActive      Boolean        @default(true) @map("is_active")
+  organizations Organization[]
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("subscription_plans")
 }
 
 // --- Référentiels métier (EPIC 3) ---
@@ -233,28 +353,28 @@ model Attachment {
 
 /// Suit le cycle technique d'un import (un Attachment = un ImportJob).
 model ImportJob {
-  id            String          @id @default(uuid()) @db.Uuid
-  attachmentId  String          @unique @map("attachment_id") @db.Uuid
-  status        ImportJobStatus @default(PENDING)
-  ocrText       String?         @map("ocr_text")
+  id                  String           @id @default(uuid()) @db.Uuid
+  attachmentId        String           @unique @map("attachment_id") @db.Uuid
+  status              ImportJobStatus  @default(PENDING)
+  ocrText             String?          @map("ocr_text")
   // Métadonnées de l'OCRResult source, conservées pour la traçabilité / rejouabilité
   // du pipeline (règle d'or 9 ; TSPEC.03 « Conservation des artefacts »). Nulles tant
   // que l'OCR n'a pas abouti. Repropagées par le ClassificationResult (les Workers
   // n'accèdent jamais à PostgreSQL).
-  ocrConfidence      Float?     @map("ocr_confidence")
-  ocrLanguage        String?    @map("ocr_language")
-  ocrEngine          String?    @map("ocr_engine")
-  ocrEngineVersion   String?    @map("ocr_engine_version")
-  ocrPageCount       Int?       @map("ocr_page_count")
-  ocrProcessingTimeMs Int?      @map("ocr_processing_time_ms")
-  correlationId String          @map("correlation_id")
-  startedAt     DateTime?       @map("started_at") @db.Timestamptz(6)
-  finishedAt    DateTime?       @map("finished_at") @db.Timestamptz(6)
-  attachment    Attachment      @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
-  candidates    EventCandidate[]
-  events        ImportJobEvent[]
-  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ocrConfidence       Float?           @map("ocr_confidence")
+  ocrLanguage         String?          @map("ocr_language")
+  ocrEngine           String?          @map("ocr_engine")
+  ocrEngineVersion    String?          @map("ocr_engine_version")
+  ocrPageCount        Int?             @map("ocr_page_count")
+  ocrProcessingTimeMs Int?             @map("ocr_processing_time_ms")
+  correlationId       String           @map("correlation_id")
+  startedAt           DateTime?        @map("started_at") @db.Timestamptz(6)
+  finishedAt          DateTime?        @map("finished_at") @db.Timestamptz(6)
+  attachment          Attachment       @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  candidates          EventCandidate[]
+  events              ImportJobEvent[]
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([createdAt])
@@ -286,7 +406,7 @@ model ImportJobEvent {
 model EventCandidate {
   id          String               @id @default(uuid()) @db.Uuid
   importJobId String               @map("import_job_id") @db.Uuid
-  status      EventCandidateStatus  @default(PENDING)
+  status      EventCandidateStatus @default(PENDING)
   payload     Json
   confidence  Json
   eventId     String?              @unique @map("event_id") @db.Uuid
@@ -306,24 +426,24 @@ model EventCandidate {
 /// Événement officiel de la plateforme. source figée (IMPORT/MANUAL). Suppression logique.
 /// Le Domain n'est pas stocké : il est déduit de l'Activity.
 model Event {
-  id            String          @id @default(uuid()) @db.Uuid
-  source        EventSource
-  activityId    String          @map("activity_id") @db.Uuid
-  eventTypeId   String?         @map("event_type_id") @db.Uuid
-  eventFormatId String?         @map("event_format_id") @db.Uuid
-  organizerId   String?         @map("organizer_id") @db.Uuid
-  venueId       String?         @map("venue_id") @db.Uuid
-  title         String
-  description   String?
-  startsAt      DateTime        @map("starts_at") @db.Timestamptz(6)
-  endsAt        DateTime?       @map("ends_at") @db.Timestamptz(6)
-  price         Float?
-  currency      String?
-  deletedAt     DateTime?       @map("deleted_at") @db.Timestamptz(6)
-  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Restrict)
-  eventType     EventType?      @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
-  eventFormat   EventFormat?    @relation(fields: [eventFormatId], references: [id], onDelete: SetNull)
-  organizer     Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  id             String              @id @default(uuid()) @db.Uuid
+  source         EventSource
+  activityId     String              @map("activity_id") @db.Uuid
+  eventTypeId    String?             @map("event_type_id") @db.Uuid
+  eventFormatId  String?             @map("event_format_id") @db.Uuid
+  organizerId    String?             @map("organizer_id") @db.Uuid
+  venueId        String?             @map("venue_id") @db.Uuid
+  title          String
+  description    String?
+  startsAt       DateTime            @map("starts_at") @db.Timestamptz(6)
+  endsAt         DateTime?           @map("ends_at") @db.Timestamptz(6)
+  price          Float?
+  currency       String?
+  deletedAt      DateTime?           @map("deleted_at") @db.Timestamptz(6)
+  activity       Activity            @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  eventType      EventType?          @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
+  eventFormat    EventFormat?        @relation(fields: [eventFormatId], references: [id], onDelete: SetNull)
+  organizer      Organizer?          @relation(fields: [organizerId], references: [id], onDelete: SetNull)
   venue          Venue?              @relation(fields: [venueId], references: [id], onDelete: SetNull)
   candidate      EventCandidate?
   participations UserParticipation[]
