@@ -7,6 +7,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { EventsModule } from './events/events.module';
+import { IdentityModule } from './identity/identity.module';
 import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
 import { ParticipationModule } from './participation/participation.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     MinioModule,
     QueueModule,
     UsersModule,
+    IdentityModule,
     AuthModule,
     ReferenceDataModule,
     ImportsModule,

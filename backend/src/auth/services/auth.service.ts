@@ -1,8 +1,12 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import type { UserWithRoles } from '../../users/entities/user.entity';
+import {
+  IDENTITY_SERVICE,
+  type IIdentityService,
+} from '../../identity/interfaces/identity-service.interface';
+import { TokenService } from '../../identity/services/token.service';
 import {
   IUsersService,
   USERS_SERVICE,
@@ -12,14 +16,21 @@ import { LoginDto } from '../dto/login.dto';
 import { RefreshDto } from '../dto/refresh.dto';
 import { RegisterDto } from '../dto/register.dto';
 import { InvalidCredentialsException } from '../exceptions/invalid-credentials.exception';
-import type { JwtPayload } from '../types/authenticated-user';
 
 const SALT_ROUNDS = 12;
 
+/**
+ * Authentification (TSPEC.06). Vérifie les identifiants et le refresh, puis délègue le calcul de
+ * l'identité effective à Identity et l'émission des jetons à TokenService. Les jetons encodent
+ * les rôles, permissions et contexte actif recalculés à chaque émission (jamais périmés au-delà
+ * de la durée de vie du jeton d'accès).
+ */
 @Injectable()
 export class AuthService {
   constructor(
     @Inject(USERS_SERVICE) private readonly users: IUsersService,
+    @Inject(IDENTITY_SERVICE) private readonly identity: IIdentityService,
+    private readonly tokens: TokenService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {}
@@ -31,7 +42,9 @@ export class AuthService {
       passwordHash,
       displayName: dto.displayName,
     });
-    return this.issueTokens(user);
+    // Tout nouvel inscrit est un Explorer (FSPEC.10) : rôle et expérience par défaut.
+    await this.identity.assignDefaultExplorerRole(user.id);
+    return this.issueFor(user.id);
   }
 
   async login(dto: LoginDto): Promise<AuthTokensDto> {
@@ -43,7 +56,7 @@ export class AuthService {
     if (!passwordMatches) {
       throw new InvalidCredentialsException();
     }
-    return this.issueTokens(user);
+    return this.issueFor(user.id);
   }
 
   async refresh(dto: RefreshDto): Promise<AuthTokensDto> {
@@ -61,27 +74,11 @@ export class AuthService {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Jeton de rafraîchissement invalide ou expiré.');
     }
-    return this.issueTokens(user);
+    return this.issueFor(user.id);
   }
 
-  private async issueTokens(user: UserWithRoles): Promise<AuthTokensDto> {
-    const roles = user.roles.map((assignment) => assignment.role.name);
-    const payload: JwtPayload = { sub: user.id, email: user.email, roles };
-
-    const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.config.getOrThrow<string>('JWT_SECRET'),
-      // jsonwebtoken (via @nestjs/jwt 11) type `expiresIn` en durée littérale : la valeur
-      // vient de la config (env), on la transmet telle quelle.
-      expiresIn: this.config.get<string>('JWT_EXPIRES_IN', '3600s') as JwtSignOptions['expiresIn'],
-    });
-    const refreshToken = await this.jwtService.signAsync(
-      { sub: user.id },
-      {
-        secret: this.config.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: this.config.get<string>('JWT_REFRESH_EXPIRES_IN', '7d') as JwtSignOptions['expiresIn'],
-      },
-    );
-
-    return { accessToken, refreshToken, tokenType: 'Bearer' };
+  private async issueFor(userId: string): Promise<AuthTokensDto> {
+    const identity = await this.identity.getEffectiveIdentity(userId);
+    return this.tokens.issueTokens(identity);
   }
 }

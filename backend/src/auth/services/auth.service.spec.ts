@@ -1,6 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import type { EffectiveIdentity } from '../../identity/interfaces/effective-identity';
+import type { IIdentityService } from '../../identity/interfaces/identity-service.interface';
+import type { TokenService } from '../../identity/services/token.service';
 import type { UserWithRoles } from '../../users/entities/user.entity';
 import type { IUsersService } from '../../users/interfaces/users-service.interface';
 import { InvalidCredentialsException } from '../exceptions/invalid-credentials.exception';
@@ -22,13 +25,17 @@ function fakeUser(overrides: Partial<UserWithRoles> = {}): UserWithRoles {
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
-    roles: [{ role: { name: 'USER' } }],
+    roles: [{ role: { name: 'Explorer' } }],
     ...overrides,
   } as unknown as UserWithRoles;
 }
 
+const TOKENS = { accessToken: 'access', refreshToken: 'refresh', tokenType: 'Bearer' };
+
 describe('AuthService', () => {
   let users: jest.Mocked<IUsersService>;
+  let identity: jest.Mocked<IIdentityService>;
+  let tokens: jest.Mocked<Pick<TokenService, 'issueTokens'>>;
   let jwtService: { signAsync: jest.Mock; verifyAsync: jest.Mock };
   let config: { getOrThrow: jest.Mock; get: jest.Mock };
   let service: AuthService;
@@ -39,6 +46,14 @@ describe('AuthService', () => {
       findByIdWithRoles: jest.fn(),
       createUser: jest.fn(),
     };
+    identity = {
+      getEffectiveIdentity: jest.fn().mockResolvedValue({ userId: 'user-1' } as EffectiveIdentity),
+      getIdentityGraph: jest.fn(),
+      changeActiveExperience: jest.fn(),
+      changeActiveOrganization: jest.fn(),
+      assignDefaultExplorerRole: jest.fn().mockResolvedValue(undefined),
+    };
+    tokens = { issueTokens: jest.fn().mockResolvedValue(TOKENS) };
     jwtService = {
       signAsync: jest.fn().mockResolvedValue('signed-token'),
       verifyAsync: jest.fn(),
@@ -49,6 +64,8 @@ describe('AuthService', () => {
     };
     service = new AuthService(
       users,
+      identity,
+      tokens as unknown as TokenService,
       jwtService as unknown as JwtService,
       config as unknown as ConfigService,
     );
@@ -58,15 +75,24 @@ describe('AuthService', () => {
     users.findByEmailWithRoles.mockResolvedValue(fakeUser());
     bcryptMock.compare.mockResolvedValue(true as never);
 
-    const tokens = await service.login({ email: 'joueur@example.com', password: 'ok' });
+    const result = await service.login({ email: 'joueur@example.com', password: 'ok' });
 
-    expect(tokens.accessToken).toBe('signed-token');
-    expect(tokens.refreshToken).toBe('signed-token');
-    expect(tokens.tokenType).toBe('Bearer');
-    expect(jwtService.signAsync).toHaveBeenCalledTimes(2);
+    expect(result).toEqual(TOKENS);
+    expect(identity.getEffectiveIdentity).toHaveBeenCalledWith('user-1');
+    expect(tokens.issueTokens).toHaveBeenCalledTimes(1);
   });
 
-  it('rejette le login quand l\'utilisateur est introuvable', async () => {
+  it('assigne le rôle Explorer par défaut à l’inscription', async () => {
+    users.createUser.mockResolvedValue(fakeUser());
+    bcryptMock.hash.mockResolvedValue('hashed' as never);
+
+    await service.register({ email: 'joueur@example.com', password: 'ok', displayName: 'Joueur' });
+
+    expect(identity.assignDefaultExplorerRole).toHaveBeenCalledWith('user-1');
+    expect(tokens.issueTokens).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejette le login quand l'utilisateur est introuvable", async () => {
     users.findByEmailWithRoles.mockResolvedValue(null);
     await expect(
       service.login({ email: 'inconnu@example.com', password: 'x' }),

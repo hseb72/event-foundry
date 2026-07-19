@@ -1,0 +1,60 @@
+import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Patch } from '@nestjs/common';
+import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AuthTokensDto } from '../../auth/dto/auth-tokens.dto';
+import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
+import { ChangeExperienceDto } from '../dto/change-experience.dto';
+import { IdentityMeDto } from '../dto/identity-me.dto';
+import { SwitchOrganizationDto } from '../dto/switch-organization.dto';
+import {
+  IDENTITY_SERVICE,
+  type IIdentityService,
+} from '../interfaces/identity-service.interface';
+import { toIdentityMeDto } from '../mappers/identity.mapper';
+import { TokenService } from '../services/token.service';
+
+/**
+ * API du domaine Identity (TSPEC.06). Toutes les routes exigent une authentification (JwtAuthGuard
+ * global). Le changement de contexte (expérience / organisation) réémet des jetons reflétant les
+ * permissions du nouveau contexte — sans nouvelle authentification (ADR.11).
+ */
+@ApiTags('identity')
+@Controller('identity/me')
+export class IdentityController {
+  constructor(
+    @Inject(IDENTITY_SERVICE) private readonly identity: IIdentityService,
+    private readonly tokens: TokenService,
+  ) {}
+
+  @Get()
+  @ApiOkResponse({ type: IdentityMeDto })
+  async me(@CurrentUser() user: AuthenticatedUser): Promise<IdentityMeDto> {
+    const [effective, graph] = await Promise.all([
+      this.identity.getEffectiveIdentity(user.userId),
+      this.identity.getIdentityGraph(user.userId),
+    ]);
+    return toIdentityMeDto(effective, graph);
+  }
+
+  @Patch('experience')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthTokensDto })
+  async changeExperience(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangeExperienceDto,
+  ): Promise<AuthTokensDto> {
+    const effective = await this.identity.changeActiveExperience(user.userId, dto.experience);
+    return this.tokens.issueTokens(effective);
+  }
+
+  @Patch('organization')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthTokensDto })
+  async switchOrganization(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SwitchOrganizationDto,
+  ): Promise<AuthTokensDto> {
+    const effective = await this.identity.changeActiveOrganization(user.userId, dto.organizationId);
+    return this.tokens.issueTokens(effective);
+  }
+}
