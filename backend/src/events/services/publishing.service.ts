@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EventStatus, type EventStatusEvent } from '@prisma/client';
+import { SearchIndexService } from '../../search/services/search-index.service';
 import type { EventWithRefs } from '../entities/event.entity';
 import {
   EventNotPublishableException,
@@ -29,6 +30,7 @@ export class PublishingService {
   constructor(
     private readonly events: EventsService,
     private readonly repository: EventRepository,
+    private readonly searchIndex: SearchIndexService,
   ) {}
 
   /** Soumet un brouillon à validation (DRAFT → SUBMITTED). */
@@ -75,7 +77,21 @@ export class PublishingService {
     if (to === EventStatus.PUBLISHED) {
       this.validatePublishable(event);
     }
-    return this.repository.applyTransition(id, from, to, actorId);
+    const updated = await this.repository.applyTransition(id, from, to, actorId);
+    await this.syncSearchIndex(updated);
+    return updated;
+  }
+
+  /**
+   * Répercute la transition sur l'index de recherche (TSPEC.09) : un événement publié y est
+   * (ré)indexé, tout autre état l'en retire. L'indexation n'altère jamais la transition métier.
+   */
+  private async syncSearchIndex(event: EventWithRefs): Promise<void> {
+    if (event.status === EventStatus.PUBLISHED) {
+      await this.searchIndex.index(event.id);
+    } else {
+      await this.searchIndex.remove(event.id);
+    }
   }
 
   /** Règles déterministes de publication (TSPEC.05) : champs obligatoires + cohérence des dates. */

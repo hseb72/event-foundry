@@ -539,6 +539,7 @@ model Event {
   media          EventMedia[]
   statusEvents   EventStatusEvent[]
   candidate      EventCandidate?
+  searchDocument SearchDocument?
   participations UserParticipation[]
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -595,6 +596,39 @@ model EventStatusEvent {
 
   @@index([eventId, occurredAt])
   @@map("event_status_events")
+}
+
+/// Projection technique de recherche (TSPEC.09 — domaine Search). Un document par Event publié,
+/// entièrement reconstructible depuis le Catalog (jamais source de vérité). Le vecteur plein texte
+/// pondéré (`search_vector`, tsvector) est maintenu par le Repository Search via SQL et indexé en
+/// GIN. Le document est retiré dès qu'un Event quitte l'état publié (dépublication / archivage /
+/// suppression logique).
+model SearchDocument {
+  eventId          String                   @id @map("event_id") @db.Uuid
+  title            String
+  description      String?
+  activityId       String                   @map("activity_id") @db.Uuid
+  activityName     String                   @map("activity_name")
+  categoryId       String?                  @map("category_id") @db.Uuid
+  categoryName     String?                  @map("category_name")
+  municipalityId   String?                  @map("municipality_id") @db.Uuid
+  municipalityName String?                  @map("municipality_name")
+  organizerName    String?                  @map("organizer_name")
+  venueName        String?                  @map("venue_name")
+  tagIds           String[]                 @map("tag_ids") @db.Uuid
+  tagNames         String[]                 @map("tag_names")
+  startsAt         DateTime                 @map("starts_at") @db.Timestamptz(6)
+  publishedAt      DateTime?                @map("published_at") @db.Timestamptz(6)
+  searchVector     Unsupported("tsvector")? @map("search_vector")
+  indexedAt        DateTime                 @default(now()) @map("indexed_at") @db.Timestamptz(6)
+  event            Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([categoryId])
+  @@index([municipalityId])
+  @@index([startsAt])
+  @@index([searchVector], type: Gin)
+  @@map("search_documents")
 }
 
 /// Relation personnelle d'un utilisateur avec un Event (FSPEC.06). Trois axes indépendants.

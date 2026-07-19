@@ -13,6 +13,7 @@ import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
 import { ParticipationModule } from './participation/participation.module';
 import { PlanningModule } from './planning/planning.module';
+import { SearchModule } from './search/search.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
@@ -45,6 +46,7 @@ import { UsersModule } from './users/users.module';
     CalendarModule,
     PlanningModule,
     DiscoveryModule,
+    SearchModule,
     StatsModule,
     HealthModule,
     MetricsModule,
