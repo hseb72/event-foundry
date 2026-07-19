@@ -143,7 +143,10 @@ Responsabilités :
 Aucune correction n'est réalisée ici.
 
 Réglages Tesseract (surchargables par variables d'environnement) : moteur **LSTM** (OEM 1),
-modèles **« best »** (précision), **PSM** adapté aux affiches (texte épars par défaut),
+modèles **« standard »** (entiers) par défaut — sûrs avec le core WASM ; les modèles « best »
+(flottants, plus précis) appellent des fonctions SIMD absentes de certains cores (crash
+`DotProductSSE`) et restent donc **optionnels** (`OCR_TESSDATA=best`). **PSM** adapté aux
+affiches (texte épars par défaut),
 préservation des espaces inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la
 qualité (confiance, rappel de mots-clés) pour régler ces paramètres.
 

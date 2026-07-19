@@ -2,6 +2,14 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { createWorker, OEM, PSM, type Worker as TesseractWorker } from 'tesseract.js';
 import type { OcrEngine, OcrEngineResult } from '../interfaces/ocr-engine.interface';
 
+/** URL des modèles Tesseract selon la variante (défaut : « standard », entier, sûr en WASM). */
+function tessdataUrl(variant?: string): string {
+  const base = 'https://tessdata.projectnaptha.com/4.0.0';
+  if (variant === 'best') return `${base}_best`;
+  if (variant === 'fast') return `${base}_fast`;
+  return base;
+}
+
 /**
  * Moteur OCR Tesseract (via tesseract.js). Le worker est créé paresseusement, réglé, réutilisé
  * entre les Jobs, puis terminé à l'arrêt. Réglages (TSPEC.04) :
@@ -21,12 +29,11 @@ export class TesseractOcrEngine implements OcrEngine, OnModuleDestroy {
   private readonly languages = process.env.OCR_LANGUAGES ?? 'eng';
   private readonly oem = Number(process.env.OCR_OEM ?? OEM.LSTM_ONLY);
   private readonly psm = (process.env.OCR_PSM ?? PSM.SPARSE_TEXT) as PSM;
-  // Modèles « best » par défaut (précision) ; « fast » possible via OCR_TESSDATA=fast.
-  private readonly langPath =
-    process.env.OCR_LANG_PATH ??
-    (process.env.OCR_TESSDATA === 'fast'
-      ? 'https://tessdata.projectnaptha.com/4.0.0'
-      : 'https://tessdata.projectnaptha.com/4.0.0_best');
+  // Modèles « standard » (entiers) par défaut : sûrs avec le core WASM de tesseract.js.
+  // Les modèles « best » (flottants) sont plus précis mais appellent des fonctions SIMD
+  // absentes de certains cores (crash `DotProductSSE`) : à n'activer que si le core le
+  // supporte, via OCR_TESSDATA=best.
+  private readonly langPath = process.env.OCR_LANG_PATH ?? tessdataUrl(process.env.OCR_TESSDATA);
   // Modèles distants (CDN) = .traineddata.gz ; modèles locaux (paquet système) = non gzippés.
   private readonly gzip = process.env.OCR_LANG_GZIP !== 'false';
 
