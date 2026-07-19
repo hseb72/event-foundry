@@ -26,6 +26,7 @@ const EXPERIENCES: ExperienceMeta[] = [
 // Navigation pilotée par l'EXPÉRIENCE active ET conditionnée par les PERMISSIONS (ADR.08/ADR.11) :
 // changer d'expérience change les écrans proposés, sans jamais changer les droits.
 const NAV: NavItem[] = [
+  { label: 'Accueil', path: '/home', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Découvrir', path: '/discover', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Rechercher', path: '/search', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },

@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { SearchApi } from '../../core/api/search.service';
 import { EventDto, Facets } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
@@ -190,9 +191,19 @@ export class SearchComponent implements OnInit {
   total = 0;
   loading = false;
 
-  constructor(private readonly searchApi: SearchApi) {}
+  constructor(
+    private readonly searchApi: SearchApi,
+    private readonly route: ActivatedRoute,
+  ) {}
 
   ngOnInit(): void {
+    // Amorce depuis l'URL (barre de recherche de l'accueil, lien « Tout voir »).
+    const params = this.route.snapshot.queryParamMap;
+    this.q = params.get('q') ?? '';
+    const sort = params.get('sort');
+    if (sort === 'relevance' || sort === 'upcoming' || sort === 'newest' || sort === 'title') {
+      this.sort = sort;
+    }
     this.runSearch();
   }
 

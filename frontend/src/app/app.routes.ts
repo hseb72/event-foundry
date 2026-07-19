@@ -7,6 +7,7 @@ import { AdminComponent } from './features/admin/admin.component';
 import { JobsAdminComponent } from './features/admin/jobs-admin.component';
 import { UsersAdminComponent } from './features/admin/users-admin.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { HomeComponent } from './features/home/home.component';
 import { CalendarComponent } from './features/calendar/calendar.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
@@ -28,6 +29,7 @@ export const routes: Routes = [
     component: ShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'home', component: HomeComponent },
       { path: 'me', component: IdentityComponent },
       {
         path: 'operator/admin',
@@ -63,7 +65,7 @@ export const routes: Routes = [
           { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ],
       },
-      { path: '', redirectTo: 'discover', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
   },
   { path: '**', redirectTo: '' },
