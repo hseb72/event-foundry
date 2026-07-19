@@ -11,6 +11,7 @@ import { IdentityModule } from './identity/identity.module';
 import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
 import { ParticipationModule } from './participation/participation.module';
+import { PlanningModule } from './planning/planning.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     EventCandidatesModule,
     ParticipationModule,
     CalendarModule,
+    PlanningModule,
     StatsModule,
     HealthModule,
     MetricsModule,
