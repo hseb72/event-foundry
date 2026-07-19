@@ -1,7 +1,38 @@
 import type { EventWithRefs, UserParticipation } from '../entities/event.entity';
+import { EventEditDto } from '../dto/event-edit.dto';
 import { EventResponseDto, ParticipationStateDto } from '../dto/event-response.dto';
 
+const EDITABLE_STATUSES = ['DRAFT', 'SUBMITTED'];
+
 export class EventMapper {
+  /**
+   * Vue d'édition (par identifiants) pour préremplir le formulaire de correction — espace Organizer.
+   * La localisation est exposée en cascade pays / région / commune.
+   */
+  static toEditDto(event: EventWithRefs): EventEditDto {
+    return {
+      id: event.id,
+      status: event.status,
+      editable: EDITABLE_STATUSES.includes(event.status),
+      activityId: event.activityId,
+      eventTypeId: event.eventTypeId,
+      eventFormatId: event.eventFormatId,
+      categoryId: event.categoryId,
+      organizerId: event.organizerId,
+      venueId: event.venueId,
+      countryId: event.municipality ? event.municipality.region.country.id : null,
+      regionId: event.municipality ? event.municipality.region.id : null,
+      municipalityId: event.municipalityId,
+      tagIds: event.tags.map((eventTag) => eventTag.tagId),
+      title: event.title,
+      description: event.description,
+      startsAt: event.startsAt.toISOString(),
+      endsAt: event.endsAt ? event.endsAt.toISOString() : null,
+      price: event.price,
+      currency: event.currency,
+    };
+  }
+
   static toResponse(
     event: EventWithRefs,
     participation: UserParticipation | null = null,

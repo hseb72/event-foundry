@@ -10,6 +10,7 @@ import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { CalendarComponent } from './features/calendar/calendar.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
+import { EditEventComponent } from './features/edit-event/edit-event.component';
 import { EventDetailComponent } from './features/event-detail/event-detail.component';
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
@@ -44,6 +45,11 @@ export const routes: Routes = [
       { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },
       { path: 'create', component: CreateEventComponent },
+      {
+        path: 'events/:id/edit',
+        component: EditEventComponent,
+        canActivate: [permissionGuard('event.update')],
+      },
       { path: 'events/:id', component: EventDetailComponent },
       {
         path: 'admin',

@@ -194,6 +194,29 @@ export interface EventCandidateDetailDto extends EventCandidateDto {
   ocrText: string | null;
 }
 
+/** Vue d'édition d'un Event (référentiels par identifiant) pour préremplir le formulaire. */
+export interface EventEditValue {
+  id: string;
+  status: string;
+  editable: boolean;
+  activityId: string;
+  eventTypeId: string | null;
+  eventFormatId: string | null;
+  categoryId: string | null;
+  organizerId: string | null;
+  venueId: string | null;
+  countryId: string | null;
+  regionId: string | null;
+  municipalityId: string | null;
+  tagIds: string[];
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  price: number | null;
+  currency: string | null;
+}
+
 export interface CreateEventInput {
   activityId: string;
   eventTypeId?: string;

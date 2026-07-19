@@ -112,6 +112,9 @@ const TABS: StatusTab[] = [
             <div class="date">{{ date(event) }} · {{ event.activity }}</div>
           </div>
           <div class="actions">
+            @if (isEditable(event.status)) {
+              <a class="btn btn-sm" [routerLink]="['/events', event.id, 'edit']">Modifier</a>
+            }
             @for (action of actionsFor(event.status); track action.key) {
               <button class="btn btn-sm" (click)="run(event, action.key)">{{ action.label }}</button>
             }
@@ -146,6 +149,11 @@ export class OrganizerEventsComponent implements OnInit {
 
   date(event: EventDto): string {
     return formatDateTime(event.startsAt);
+  }
+
+  /** Seuls les brouillons et événements soumis sont éditables (aligné sur le Backend). */
+  isEditable(status: string): boolean {
+    return status === 'DRAFT' || status === 'SUBMITTED';
   }
 
   /** Actions disponibles selon le statut (le Backend reste seul juge des transitions). */

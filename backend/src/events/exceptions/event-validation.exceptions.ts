@@ -1,4 +1,8 @@
-import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 
 /** L'EventType ne correspond pas à l'Activity indiquée (HTTP 422). */
 export class InvalidEventTypeException extends UnprocessableEntityException {
@@ -53,5 +57,19 @@ export class InvalidStatusTransitionException extends UnprocessableEntityExcepti
 export class EventNotPublishableException extends UnprocessableEntityException {
   constructor(reason: string) {
     super(`Publication impossible : ${reason}.`);
+  }
+}
+
+/**
+ * L'Event n'est pas modifiable dans son état courant (HTTP 409). Seuls les brouillons et les
+ * événements soumis sont éditables ; un événement publié doit d'abord être dépublié, un événement
+ * archivé restauré.
+ */
+export class EventNotEditableException extends ConflictException {
+  constructor(status: string) {
+    super(
+      `Modification impossible : un événement au statut ${status} n'est pas éditable. ` +
+        `Dépubliez-le (ou restaurez-le) pour le modifier.`,
+    );
   }
 }

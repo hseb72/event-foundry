@@ -19,14 +19,19 @@ import { computeDateRange } from '../date-range.util';
 import { CalendarQueryDto } from '../dto/calendar-query.dto';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
+import { UpdateEventDto } from '../dto/update-event.dto';
 import type { EventWithRefs, EventWithRefsAndParticipation } from '../entities/event.entity';
 import {
+  EventNotEditableException,
   EventNotFoundException,
   InvalidEventFormatException,
   InvalidEventTypeException,
   InvalidTagsException,
 } from '../exceptions/event-validation.exceptions';
 import { EventRepository } from '../repositories/event.repository';
+
+/** Statuts dans lesquels un Event reste éditable (travail en cours, non diffusé). */
+const EDITABLE_STATUSES: EventStatus[] = [EventStatus.DRAFT, EventStatus.SUBMITTED];
 
 @Injectable()
 export class EventsService {
@@ -113,6 +118,41 @@ export class EventsService {
     });
     await this.repository.recordStatusEvent(event.id, null, EventStatus.DRAFT, actorId);
     return event;
+  }
+
+  /**
+   * Correction d'un Event (FSPEC.13 « Modifié » / TSPEC.05 Update Publication). Permet à
+   * l'organisateur de corriger une erreur (ex. dates incohérentes) sans repartir de zéro. Seuls les
+   * brouillons et événements soumis sont éditables ; un événement publié doit d'abord être dépublié.
+   * Sémantique de remplacement complet du formulaire (les champs absents sont réinitialisés). La
+   * provenance et le statut ne changent jamais ; les tags sont intégralement remplacés.
+   */
+  async update(id: string, dto: UpdateEventDto): Promise<EventWithRefs> {
+    const event = await this.getOrThrow(id);
+    if (!EDITABLE_STATUSES.includes(event.status)) {
+      throw new EventNotEditableException(event.status);
+    }
+    // Réutilise la validation de la hiérarchie référentielle et des tags de la création.
+    const built = await this.buildValidatedEventData(dto, event.source);
+    const tagIds =
+      (built.tags?.create as { tagId: string }[] | undefined)?.map((tag) => tag.tagId) ?? [];
+    // Ne met à jour que les champs éditables : source, statut et créateur restent inchangés.
+    const data: Prisma.EventUncheckedUpdateInput = {
+      activityId: built.activityId,
+      eventTypeId: built.eventTypeId,
+      eventFormatId: built.eventFormatId,
+      categoryId: built.categoryId,
+      organizerId: built.organizerId,
+      venueId: built.venueId,
+      municipalityId: built.municipalityId,
+      title: built.title,
+      description: built.description,
+      startsAt: built.startsAt,
+      endsAt: built.endsAt,
+      price: built.price,
+      currency: built.currency,
+    };
+    return this.repository.updateWithRefs(id, data, tagIds);
   }
 
   /**

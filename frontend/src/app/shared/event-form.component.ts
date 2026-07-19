@@ -1,7 +1,13 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReferenceDataApi } from '../core/api/reference-data.service';
-import { ActivityDto, CreateEventInput, EventDraft, ReferentialItem } from '../core/models';
+import {
+  ActivityDto,
+  CreateEventInput,
+  EventDraft,
+  EventEditValue,
+  ReferentialItem,
+} from '../core/models';
 
 /**
  * Formulaire d'Event réutilisé par la création manuelle et la validation d'un candidat.
@@ -228,6 +234,8 @@ export class EventFormComponent implements OnInit {
   @Input() busy = false;
   /** Valeurs détectées (noms) pour préremplir le formulaire après chargement des référentiels. */
   @Input() draft: EventDraft | null = null;
+  /** Valeurs existantes (identifiants) pour préremplir le formulaire en édition/correction. */
+  @Input() initial: EventEditValue | null = null;
 
   @Output() save = new EventEmitter<CreateEventInput>();
   @Output() reject = new EventEmitter<void>();
@@ -283,6 +291,54 @@ export class EventFormComponent implements OnInit {
       this.applyDraftScalars();
       this.applyDraftActivity();
     });
+    this.applyInitial();
+  }
+
+  /**
+   * Préremplit le formulaire à partir de valeurs existantes (édition). Les listes dépendantes
+   * (types / formats selon l'activité, régions / communes selon le pays) sont chargées puis la
+   * sélection est posée, sans passer par les gestionnaires de changement (qui réinitialisent).
+   */
+  private applyInitial(): void {
+    const value = this.initial;
+    if (!value) {
+      return;
+    }
+    this.model.title = value.title;
+    this.model.description = value.description ?? '';
+    this.model.activityId = value.activityId;
+    this.model.categoryId = value.categoryId ?? '';
+    this.model.organizerId = value.organizerId ?? '';
+    this.model.venueId = value.venueId ?? '';
+    this.model.tagIds = [...value.tagIds];
+    this.model.startsAt = toLocalInput(value.startsAt);
+    this.model.endsAt = value.endsAt ? toLocalInput(value.endsAt) : '';
+    this.model.price = value.price;
+    this.model.currency = value.currency ?? '';
+
+    if (value.activityId) {
+      this.referenceData.eventTypes(value.activityId).subscribe((items) => {
+        this.eventTypes = items;
+        this.model.eventTypeId = value.eventTypeId ?? '';
+      });
+      this.referenceData.eventFormats(value.activityId).subscribe((items) => {
+        this.eventFormats = items;
+        this.model.eventFormatId = value.eventFormatId ?? '';
+      });
+    }
+    if (value.countryId) {
+      this.model.countryId = value.countryId;
+      this.referenceData.regions(value.countryId).subscribe((regions) => {
+        this.regions = regions;
+        this.model.regionId = value.regionId ?? '';
+        if (value.regionId) {
+          this.referenceData.municipalities(value.regionId).subscribe((municipalities) => {
+            this.municipalities = municipalities;
+            this.model.municipalityId = value.municipalityId ?? '';
+          });
+        }
+      });
+    }
   }
 
   onCountryChange(): void {

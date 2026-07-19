@@ -56,6 +56,26 @@ export class EventRepository extends BaseRepository<Event> {
     return this.prisma.event.create({ data, include: EVENT_REFS_INCLUDE });
   }
 
+  /**
+   * Met à jour les champs éditables d'un Event et remplace intégralement ses tags (sémantique PUT).
+   * Le remplacement des tags et la mise à jour des champs sont atomiques (écriture imbriquée Prisma).
+   * La provenance (source) et le statut ne sont jamais modifiés ici.
+   */
+  updateWithRefs(
+    id: string,
+    data: Prisma.EventUncheckedUpdateInput,
+    tagIds: string[],
+  ): Promise<EventWithRefs> {
+    return this.prisma.event.update({
+      where: { id },
+      data: {
+        ...data,
+        tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) },
+      },
+      include: EVENT_REFS_INCLUDE,
+    });
+  }
+
   /** Journalise une transition de statut (audit). `from` null pour la création initiale. */
   async recordStatusEvent(
     eventId: string,

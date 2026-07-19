@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
 } from '@nestjs/common';
@@ -14,6 +15,8 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { CreateEventDto } from '../dto/create-event.dto';
+import { UpdateEventDto } from '../dto/update-event.dto';
+import { EventEditDto } from '../dto/event-edit.dto';
 import { EventResponseDto } from '../dto/event-response.dto';
 import { EventStatusEventDto } from '../dto/event-status-event.dto';
 import { PaginatedEventsResponseDto } from '../dto/paginated-events-response.dto';
@@ -66,6 +69,31 @@ export class EventsController {
     const dto = EventMapper.toResponse(await this.service.getOrThrow(id));
     dto.media = await this.mediaService.listWithUrls(id);
     return dto;
+  }
+
+  /**
+   * Vue d'édition d'un Event (référentiels par identifiant) pour préremplir le formulaire de
+   * correction. Réservé à `event.update` (Organizer).
+   */
+  @Get(':id/edit')
+  @RequirePermissions('event.update')
+  @ApiOkResponse({ type: EventEditDto })
+  async forEdit(@Param('id', ParseUUIDPipe) id: string): Promise<EventEditDto> {
+    return EventMapper.toEditDto(await this.service.getOrThrow(id));
+  }
+
+  /**
+   * Corrige un Event éditable (brouillon / soumis) — FSPEC.13. Réservé à `event.update` (Organizer).
+   * Permet de rattraper une erreur de saisie sans recréer l'événement.
+   */
+  @Patch(':id')
+  @RequirePermissions('event.update')
+  @ApiOkResponse({ type: EventResponseDto })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEventDto,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.update(id, dto));
   }
 
   /** Soumet un brouillon à validation (DRAFT → SUBMITTED). Réservé à `event.update`. */

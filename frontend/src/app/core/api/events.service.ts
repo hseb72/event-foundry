@@ -5,6 +5,7 @@ import { API_BASE } from '../api.config';
 import {
   CreateEventInput,
   EventDto,
+  EventEditValue,
   EventMediaDto,
   EventStatusEventDto,
   PaginatedEvents,
@@ -33,6 +34,16 @@ export class EventsApi {
 
   getById(id: string): Observable<EventDto> {
     return this.http.get<EventDto>(`${API_BASE}/events/${id}`);
+  }
+
+  /** Vue d'édition (référentiels par identifiant) pour préremplir le formulaire de correction. */
+  getForEdit(id: string): Observable<EventEditValue> {
+    return this.http.get<EventEditValue>(`${API_BASE}/events/${id}/edit`);
+  }
+
+  /** Corrige un événement éditable (brouillon / soumis). */
+  update(id: string, body: CreateEventInput): Observable<EventDto> {
+    return this.http.patch<EventDto>(`${API_BASE}/events/${id}`, body);
   }
 
   private transition(id: string, action: string): Observable<EventDto> {

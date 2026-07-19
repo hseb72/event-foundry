@@ -245,6 +245,108 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .send({ activityId: refs.activityId, title: 'Interdit', startsAt: '2026-09-01T10:00:00.000Z' })
       .expect(403);
   });
+
+  it('corrige un brouillon invalide puis le publie (dates rattrapées, sans recréation)', async () => {
+    // Brouillon avec des dates incohérentes (fin avant début) : la publication échoue.
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({
+        activityId: refs.activityId,
+        title: 'Tournoi à corriger',
+        startsAt: '2027-02-10T10:00:00.000Z',
+        endsAt: '2027-02-09T10:00:00.000Z',
+      })
+      .expect(201);
+    const id = created.body.id as string;
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/publish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(422);
+
+    // Correction du même événement (PATCH) : on rétablit une fin cohérente + on enrichit.
+    const corrected = await request(app.getHttpServer())
+      .patch(`/api/v1/events/${id}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({
+        activityId: refs.activityId,
+        categoryId: refs.categoryId,
+        tagIds: [refs.tagId],
+        title: 'Tournoi corrigé',
+        startsAt: '2027-02-10T10:00:00.000Z',
+        endsAt: '2027-02-10T18:00:00.000Z',
+      })
+      .expect(200);
+    expect(corrected.body.title).toBe('Tournoi corrigé');
+    expect(corrected.body.status).toBe('DRAFT');
+    expect(corrected.body.category).toBeTruthy();
+    expect(corrected.body.tags).toContain((await tagName(refs.tagId)));
+
+    // La vue d'édition expose les référentiels par identifiant (préremplissage du formulaire).
+    const editView = await request(app.getHttpServer())
+      .get(`/api/v1/events/${id}/edit`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(editView.body.editable).toBe(true);
+    expect(editView.body.categoryId).toBe(refs.categoryId);
+    expect(editView.body.tagIds).toContain(refs.tagId);
+
+    // La publication passe désormais.
+    const published = await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/publish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(published.body.status).toBe('PUBLISHED');
+  });
+
+  it('refuse la modification d\'un événement publié (409) tant qu\'il n\'est pas dépublié', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Publié figé', startsAt: '2027-03-01T10:00:00.000Z' })
+      .expect(201);
+    const id = created.body.id as string;
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/publish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/api/v1/events/${id}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Tentative interdite', startsAt: '2027-03-01T10:00:00.000Z' })
+      .expect(409);
+
+    // Après dépublication, la correction est de nouveau possible.
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/unpublish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    const corrected = await request(app.getHttpServer())
+      .patch(`/api/v1/events/${id}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Corrigé après dépublication', startsAt: '2027-03-01T10:00:00.000Z' })
+      .expect(200);
+    expect(corrected.body.title).toBe('Corrigé après dépublication');
+  });
+
+  it('réserve la modification à la permission event.update (403 pour Explorer)', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Brouillon protégé', startsAt: '2027-04-01T10:00:00.000Z' })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/api/v1/events/${created.body.id}`)
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .send({ activityId: refs.activityId, title: 'Hack', startsAt: '2027-04-01T10:00:00.000Z' })
+      .expect(403);
+  });
+
+  async function tagName(tagId: string): Promise<string> {
+    const tag = await prisma(app).tag.findUniqueOrThrow({ where: { id: tagId } });
+    return tag.name;
+  }
 });
 
 async function login(app: INestApplication, email: string): Promise<string> {
