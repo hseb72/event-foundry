@@ -45,6 +45,19 @@ import { participationColor, participationLabel } from './participation-color';
         font-weight: 600;
         font-size: 0.85rem;
       }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+      }
+      .tag-chip {
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.08rem 0.45rem;
+        border-radius: 999px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
     `,
   ],
   template: `
@@ -57,16 +70,26 @@ import { participationColor, participationLabel } from './participation-color';
         }
       </div>
       <div class="meta">
-        @if (event.venue) {
-          {{ event.venue }}
+        @if (event.category) {
+          {{ event.category }} ·
         }
-        @if (event.city) {
-          — {{ event.city }}
+        @if (event.municipality) {
+          {{ event.municipality }}
+        } @else if (event.venue) {
+          {{ event.venue }}@if (event.city) { — {{ event.city }} }
         }
         @if (event.price !== null) {
           · {{ event.price }} {{ event.currency ?? 'EUR' }}
         }
       </div>
+
+      @if (event.tags.length) {
+        <div class="tags">
+          @for (t of event.tags; track t) {
+            <span class="tag-chip">{{ t }}</span>
+          }
+        </div>
+      }
 
       <div class="actions">
         <button

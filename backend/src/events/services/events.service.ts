@@ -71,6 +71,11 @@ export class EventsService {
       eventFormatId: query.eventFormatId,
       organizerId: query.organizerId,
       venueId: query.venueId,
+      categoryId: query.categoryId,
+      municipalityId: query.municipalityId,
+      tagId: query.tagId,
+      // Découverte : par défaut, seuls les événements publiés (archivés/brouillons masqués).
+      status: query.status ?? EventStatus.PUBLISHED,
       city: query.city,
       text: query.q,
       participationScope: query.participation ?? 'all',

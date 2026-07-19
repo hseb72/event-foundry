@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EventsApi } from '../../core/api/events.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
-import { ActivityDto, EventDto } from '../../core/models';
+import { ActivityDto, EventDto, ReferentialItem } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 
 @Component({
@@ -42,6 +42,18 @@ import { EventCardComponent } from '../../shared/event-card.component';
           <option [value]="activity.id">{{ activity.name }}</option>
         }
       </select>
+      <select class="select" [(ngModel)]="categoryId">
+        <option value="">Toutes les catégories</option>
+        @for (category of categories; track category.id) {
+          <option [value]="category.id">{{ category.name }}</option>
+        }
+      </select>
+      <select class="select" [(ngModel)]="tagId">
+        <option value="">Tous les tags</option>
+        @for (tag of tags; track tag.id) {
+          <option [value]="tag.id">{{ tag.name }}</option>
+        }
+      </select>
       <select class="select" [(ngModel)]="period">
         <option value="">Toutes les dates</option>
         <option value="today">Aujourd'hui</option>
@@ -73,9 +85,13 @@ import { EventCardComponent } from '../../shared/event-card.component';
 })
 export class CatalogueComponent implements OnInit {
   activities: ActivityDto[] = [];
+  categories: ReferentialItem[] = [];
+  tags: ReferentialItem[] = [];
   events: EventDto[] = [];
   q = '';
   activityId = '';
+  categoryId = '';
+  tagId = '';
   period = '';
   participation = '';
   loading = false;
@@ -87,6 +103,8 @@ export class CatalogueComponent implements OnInit {
 
   ngOnInit(): void {
     this.referenceDataApi.activities().subscribe((activities) => (this.activities = activities));
+    this.referenceDataApi.categories().subscribe((categories) => (this.categories = categories));
+    this.referenceDataApi.tags().subscribe((tags) => (this.tags = tags));
     this.search();
   }
 
@@ -94,6 +112,8 @@ export class CatalogueComponent implements OnInit {
     const params: Record<string, string> = {};
     if (this.q) params['q'] = this.q;
     if (this.activityId) params['activityId'] = this.activityId;
+    if (this.categoryId) params['categoryId'] = this.categoryId;
+    if (this.tagId) params['tagId'] = this.tagId;
     if (this.period) params['period'] = this.period;
     if (this.participation) params['participation'] = this.participation;
 

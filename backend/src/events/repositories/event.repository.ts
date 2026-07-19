@@ -19,6 +19,10 @@ export interface SearchEventsFilter {
   eventFormatId?: string;
   organizerId?: string;
   venueId?: string;
+  categoryId?: string;
+  municipalityId?: string;
+  tagId?: string;
+  status?: Prisma.EventWhereInput['status'];
   city?: string;
   text?: string;
   participationScope?: ParticipationScope;
@@ -113,6 +117,10 @@ export class EventRepository extends BaseRepository<Event> {
       eventFormatId: filter.eventFormatId,
       organizerId: filter.organizerId,
       venueId: filter.venueId,
+      categoryId: filter.categoryId,
+      municipalityId: filter.municipalityId,
+      ...(filter.status ? { status: filter.status } : {}),
+      ...(filter.tagId ? { tags: { some: { tagId: filter.tagId } } } : {}),
       ...(startsAt ? { startsAt } : {}),
       ...(filter.city
         ? { venue: { city: { contains: filter.city, mode: 'insensitive' } } }

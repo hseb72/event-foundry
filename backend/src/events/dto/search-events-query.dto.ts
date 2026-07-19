@@ -32,6 +32,29 @@ export class SearchEventsQueryDto {
   @IsUUID()
   venueId?: string;
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par catégorie.' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par commune.' })
+  @IsOptional()
+  @IsUUID()
+  municipalityId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par tag.' })
+  @IsOptional()
+  @IsUUID()
+  tagId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'],
+    description: 'Statut catalogue (défaut : PUBLISHED).',
+  })
+  @IsOptional()
+  @IsIn(['DRAFT', 'PUBLISHED', 'ARCHIVED'])
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

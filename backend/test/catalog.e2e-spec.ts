@@ -99,6 +99,43 @@ describe('Catalog — Event enrichi (E2E)', () => {
     expect(restored.body.status).toBe('PUBLISHED');
   });
 
+  it('filtre la recherche par catégorie, tag et commune, et masque les archivés', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({
+        activityId: refs.activityId,
+        categoryId: refs.categoryId,
+        municipalityId: refs.municipalityId,
+        tagIds: [refs.tagId],
+        title: 'Événement filtrable',
+        startsAt: '2026-10-01T10:00:00.000Z',
+      })
+      .expect(201);
+    const id = created.body.id as string;
+
+    const contains = async (queryString: string): Promise<boolean> => {
+      const res = await request(app.getHttpServer())
+        .get(`/api/v1/events?${queryString}`)
+        .set('Authorization', `Bearer ${organizerToken}`)
+        .expect(200);
+      return (res.body.items as { id: string }[]).some((e) => e.id === id);
+    };
+
+    expect(await contains(`categoryId=${refs.categoryId}`)).toBe(true);
+    expect(await contains(`tagId=${refs.tagId}`)).toBe(true);
+    expect(await contains(`municipalityId=${refs.municipalityId}`)).toBe(true);
+    expect(await contains(`categoryId=${refs.municipalityId}`)).toBe(false); // catégorie ≠ id de commune
+
+    // Une fois archivé, il disparaît de la recherche par défaut (PUBLISHED)
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/archive`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(await contains(`categoryId=${refs.categoryId}`)).toBe(false);
+    expect(await contains(`categoryId=${refs.categoryId}&status=ARCHIVED`)).toBe(true);
+  });
+
   it('rejette un tag inexistant (422)', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/events')
