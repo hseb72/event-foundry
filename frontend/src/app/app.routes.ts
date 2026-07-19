@@ -10,6 +10,7 @@ import { CalendarComponent } from './features/calendar/calendar.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
 import { EventDetailComponent } from './features/event-detail/event-detail.component';
+import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { LoginComponent } from './features/login/login.component';
 import { ValidationComponent } from './features/validation/validation.component';
@@ -22,6 +23,7 @@ export const routes: Routes = [
     component: ShellComponent,
     canActivate: [authGuard],
     children: [
+      { path: 'me', component: IdentityComponent },
       { path: 'discover', component: CatalogueComponent },
       { path: 'calendar', component: CalendarComponent },
       { path: 'import', component: ImportComponent },

@@ -4,6 +4,32 @@ export interface AuthTokens {
   tokenType: string;
 }
 
+/** Expériences utilisateur V2 (ADR.10/ADR.11). */
+export type Experience = 'EXPLORER' | 'ORGANIZER' | 'OPERATOR';
+
+/** Organisation à laquelle l'utilisateur appartient (vue « moi »). */
+export interface IdentityOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  roles: string[];
+  subscription: string | null;
+}
+
+/** Vue « moi » de l'identité effective (GET /identity/me). */
+export interface IdentityMe {
+  userId: string;
+  email: string;
+  displayName: string;
+  roles: string[];
+  permissions: string[];
+  experiences: Experience[];
+  activeExperience: Experience | null;
+  activeOrganizationId: string | null;
+  subscription: string | null;
+  organizations: IdentityOrganization[];
+}
+
 export interface ParticipationState {
   interested: boolean;
   reservationStatus: string;
