@@ -136,6 +136,59 @@ describe('Catalog — Event enrichi (E2E)', () => {
     expect(await contains(`categoryId=${refs.categoryId}&status=ARCHIVED`)).toBe(true);
   });
 
+  it('gère les médias : upload, exposition sur la fiche, suppression, RBAC', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Événement média', startsAt: '2026-11-01T10:00:00.000Z' })
+      .expect(201);
+    const id = created.body.id as string;
+    const png = Buffer.from('89504e470d0a1a0a', 'hex'); // en-tête PNG minimal
+
+    // Explorer (sans event.update) → 403
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/media`)
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .attach('file', png, { filename: 'a.png', contentType: 'image/png' })
+      .expect(403);
+
+    // Type non-image → 422
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/media`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .attach('file', Buffer.from('texte'), { filename: 'a.txt', contentType: 'text/plain' })
+      .expect(422);
+
+    // Upload valide
+    const uploaded = await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/media`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .attach('file', png, { filename: 'affiche.png', contentType: 'image/png' })
+      .expect(201);
+    expect(uploaded.body.url).toContain('https://minio.test/');
+    const mediaId = uploaded.body.id as string;
+
+    // Exposé sur la fiche
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/events/${id}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(detail.body.media).toHaveLength(1);
+    expect(detail.body.media[0].id).toBe(mediaId);
+
+    // Suppression
+    await request(app.getHttpServer())
+      .delete(`/api/v1/events/${id}/media/${mediaId}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(204);
+
+    const after = await request(app.getHttpServer())
+      .get(`/api/v1/events/${id}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(after.body.media).toHaveLength(0);
+  });
+
   it('rejette un tag inexistant (422)', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/events')

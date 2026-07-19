@@ -18,13 +18,17 @@ import { EventResponseDto } from '../dto/event-response.dto';
 import { PaginatedEventsResponseDto } from '../dto/paginated-events-response.dto';
 import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
 import { EventMapper } from '../mappers/event.mapper';
+import { EventMediaService } from '../services/event-media.service';
 import { EventsService } from '../services/events.service';
 
 @ApiTags('events')
 @ApiBearerAuth()
 @Controller('events')
 export class EventsController {
-  constructor(private readonly service: EventsService) {}
+  constructor(
+    private readonly service: EventsService,
+    private readonly mediaService: EventMediaService,
+  ) {}
 
   /** Recherche / catalogue (FSPEC.04). L'état de participation de l'utilisateur est inclus. */
   @Get()
@@ -53,7 +57,9 @@ export class EventsController {
   @Get(':id')
   @ApiOkResponse({ type: EventResponseDto })
   async getById(@Param('id', ParseUUIDPipe) id: string): Promise<EventResponseDto> {
-    return EventMapper.toResponse(await this.service.getOrThrow(id));
+    const dto = EventMapper.toResponse(await this.service.getOrThrow(id));
+    dto.media = await this.mediaService.listWithUrls(id);
+    return dto;
   }
 
   /** Archive un Event (retiré du catalogue actif). Réservé à `event.archive`. */

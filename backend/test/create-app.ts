@@ -12,6 +12,8 @@ const minioStub = {
   getObject: async (): Promise<never> => {
     throw new Error('MinIO indisponible en E2E.');
   },
+  removeObject: async (): Promise<void> => undefined,
+  presignedGetUrl: async (key: string): Promise<string> => `https://minio.test/${key}`,
 };
 
 /** Démarre l'application Nest complète (prefix + ValidationPipe comme en production). */

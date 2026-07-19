@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EventMediaDto } from './event-media.dto';
 
 /** État de participation de l'utilisateur courant pour un Event (FSPEC.06). */
 export class ParticipationStateDto {
@@ -58,6 +59,9 @@ export class EventResponseDto {
 
   @ApiProperty({ type: [String], description: 'Tags de classification.' })
   tags!: string[];
+
+  @ApiProperty({ type: [EventMediaDto], description: 'Galerie (peuplée sur la fiche détaillée).' })
+  media!: EventMediaDto[];
 
   @ApiPropertyOptional({ nullable: true, description: 'Ville en texte libre du lieu (legacy).' })
   city!: string | null;

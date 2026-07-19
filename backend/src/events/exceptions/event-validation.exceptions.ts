@@ -27,3 +27,17 @@ export class InvalidTagsException extends UnprocessableEntityException {
     super(`Tags introuvables : ${tagIds.join(', ')}.`);
   }
 }
+
+/** Le fichier fourni n'est pas une image acceptée (HTTP 422). */
+export class InvalidMediaTypeException extends UnprocessableEntityException {
+  constructor(contentType: string) {
+    super(`Type de média non supporté : ${contentType}. Seules les images sont acceptées.`);
+  }
+}
+
+/** Média introuvable pour cet Event (HTTP 404). */
+export class EventMediaNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Média introuvable : ${id}.`);
+  }
+}

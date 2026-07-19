@@ -42,4 +42,13 @@ export class MinioService implements OnModuleInit {
   getObject(key: string): Promise<NodeJS.ReadableStream> {
     return this.client.getObject(this.bucket, key);
   }
+
+  async removeObject(key: string): Promise<void> {
+    await this.client.removeObject(this.bucket, key);
+  }
+
+  /** URL temporaire de lecture directe (pour affichage `<img>` sans en-tête d'auth). */
+  presignedGetUrl(key: string, expirySeconds = 3600): Promise<string> {
+    return this.client.presignedGetObject(this.bucket, key, expirySeconds);
+  }
 }

@@ -22,6 +22,7 @@ export class EventMapper {
       region: event.municipality ? event.municipality.region.name : null,
       country: event.municipality ? event.municipality.region.country.name : null,
       tags: event.tags.map((eventTag) => eventTag.tag.name),
+      media: [],
       city: event.venue ? event.venue.city : null,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt ? event.endsAt.toISOString() : null,
