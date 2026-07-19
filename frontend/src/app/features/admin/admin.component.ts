@@ -32,7 +32,10 @@ import { EntityDef, REFERENCE_ENTITIES } from './reference-admin.model';
   ],
   template: `
     <h1>Administration des référentiels</h1>
-    <p class="muted">Gérez les domaines, activités, types, formats, organisateurs et lieux.</p>
+    <p class="muted">
+      Gérez les domaines, activités, types, formats, organisateurs, lieux, la géographie
+      (pays / régions / villes), les catégories et les tags.
+    </p>
 
     <div class="tabs">
       @for (e of entities; track e.segment) {

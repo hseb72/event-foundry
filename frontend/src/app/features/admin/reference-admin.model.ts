@@ -3,7 +3,7 @@
 export type FieldType = 'text' | 'url' | 'number' | 'select';
 
 /** Source d'options d'un champ `select` (référentiel parent). */
-export type OptionSource = 'domains' | 'activities' | 'organizers';
+export type OptionSource = 'domains' | 'activities' | 'organizers' | 'countries' | 'regions';
 
 export interface FieldDef {
   key: string;
@@ -103,5 +103,56 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
       { key: 'latitude', label: 'Latitude', type: 'number' },
       { key: 'longitude', label: 'Longitude', type: 'number' },
     ],
+  },
+  {
+    segment: 'countries',
+    label: 'Pays',
+    singular: 'Pays',
+    fields: [NAME, { key: 'code', label: 'Code ISO', type: 'text' }],
+  },
+  {
+    segment: 'regions',
+    label: 'Régions',
+    singular: 'Région',
+    fields: [
+      NAME,
+      {
+        key: 'countryId',
+        label: 'Pays',
+        type: 'select',
+        required: true,
+        optionsFrom: 'countries',
+        immutableOnEdit: true,
+      },
+    ],
+  },
+  {
+    segment: 'municipalities',
+    label: 'Villes',
+    singular: 'Ville',
+    fields: [
+      NAME,
+      {
+        key: 'regionId',
+        label: 'Région',
+        type: 'select',
+        required: true,
+        optionsFrom: 'regions',
+        immutableOnEdit: true,
+      },
+      { key: 'postalCode', label: 'Code postal', type: 'text' },
+    ],
+  },
+  {
+    segment: 'categories',
+    label: 'Catégories',
+    singular: 'Catégorie',
+    fields: [NAME],
+  },
+  {
+    segment: 'tags',
+    label: 'Tags',
+    singular: 'Tag',
+    fields: [NAME],
   },
 ];
