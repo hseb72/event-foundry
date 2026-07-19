@@ -331,6 +331,52 @@ model Venue {
   @@map("venues")
 }
 
+// --- Référentiels géographiques (EPIC 02) : Country -> Region -> Municipality ---
+// Hiérarchie simple (les hiérarchies complexes relèvent de la V3 — TSPEC.08). Archivage logique
+// via is_active. RESTRICT sur les relations : un parent référencé ne peut être supprimé.
+
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  code      String?  @unique // ISO 3166-1 alpha-2 (optionnel)
+  isActive  Boolean  @default(true) @map("is_active")
+  regions   Region[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("countries")
+}
+
+model Region {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  countryId      String         @map("country_id") @db.Uuid
+  isActive       Boolean        @default(true) @map("is_active")
+  country        Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  municipalities Municipality[]
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([countryId, name])
+  @@index([countryId])
+  @@map("regions")
+}
+
+model Municipality {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  regionId   String   @map("region_id") @db.Uuid
+  postalCode String?  @map("postal_code")
+  isActive   Boolean  @default(true) @map("is_active")
+  region     Region   @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([regionId, name])
+  @@index([regionId])
+  @@map("municipalities")
+}
+
 // --- Acquisition & pipeline d'import (EPIC 5) ---
 
 /// Document original importé, conservé dans MinIO (jamais en base — ARCHI.01).

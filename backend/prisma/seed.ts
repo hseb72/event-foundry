@@ -286,14 +286,49 @@ async function seedReferenceData(): Promise<void> {
   }
 }
 
+// Amorce géographique minimale (France → régions → villes) — EPIC 02.
+const GEOGRAPHY: { country: string; code: string; regions: { name: string; cities: [string, string][] }[] } = {
+  country: 'France',
+  code: 'FR',
+  regions: [
+    { name: 'Île-de-France', cities: [['Paris', '75000']] },
+    { name: 'Auvergne-Rhône-Alpes', cities: [['Lyon', '69000'], ['Grenoble', '38000']] },
+    { name: 'Occitanie', cities: [['Toulouse', '31000']] },
+  ],
+};
+
+async function seedGeography(): Promise<void> {
+  const country = await prisma.country.upsert({
+    where: { name: GEOGRAPHY.country },
+    update: { code: GEOGRAPHY.code },
+    create: { name: GEOGRAPHY.country, code: GEOGRAPHY.code },
+  });
+
+  for (const region of GEOGRAPHY.regions) {
+    const created = await prisma.region.upsert({
+      where: { countryId_name: { countryId: country.id, name: region.name } },
+      update: {},
+      create: { name: region.name, countryId: country.id },
+    });
+    for (const [city, postalCode] of region.cities) {
+      await prisma.municipality.upsert({
+        where: { regionId_name: { regionId: created.id, name: city } },
+        update: { postalCode },
+        create: { name: city, regionId: created.id, postalCode },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   await seedPermissions();
   await seedRoles();
   await seedSubscriptionPlans();
   await seedAdminAndDemoOrg();
   await seedReferenceData();
+  await seedGeography();
   console.log(
-    'Seed terminé : permissions + rôles V2 + abonnements + admin de dev + organisation démo + référentiels TCG.',
+    'Seed terminé : permissions + rôles V2 + abonnements + admin de dev + organisation démo + référentiels TCG + géographie FR.',
   );
 }
 

@@ -43,3 +43,21 @@ export class AliasNotFoundException extends NotFoundException {
     super(`Alias introuvable : ${id}.`);
   }
 }
+
+export class CountryNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Country introuvable : ${id}.`);
+  }
+}
+
+export class RegionNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Region introuvable : ${id}.`);
+  }
+}
+
+export class MunicipalityNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Municipality introuvable : ${id}.`);
+  }
+}

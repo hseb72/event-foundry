@@ -5,6 +5,9 @@ import { ActivityRepository } from './activities/activity.repository';
 import { AliasRepository } from './aliases/alias.repository';
 import { AliasesController } from './aliases/aliases.controller';
 import { AliasesService } from './aliases/aliases.service';
+import { CountriesController } from './countries/countries.controller';
+import { CountriesService } from './countries/countries.service';
+import { CountryRepository } from './countries/country.repository';
 import { DomainRepository } from './domains/domain.repository';
 import { DomainsController } from './domains/domains.controller';
 import { DomainsService } from './domains/domains.service';
@@ -14,17 +17,24 @@ import { EventFormatsService } from './event-formats/event-formats.service';
 import { EventTypeRepository } from './event-types/event-type.repository';
 import { EventTypesController } from './event-types/event-types.controller';
 import { EventTypesService } from './event-types/event-types.service';
+import { MunicipalitiesController } from './municipalities/municipalities.controller';
+import { MunicipalitiesService } from './municipalities/municipalities.service';
+import { MunicipalityRepository } from './municipalities/municipality.repository';
 import { OrganizerRepository } from './organizers/organizer.repository';
 import { OrganizersController } from './organizers/organizers.controller';
 import { OrganizersService } from './organizers/organizers.service';
+import { RegionRepository } from './regions/region.repository';
+import { RegionsController } from './regions/regions.controller';
+import { RegionsService } from './regions/regions.service';
 import { VenueRepository } from './venues/venue.repository';
 import { VenuesController } from './venues/venues.controller';
 import { VenuesService } from './venues/venues.service';
 
 /**
- * Administration des référentiels métier (FSPEC.07) : Domain, Activity (+ Alias),
- * EventType, EventFormat, Organizer, Venue. Lecture ouverte aux utilisateurs
- * authentifiés ; écritures réservées au rôle ADMIN.
+ * Administration des référentiels métier (TSPEC.08) : Domain, Activity (+ Alias), EventType,
+ * EventFormat, Organizer, Venue, et les référentiels géographiques Country → Region →
+ * Municipality. Lecture ouverte aux utilisateurs authentifiés ; écritures réservées à la
+ * permission `reference.manage` (ADR.08).
  */
 @Module({
   controllers: [
@@ -35,6 +45,9 @@ import { VenuesService } from './venues/venues.service';
     OrganizersController,
     VenuesController,
     AliasesController,
+    CountriesController,
+    RegionsController,
+    MunicipalitiesController,
   ],
   providers: [
     DomainRepository,
@@ -51,6 +64,12 @@ import { VenuesService } from './venues/venues.service';
     VenuesService,
     AliasRepository,
     AliasesService,
+    CountryRepository,
+    CountriesService,
+    RegionRepository,
+    RegionsService,
+    MunicipalityRepository,
+    MunicipalitiesService,
   ],
   exports: [
     DomainRepository,
@@ -60,6 +79,9 @@ import { VenuesService } from './venues/venues.service';
     OrganizerRepository,
     VenueRepository,
     AliasRepository,
+    CountryRepository,
+    RegionRepository,
+    MunicipalityRepository,
   ],
 })
 export class ReferenceDataModule {}
