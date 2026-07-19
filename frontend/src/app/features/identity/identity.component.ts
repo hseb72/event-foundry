@@ -1,4 +1,5 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { IdentityService } from '../../core/api/identity.service';
 import { Experience } from '../../core/models';
 
@@ -22,7 +23,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 @Component({
   selector: 'app-identity',
   standalone: true,
-  imports: [],
+  imports: [FormsModule],
   styles: [
     `
       .head {
@@ -141,6 +142,22 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 
       <div class="grid">
         <section class="card">
+          <h2>Profil</h2>
+          @if (editing()) {
+            <div style="display:grid;gap:0.5rem;max-width:280px">
+              <input class="input" [(ngModel)]="draftName" placeholder="Nom affiché" />
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-primary" (click)="saveProfile()">Enregistrer</button>
+                <button class="btn" (click)="editing.set(false)">Annuler</button>
+              </div>
+            </div>
+          } @else {
+            <p style="margin:0 0 0.6rem"><strong>{{ m.displayName }}</strong></p>
+            <button class="btn" (click)="startEdit(m.displayName)">Modifier le nom affiché</button>
+          }
+        </section>
+
+        <section class="card">
           <h2>Expériences disponibles</h2>
           <div class="chips">
             @for (exp of allExperiences; track exp) {
@@ -224,6 +241,9 @@ export class IdentityComponent implements OnInit {
   readonly allExperiences: Experience[] = ['EXPLORER', 'ORGANIZER', 'OPERATOR'];
   readonly me = this.identity.me;
 
+  readonly editing = signal(false);
+  draftName = '';
+
   readonly permissionGroups = computed<PermissionGroup[]>(() => {
     const permissions = this.me()?.permissions ?? [];
     const byGroup = new Map<string, string[]>();
@@ -252,5 +272,18 @@ export class IdentityComponent implements OnInit {
 
   activate(organizationId: string): void {
     this.identity.switchOrganization(organizationId).subscribe();
+  }
+
+  startEdit(currentName: string): void {
+    this.draftName = currentName;
+    this.editing.set(true);
+  }
+
+  saveProfile(): void {
+    const displayName = this.draftName.trim();
+    if (!displayName) {
+      return;
+    }
+    this.identity.updateProfile({ displayName }).subscribe(() => this.editing.set(false));
   }
 }

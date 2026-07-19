@@ -3,7 +3,7 @@ import { Injectable, signal } from '@angular/core';
 import { Observable, switchMap, tap } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { AuthService } from '../auth/auth.service';
-import { AuthTokens, Experience, IdentityMe } from '../models';
+import { AuthTokens, Experience, IdentityMe, OrganizationAdmin } from '../models';
 
 /**
  * Client du domaine Identity (TSPEC.06). Expose la vue « moi » dans un signal partagé et pilote
@@ -42,5 +42,36 @@ export class IdentityService {
         tap((tokens) => this.auth.applyTokens(tokens)),
         switchMap(() => this.loadMe()),
       );
+  }
+
+  updateProfile(input: { displayName?: string; preferences?: Record<string, unknown> }): Observable<IdentityMe> {
+    return this.http
+      .patch<IdentityMe>(`${API_BASE}/identity/me/profile`, input)
+      .pipe(tap((me) => this.me.set(me)));
+  }
+
+  // --- Administration (permission user.manage côté Backend) ---
+
+  listOrganizations(): Observable<OrganizationAdmin[]> {
+    return this.http.get<OrganizationAdmin[]>(`${API_BASE}/identity/organizations`);
+  }
+
+  createOrganization(name: string, slug: string): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_BASE}/identity/organizations`, { name, slug });
+  }
+
+  addMember(organizationId: string, userId: string, role: string): Observable<void> {
+    return this.http.post<void>(`${API_BASE}/identity/organizations/${organizationId}/members`, {
+      userId,
+      role,
+    });
+  }
+
+  assignRole(userId: string, role: string): Observable<void> {
+    return this.http.post<void>(`${API_BASE}/identity/users/${userId}/roles`, { role });
+  }
+
+  revokeRole(userId: string, role: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE}/identity/users/${userId}/roles/${encodeURIComponent(role)}`);
   }
 }

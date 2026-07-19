@@ -31,6 +31,7 @@ const NAV: NavItem[] = [
   { label: 'Créer un événement', path: '/create', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Importer', path: '/import', experiences: ['ORGANIZER'], permission: 'import.create' },
   { label: 'Validation', path: '/validation', experiences: ['OPERATOR'], permission: 'validation.review' },
+  { label: 'Utilisateurs & organisations', path: '/operator/admin', experiences: ['OPERATOR'], permission: 'user.manage' },
   { label: 'Administration', path: '/admin', experiences: ['OPERATOR'], permission: 'reference.manage' },
 ];
 

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/auth/admin.guard';
 import { authGuard } from './core/auth/auth.guard';
+import { permissionGuard } from './core/auth/permission.guard';
 import { AdminLayoutComponent } from './features/admin/admin-layout.component';
 import { AdminComponent } from './features/admin/admin.component';
 import { JobsAdminComponent } from './features/admin/jobs-admin.component';
@@ -12,6 +13,7 @@ import { CreateEventComponent } from './features/create-event/create-event.compo
 import { EventDetailComponent } from './features/event-detail/event-detail.component';
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
+import { OperatorAdminComponent } from './features/operator/operator-admin.component';
 import { LoginComponent } from './features/login/login.component';
 import { ValidationComponent } from './features/validation/validation.component';
 import { ShellComponent } from './layout/shell.component';
@@ -24,6 +26,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'me', component: IdentityComponent },
+      {
+        path: 'operator/admin',
+        component: OperatorAdminComponent,
+        canActivate: [permissionGuard('user.manage')],
+      },
       { path: 'discover', component: CatalogueComponent },
       { path: 'calendar', component: CalendarComponent },
       { path: 'import', component: ImportComponent },

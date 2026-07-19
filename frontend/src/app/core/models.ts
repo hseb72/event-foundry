@@ -16,6 +16,16 @@ export interface IdentityOrganization {
   subscription: string | null;
 }
 
+/** Organisation vue par l'administration (GET /identity/organizations). */
+export interface OrganizationAdmin {
+  id: string;
+  name: string;
+  slug: string;
+  isActive: boolean;
+  subscription: string | null;
+  memberCount: number;
+}
+
 /** Vue « moi » de l'identité effective (GET /identity/me). */
 export interface IdentityMe {
   userId: string;
