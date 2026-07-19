@@ -147,20 +147,21 @@ modèles **« best »** (précision), **PSM** adapté aux affiches (texte épars
 préservation des espaces inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la
 qualité (confiance, rappel de mots-clés) pour régler ces paramètres.
 
-## Dictionnaire utilisateur issu des référentiels
+## Correction lexicale issue des référentiels
 
 Pour fiabiliser la reconnaissance des **noms métier** (activités, types, formats,
-organisateurs, lieux, villes, alias), le moteur alimente le dictionnaire utilisateur de
-Tesseract (`user_words`) avec les mots des **référentiels**. Ces mots sont chargés via l'**API
-Backend** (le worker n'accède jamais à PostgreSQL, TSPEC.04/ADR.07), mis en cache par TTL, puis
-injectés (`writeText` + `reinitialize` avec `user_words_suffix`, dawgs activés). **Aucune liste
-métier n'est codée en dur** : tout provient des référentiels (règle d'or 1). Comportement
-défensif : Backend indisponible ⇒ liste vide ⇒ OCR standard ; activable/désactivable par
-`OCR_USER_WORDS`.
+organisateurs, lieux, villes, alias), le texte océrisé est **corrigé après l'OCR** par
+rapprochement des **référentiels** : chaque mot suffisamment long, proche d'un unique terme du
+lexique (distance d'édition bornée) et non déjà présent, est remplacé par ce terme (casse
+conservée). Le lexique est chargé via l'**API Backend** (le worker n'accède jamais à
+PostgreSQL, TSPEC.04/ADR.07), mis en cache par TTL. **Aucune liste métier n'est codée en dur** :
+tout provient des référentiels (règle d'or 1). Comportement défensif : Backend indisponible ⇒
+lexique vide ⇒ texte inchangé ; activable/désactivable par `OCR_LEXICON_CORRECTION`.
 
-> Réserve : avec le moteur purement LSTM (OEM 1), l'effet des `user_words` est plus limité
-> qu'avec le moteur legacy ; une correction lexicale post-OCR (côté classifier) reste une piste
-> complémentaire si nécessaire.
+> Choix technique : la voie `user_words`/`reinitialize` de Tesseract a été écartée — elle
+> n'apporte quasiment rien au moteur LSTM et provoque un crash du core WASM sur modèles
+> « best » (`Aborted: missing DotProductSSE`). La correction post-OCR, déterministe et pilotée
+> par les référentiels, atteint le même objectif sans toucher au moteur.
 
 ---
 

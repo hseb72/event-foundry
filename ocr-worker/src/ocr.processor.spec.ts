@@ -8,15 +8,21 @@ function engineResult(text: string, confidence: number): OcrEngineResult {
   return { text, confidence, language: 'fra', engine: 'tesseract', engineVersion: 'tesseract.js@7' };
 }
 
-function build(engine: OcrEngine, imageProcessor: ImageProcessor): OcrProcessor {
+function build(
+  engine: OcrEngine,
+  imageProcessor: ImageProcessor,
+  words?: string[],
+): OcrProcessor {
   const loader = {
     load: jest.fn().mockResolvedValue({ buffer: Buffer.from('img'), contentType: 'image/png' }),
   };
+  const lexicon = words ? { getWords: jest.fn().mockResolvedValue(words) } : undefined;
   return new OcrProcessor(
     loader as unknown as DocumentLoader,
     imageProcessor,
     engine,
     new OcrPostProcessor(),
+    lexicon,
   );
 }
 
@@ -69,5 +75,22 @@ describe('OcrProcessor', () => {
     expect(engine.recognize).toHaveBeenCalledTimes(2);
     expect(result.rawText).toBe('TEXTE NET');
     expect(result.confidence).toBeCloseTo(0.88);
+  });
+
+  it('applique la correction lexicale des référentiels (levier 3)', async () => {
+    const engine = {
+      recognize: jest.fn().mockResolvedValue(engineResult('Tournoi a la Boutioue', 0.8)),
+    };
+    const imageProcessor = {
+      preprocess: jest.fn().mockResolvedValue([{ label: 'grayscale-normalized', buffer: Buffer.from('x') }]),
+    };
+
+    const result = await build(engine as unknown as OcrEngine, imageProcessor, ['Boutique']).process({
+      importJobId: 'job-3',
+      attachmentId: 'att-3',
+      correlationId: 'corr-3',
+    });
+
+    expect(result.rawText).toBe('Tournoi a la Boutique');
   });
 });
