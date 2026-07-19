@@ -56,6 +56,53 @@ import { participationColor, participationLabel } from '../../shared/participati
         gap: 0.5rem;
         margin: 0.5rem 0 0.25rem;
       }
+      .gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        margin: 1rem 0;
+      }
+      .shot {
+        position: relative;
+        margin: 0;
+      }
+      .shot img {
+        width: 160px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+      }
+      .shot .rm {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 0;
+        background: var(--red);
+        color: #fff;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .upload {
+        width: 160px;
+        height: 120px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 0.85rem;
+        text-align: center;
+        padding: 0 0.5rem;
+      }
+      .upload:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
       dl {
         display: grid;
         grid-template-columns: 160px 1fr;
@@ -151,6 +198,25 @@ import { participationColor, participationLabel } from '../../shared/participati
           <p class="desc">{{ event.description }}</p>
         }
 
+        @if (event.media.length || canUpdate()) {
+          <div class="gallery">
+            @for (m of event.media; track m.id) {
+              <figure class="shot">
+                <img [src]="m.url" [alt]="event.title" />
+                @if (canUpdate()) {
+                  <button class="rm" title="Supprimer" (click)="removeMedia(m.id)">×</button>
+                }
+              </figure>
+            }
+            @if (canUpdate()) {
+              <label class="upload">
+                <input type="file" accept="image/*" hidden (change)="onFile($event)" />
+                <span>+ Ajouter une image</span>
+              </label>
+            }
+          </div>
+        }
+
         @if (canArchive() || canRestore()) {
           <div class="admin-actions">
             @if (event.status !== 'ARCHIVED' && canArchive()) {
@@ -215,6 +281,34 @@ export class EventDetailComponent implements OnInit {
 
   canRestore(): boolean {
     return this.auth.hasPermission('event.publish');
+  }
+
+  canUpdate(): boolean {
+    return this.auth.hasPermission('event.update');
+  }
+
+  onFile(evt: Event): void {
+    const input = evt.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || !this.event) {
+      return;
+    }
+    this.eventsApi.uploadMedia(this.event.id, file).subscribe((media) => {
+      this.event?.media.push(media);
+      input.value = '';
+    });
+  }
+
+  removeMedia(mediaId: string): void {
+    if (!this.event) {
+      return;
+    }
+    const eventId = this.event.id;
+    this.eventsApi.deleteMedia(eventId, mediaId).subscribe(() => {
+      if (this.event) {
+        this.event.media = this.event.media.filter((m) => m.id !== mediaId);
+      }
+    });
   }
 
   archive(): void {

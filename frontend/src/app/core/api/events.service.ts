@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { CreateEventInput, EventDto, PaginatedEvents } from '../models';
+import { CreateEventInput, EventDto, EventMediaDto, PaginatedEvents } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class EventsApi {
@@ -30,5 +30,15 @@ export class EventsApi {
 
   restore(id: string): Observable<EventDto> {
     return this.http.post<EventDto>(`${API_BASE}/events/${id}/restore`, {});
+  }
+
+  uploadMedia(id: string, file: File): Observable<EventMediaDto> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<EventMediaDto>(`${API_BASE}/events/${id}/media`, form);
+  }
+
+  deleteMedia(id: string, mediaId: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE}/events/${id}/media/${mediaId}`);
   }
 }

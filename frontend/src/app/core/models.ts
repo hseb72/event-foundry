@@ -26,6 +26,14 @@ export interface OrganizationAdmin {
   memberCount: number;
 }
 
+/** Média (image) d'un Event, avec URL de lecture temporaire. */
+export interface EventMediaDto {
+  id: string;
+  url: string;
+  contentType: string;
+  position: number;
+}
+
 /** Vue « moi » de l'identité effective (GET /identity/me). */
 export interface IdentityMe {
   userId: string;
@@ -62,6 +70,7 @@ export interface EventDto {
   region: string | null;
   country: string | null;
   tags: string[];
+  media: EventMediaDto[];
   city: string | null;
   startsAt: string;
   endsAt: string | null;
