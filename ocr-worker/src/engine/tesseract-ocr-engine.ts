@@ -1,11 +1,22 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { createWorker, OEM, PSM, type Worker as TesseractWorker } from 'tesseract.js';
 import type { OcrEngine, OcrEngineResult } from '../interfaces/ocr-engine.interface';
 
-/** URL des modèles Tesseract selon la variante (défaut : « standard », entier, sûr en WASM). */
-function tessdataUrl(variant?: string): string {
+/**
+ * URL des modèles Tesseract selon la variante. Les modèles « best » (flottants) sont
+ * INCOMPATIBLES avec le core WASM de tesseract.js 7 : ils importent `DotProductSSE`, fonction
+ * qu'aucun core ne fournit → crash `Aborted(missing function ...)`. On force donc « standard »
+ * (entier) à leur place. « fast » (entier) reste possible.
+ */
+function tessdataUrl(variant: string | undefined, logger: Logger): string {
   const base = 'https://tessdata.projectnaptha.com/4.0.0';
-  if (variant === 'best') return `${base}_best`;
+  if (variant === 'best') {
+    logger.warn(
+      'OCR_TESSDATA=best est incompatible avec le core WASM de tesseract.js (crash ' +
+        'DotProductSSE) : bascule automatique sur les modèles « standard ».',
+    );
+    return base;
+  }
   if (variant === 'fast') return `${base}_fast`;
   return base;
 }
@@ -25,20 +36,20 @@ function tessdataUrl(variant?: string): string {
  */
 @Injectable()
 export class TesseractOcrEngine implements OcrEngine, OnModuleDestroy {
+  private readonly logger = new Logger(TesseractOcrEngine.name);
   private worker: TesseractWorker | null = null;
   private readonly languages = process.env.OCR_LANGUAGES ?? 'eng';
   private readonly oem = Number(process.env.OCR_OEM ?? OEM.LSTM_ONLY);
   private readonly psm = (process.env.OCR_PSM ?? PSM.SPARSE_TEXT) as PSM;
   // Modèles « standard » (entiers) par défaut : sûrs avec le core WASM de tesseract.js.
-  // Les modèles « best » (flottants) sont plus précis mais appellent des fonctions SIMD
-  // absentes de certains cores (crash `DotProductSSE`) : à n'activer que si le core le
-  // supporte, via OCR_TESSDATA=best.
-  private readonly langPath = process.env.OCR_LANG_PATH ?? tessdataUrl(process.env.OCR_TESSDATA);
+  private readonly langPath =
+    process.env.OCR_LANG_PATH ?? tessdataUrl(process.env.OCR_TESSDATA, this.logger);
   // Modèles distants (CDN) = .traineddata.gz ; modèles locaux (paquet système) = non gzippés.
   private readonly gzip = process.env.OCR_LANG_GZIP !== 'false';
 
   private async getWorker(): Promise<TesseractWorker> {
     if (!this.worker) {
+      this.logger.log(`Chargement Tesseract langues=${this.languages} depuis ${this.langPath}`);
       this.worker = await createWorker(this.languages, this.oem, {
         langPath: this.langPath,
         gzip: this.gzip,
