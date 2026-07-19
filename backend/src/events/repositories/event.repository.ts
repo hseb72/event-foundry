@@ -50,6 +50,10 @@ export class EventRepository extends BaseRepository<Event> {
     return this.prisma.event.create({ data, include: EVENT_REFS_INCLUDE });
   }
 
+  setStatus(id: string, status: Prisma.EventUpdateInput['status']): Promise<EventWithRefs> {
+    return this.prisma.event.update({ where: { id }, data: { status }, include: EVENT_REFS_INCLUDE });
+  }
+
   async searchPaginated(
     filter: SearchEventsFilter,
   ): Promise<{ items: EventWithRefsAndParticipation[]; total: number }> {

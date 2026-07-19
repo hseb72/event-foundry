@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsNumber,
   IsOptional,
@@ -39,6 +41,23 @@ export class CreateEventDto {
   @IsOptional()
   @IsUUID()
   venueId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Catégorie (classification transverse).' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Commune (localisation géographique).' })
+  @IsOptional()
+  @IsUUID()
+  municipalityId?: string;
+
+  @ApiPropertyOptional({ type: [String], format: 'uuid', description: 'Tags associés.' })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  tagIds?: string[];
 
   @ApiProperty()
   @IsString()

@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { EventResponseDto } from '../dto/event-response.dto';
@@ -31,8 +42,9 @@ export class EventsController {
     };
   }
 
-  /** Création manuelle d'un Event (source = MANUAL). */
+  /** Création manuelle d'un Event (source = MANUAL). Réservé à `event.create` (Organizer). */
   @Post()
+  @RequirePermissions('event.create')
   @ApiCreatedResponse({ type: EventResponseDto })
   async create(@Body() dto: CreateEventDto): Promise<EventResponseDto> {
     return EventMapper.toResponse(await this.service.createManual(dto));
@@ -42,5 +54,23 @@ export class EventsController {
   @ApiOkResponse({ type: EventResponseDto })
   async getById(@Param('id', ParseUUIDPipe) id: string): Promise<EventResponseDto> {
     return EventMapper.toResponse(await this.service.getOrThrow(id));
+  }
+
+  /** Archive un Event (retiré du catalogue actif). Réservé à `event.archive`. */
+  @Post(':id/archive')
+  @RequirePermissions('event.archive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: EventResponseDto })
+  async archive(@Param('id', ParseUUIDPipe) id: string): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.archive(id));
+  }
+
+  /** Restaure un Event archivé (de nouveau publié). Réservé à `event.publish`. */
+  @Post(':id/restore')
+  @RequirePermissions('event.publish')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: EventResponseDto })
+  async restore(@Param('id', ParseUUIDPipe) id: string): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.restore(id));
   }
 }

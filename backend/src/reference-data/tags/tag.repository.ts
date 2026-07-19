@@ -12,4 +12,13 @@ export class TagRepository extends ReferentialRepository<Tag> {
   protected get refDelegate(): ReferentialDelegate<Tag> {
     return this.prisma.tag as unknown as ReferentialDelegate<Tag>;
   }
+
+  /** Retourne, parmi `ids`, ceux qui correspondent à un Tag existant. */
+  async findExistingIds(ids: string[]): Promise<string[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.prisma.tag.findMany({ where: { id: { in: ids } }, select: { id: true } });
+    return rows.map((row) => row.id);
+  }
 }

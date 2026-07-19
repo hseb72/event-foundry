@@ -6,8 +6,11 @@ export const EVENT_REFS_INCLUDE = {
   activity: true,
   eventType: true,
   eventFormat: true,
+  category: true,
   organizer: true,
   venue: true,
+  municipality: { include: { region: { include: { country: true } } } },
+  tags: { include: { tag: true } },
 } as const;
 
 /** Event avec ses référentiels chargés (pour l'exposition via DTO). */

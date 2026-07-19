@@ -20,3 +20,10 @@ export class EventNotFoundException extends NotFoundException {
     super(`Event introuvable : ${id}.`);
   }
 }
+
+/** Un ou plusieurs Tags indiqués n'existent pas (HTTP 422). */
+export class InvalidTagsException extends UnprocessableEntityException {
+  constructor(tagIds: string[]) {
+    super(`Tags introuvables : ${tagIds.join(', ')}.`);
+  }
+}

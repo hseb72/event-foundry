@@ -29,7 +29,7 @@ describe('Reference Data — Géographie (E2E)', () => {
 
   it('crée la hiérarchie Country → Region → Municipality', async () => {
     const suffix = Date.now();
-    const country = await post(app, operatorToken, '/api/v1/countries', { name: `Pays ${suffix}`, code: 'ZZ' }).expect(201);
+    const country = await post(app, operatorToken, '/api/v1/countries', { name: `Pays ${suffix}` }).expect(201);
 
     const region = await post(app, operatorToken, '/api/v1/regions', {
       name: `Région ${suffix}`,

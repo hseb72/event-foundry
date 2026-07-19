@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { EventSource, Prisma } from '@prisma/client';
+import { EventSource, EventStatus, Prisma } from '@prisma/client';
 import {
   ActivityNotFoundException,
+  CategoryNotFoundException,
+  MunicipalityNotFoundException,
   OrganizerNotFoundException,
   VenueNotFoundException,
 } from '../../reference-data/common/exceptions';
 import { ActivityRepository } from '../../reference-data/activities/activity.repository';
+import { CategoryRepository } from '../../reference-data/categories/category.repository';
 import { EventFormatRepository } from '../../reference-data/event-formats/event-format.repository';
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
+import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
+import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { computeDateRange } from '../date-range.util';
 import { CalendarQueryDto } from '../dto/calendar-query.dto';
@@ -19,6 +24,7 @@ import {
   EventNotFoundException,
   InvalidEventFormatException,
   InvalidEventTypeException,
+  InvalidTagsException,
 } from '../exceptions/event-validation.exceptions';
 import { EventRepository } from '../repositories/event.repository';
 
@@ -31,6 +37,9 @@ export class EventsService {
     private readonly eventFormatRepository: EventFormatRepository,
     private readonly organizerRepository: OrganizerRepository,
     private readonly venueRepository: VenueRepository,
+    private readonly categoryRepository: CategoryRepository,
+    private readonly municipalityRepository: MunicipalityRepository,
+    private readonly tagRepository: TagRepository,
   ) {}
 
   async getOrThrow(id: string): Promise<EventWithRefs> {
@@ -122,20 +131,56 @@ export class EventsService {
     if (dto.venueId && !(await this.venueRepository.findById(dto.venueId))) {
       throw new VenueNotFoundException(dto.venueId);
     }
+    if (dto.categoryId && !(await this.categoryRepository.findById(dto.categoryId))) {
+      throw new CategoryNotFoundException(dto.categoryId);
+    }
+    if (dto.municipalityId && !(await this.municipalityRepository.findById(dto.municipalityId))) {
+      throw new MunicipalityNotFoundException(dto.municipalityId);
+    }
+    const tagIds = await this.validateTags(dto.tagIds);
 
     return {
       source,
       activityId: dto.activityId,
       eventTypeId: dto.eventTypeId ?? null,
       eventFormatId: dto.eventFormatId ?? null,
+      categoryId: dto.categoryId ?? null,
       organizerId: dto.organizerId ?? null,
       venueId: dto.venueId ?? null,
+      municipalityId: dto.municipalityId ?? null,
       title: dto.title,
       description: dto.description ?? null,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt ?? null,
       price: dto.price ?? null,
       currency: dto.currency ?? null,
+      tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
     };
+  }
+
+  /** Archive un Event (retiré du catalogue actif, conservé). */
+  async archive(id: string): Promise<EventWithRefs> {
+    await this.getOrThrow(id);
+    return this.repository.setStatus(id, EventStatus.ARCHIVED);
+  }
+
+  /** Restaure un Event archivé (de nouveau publié). */
+  async restore(id: string): Promise<EventWithRefs> {
+    await this.getOrThrow(id);
+    return this.repository.setStatus(id, EventStatus.PUBLISHED);
+  }
+
+  /** Vérifie que tous les tags existent ; renvoie la liste dédoublonnée. */
+  private async validateTags(tagIds: string[] | undefined): Promise<string[]> {
+    if (!tagIds || tagIds.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(tagIds)];
+    const existing = await this.tagRepository.findExistingIds(unique);
+    const missing = unique.filter((id) => !existing.includes(id));
+    if (missing.length > 0) {
+      throw new InvalidTagsException(missing);
+    }
+    return unique;
   }
 }

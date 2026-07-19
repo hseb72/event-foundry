@@ -1,22 +1,34 @@
 import { EventSource } from '@prisma/client';
 import { ActivityRepository } from '../../reference-data/activities/activity.repository';
+import { CategoryRepository } from '../../reference-data/categories/category.repository';
 import { EventFormatRepository } from '../../reference-data/event-formats/event-format.repository';
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
+import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
+import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { CreateEventDto } from '../dto/create-event.dto';
-import { InvalidEventTypeException } from '../exceptions/event-validation.exceptions';
+import {
+  InvalidEventTypeException,
+  InvalidTagsException,
+} from '../exceptions/event-validation.exceptions';
 import { EventRepository } from '../repositories/event.repository';
 import { EventsService } from './events.service';
 
 describe('EventsService', () => {
   let activityRepo: { findById: jest.Mock };
   let eventTypeRepo: { findById: jest.Mock };
+  let categoryRepo: { findById: jest.Mock };
+  let municipalityRepo: { findById: jest.Mock };
+  let tagRepo: { findExistingIds: jest.Mock };
   let service: EventsService;
 
   beforeEach(() => {
     activityRepo = { findById: jest.fn() };
     eventTypeRepo = { findById: jest.fn() };
+    categoryRepo = { findById: jest.fn() };
+    municipalityRepo = { findById: jest.fn() };
+    tagRepo = { findExistingIds: jest.fn().mockResolvedValue([]) };
     const noop = { findById: jest.fn() };
     service = new EventsService(
       { createWithRefs: jest.fn(), findByIdWithRefs: jest.fn() } as unknown as EventRepository,
@@ -25,6 +37,9 @@ describe('EventsService', () => {
       noop as unknown as EventFormatRepository,
       noop as unknown as OrganizerRepository,
       noop as unknown as VenueRepository,
+      categoryRepo as unknown as CategoryRepository,
+      municipalityRepo as unknown as MunicipalityRepository,
+      tagRepo as unknown as TagRepository,
     );
   });
 
@@ -55,5 +70,23 @@ describe('EventsService', () => {
         EventSource.IMPORT,
       ),
     ).rejects.toBeInstanceOf(InvalidEventTypeException);
+  });
+
+  it('inclut les tags valides et rejette un tag inconnu', async () => {
+    activityRepo.findById.mockResolvedValue({ id: 'a1' });
+    tagRepo.findExistingIds.mockResolvedValueOnce(['tag-1']);
+    const data = await service.buildValidatedEventData(
+      { ...baseDto, tagIds: ['tag-1'] } as CreateEventDto,
+      EventSource.MANUAL,
+    );
+    expect(data.tags).toEqual({ create: [{ tagId: 'tag-1' }] });
+
+    tagRepo.findExistingIds.mockResolvedValueOnce([]);
+    await expect(
+      service.buildValidatedEventData(
+        { ...baseDto, tagIds: ['missing'] } as CreateEventDto,
+        EventSource.MANUAL,
+      ),
+    ).rejects.toBeInstanceOf(InvalidTagsException);
   });
 });

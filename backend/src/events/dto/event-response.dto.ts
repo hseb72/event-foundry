@@ -20,6 +20,9 @@ export class EventResponseDto {
   @ApiProperty({ enum: ['IMPORT', 'MANUAL'], description: 'Provenance, non modifiable.' })
   source!: string;
 
+  @ApiProperty({ enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], description: 'Statut catalogue.' })
+  status!: string;
+
   @ApiProperty()
   title!: string;
 
@@ -36,12 +39,27 @@ export class EventResponseDto {
   eventFormat!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
+  category!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
   organizer!: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   venue!: string | null;
 
+  @ApiPropertyOptional({ nullable: true, description: 'Commune (référentiel géographique).' })
+  municipality!: string | null;
+
   @ApiPropertyOptional({ nullable: true })
+  region!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  country!: string | null;
+
+  @ApiProperty({ type: [String], description: 'Tags de classification.' })
+  tags!: string[];
+
+  @ApiPropertyOptional({ nullable: true, description: 'Ville en texte libre du lieu (legacy).' })
   city!: string | null;
 
   @ApiProperty({ description: 'ISO 8601, UTC.' })
