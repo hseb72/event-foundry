@@ -143,12 +143,16 @@ Responsabilités :
 Aucune correction n'est réalisée ici.
 
 Réglages Tesseract (surchargables par variables d'environnement) : moteur **LSTM** (OEM 1),
-modèles **« standard »** (entiers) — sûrs avec le core WASM. Les modèles « best » (flottants)
-sont **incompatibles** avec le core WASM de tesseract.js 7 (ils importent `DotProductSSE`,
-absent des cores → crash `Aborted`) : `OCR_TESSDATA=best` est donc **ignoré** et rebascule sur
-« standard ». **PSM** adapté aux affiches (texte épars par défaut),
-préservation des espaces inter-mots. Un banc d'évaluation (`ocr-worker/eval`) mesure la
-qualité (confiance, rappel de mots-clés) pour régler ces paramètres.
+modèles **« fast »** (entiers) — seuls modèles **sûrs sur tous les cores WASM**. Les modèles
+« best » **et** « standard » sont **flottants** : ils importent `DotProductSSE`, fonction que
+seul le core WASM « relaxedsimd » fournit ; sur les autres cores (le thread *worker* de
+tesseract.js peut en charger un selon la plateforme — constaté sous **WSL2/Node 22**), l'appel
+provoque un crash `Aborted(missing function DotProductSSE)`. `OCR_TESSDATA=best` **ou**
+`standard` est donc **rebasculé sur « fast »**. Un modèle flottant n'est utilisable qu'en
+pointant explicitement `OCR_LANG_PATH` vers des modèles locaux compatibles. **PSM** adapté aux
+affiches (texte épars par défaut), préservation des espaces inter-mots. Un banc d'évaluation
+(`ocr-worker/eval`) mesure la qualité (confiance, rappel de mots-clés) pour régler ces
+paramètres.
 
 ## Correction lexicale issue des référentiels
 
@@ -162,9 +166,8 @@ tout provient des référentiels (règle d'or 1). Comportement défensif : Backe
 lexique vide ⇒ texte inchangé ; activable/désactivable par `OCR_LEXICON_CORRECTION`.
 
 > Choix technique : la voie `user_words`/`reinitialize` de Tesseract a été écartée — elle
-> n'apporte quasiment rien au moteur LSTM et provoque un crash du core WASM sur modèles
-> « best » (`Aborted: missing DotProductSSE`). La correction post-OCR, déterministe et pilotée
-> par les référentiels, atteint le même objectif sans toucher au moteur.
+> n'apporte quasiment rien au moteur LSTM et déstabilise le core WASM. La correction post-OCR,
+> déterministe et pilotée par les référentiels, atteint le même objectif sans toucher au moteur.
 
 ---
 
