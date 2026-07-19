@@ -1,11 +1,12 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Patch } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthTokensDto } from '../../auth/dto/auth-tokens.dto';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { ChangeExperienceDto } from '../dto/change-experience.dto';
 import { IdentityMeDto } from '../dto/identity-me.dto';
 import { SwitchOrganizationDto } from '../dto/switch-organization.dto';
+import { UpdateProfileDto } from '../dto/update-profile.dto';
 import {
   IDENTITY_SERVICE,
   type IIdentityService,
@@ -19,6 +20,7 @@ import { TokenService } from '../services/token.service';
  * permissions du nouveau contexte — sans nouvelle authentification (ADR.11).
  */
 @ApiTags('identity')
+@ApiBearerAuth()
 @Controller('identity/me')
 export class IdentityController {
   constructor(
@@ -28,12 +30,22 @@ export class IdentityController {
 
   @Get()
   @ApiOkResponse({ type: IdentityMeDto })
-  async me(@CurrentUser() user: AuthenticatedUser): Promise<IdentityMeDto> {
-    const [effective, graph] = await Promise.all([
-      this.identity.getEffectiveIdentity(user.userId),
-      this.identity.getIdentityGraph(user.userId),
-    ]);
-    return toIdentityMeDto(effective, graph);
+  me(@CurrentUser() user: AuthenticatedUser): Promise<IdentityMeDto> {
+    return this.buildMe(user.userId);
+  }
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: IdentityMeDto })
+  async updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<IdentityMeDto> {
+    await this.identity.updateProfile(user.userId, {
+      displayName: dto.displayName,
+      preferences: dto.preferences,
+    });
+    return this.buildMe(user.userId);
   }
 
   @Patch('experience')
@@ -56,5 +68,13 @@ export class IdentityController {
   ): Promise<AuthTokensDto> {
     const effective = await this.identity.changeActiveOrganization(user.userId, dto.organizationId);
     return this.tokens.issueTokens(effective);
+  }
+
+  private async buildMe(userId: string): Promise<IdentityMeDto> {
+    const [effective, graph] = await Promise.all([
+      this.identity.getEffectiveIdentity(userId),
+      this.identity.getIdentityGraph(userId),
+    ]);
+    return toIdentityMeDto(effective, graph);
   }
 }

@@ -1,5 +1,6 @@
 import type { Experience } from '@prisma/client';
 import type { IdentityGraph } from '../entities/identity-graph.entity';
+import type { ProfileUpdate } from '../repositories/identity.repository';
 import type { EffectiveIdentity } from './effective-identity';
 
 /** Jeton d'injection : dépendre de l'abstraction, pas de l'implémentation (ADR.07). */
@@ -19,6 +20,8 @@ export interface IIdentityService {
   changeActiveExperience(userId: string, experience: Experience): Promise<EffectiveIdentity>;
   /** Change l'organisation active parmi celles auxquelles l'utilisateur appartient (ou null). */
   changeActiveOrganization(userId: string, organizationId: string | null): Promise<EffectiveIdentity>;
+  /** Met à jour le profil (nom affiché, préférences) de l'utilisateur courant. */
+  updateProfile(userId: string, update: ProfileUpdate): Promise<EffectiveIdentity>;
   /** Pose le rôle Explorer par défaut (inscription) et l'expérience EXPLORER. Idempotent. */
   assignDefaultExplorerRole(userId: string): Promise<void>;
 }

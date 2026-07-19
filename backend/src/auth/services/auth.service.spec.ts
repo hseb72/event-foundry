@@ -51,6 +51,7 @@ describe('AuthService', () => {
       getIdentityGraph: jest.fn(),
       changeActiveExperience: jest.fn(),
       changeActiveOrganization: jest.fn(),
+      updateProfile: jest.fn(),
       assignDefaultExplorerRole: jest.fn().mockResolvedValue(undefined),
     };
     tokens = { issueTokens: jest.fn().mockResolvedValue(TOKENS) };

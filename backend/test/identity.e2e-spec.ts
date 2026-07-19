@@ -1,0 +1,166 @@
+import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import { createTestApp, createUser, prisma, uniqueEmail } from './create-app';
+
+const PASSWORD = 'un-mot-de-passe-solide';
+
+/** Réf. d'identité minimale requise par les tests (idempotent) : permissions, rôles, grants, offre. */
+async function ensureIdentitySeed(app: INestApplication): Promise<void> {
+  const db = prisma(app);
+  const permissions = ['catalog.read', 'planning.manage', 'reservation.manage', 'user.manage', 'event.create'];
+  for (const key of permissions) {
+    await db.permission.upsert({ where: { key }, update: {}, create: { key } });
+  }
+  await db.subscriptionPlan.upsert({
+    where: { key: 'FREE' },
+    update: {},
+    create: { key: 'FREE', name: 'Free', level: 0 },
+  });
+
+  const roles: { name: string; scope: 'PLATFORM' | 'ORGANIZATION'; experience: 'EXPLORER' | 'ORGANIZER' | 'OPERATOR'; perms: string[] }[] = [
+    { name: 'Explorer', scope: 'PLATFORM', experience: 'EXPLORER', perms: ['catalog.read', 'planning.manage', 'reservation.manage'] },
+    { name: 'Platform Operator', scope: 'PLATFORM', experience: 'OPERATOR', perms: ['catalog.read', 'user.manage'] },
+    { name: 'Organizer', scope: 'ORGANIZATION', experience: 'ORGANIZER', perms: ['catalog.read', 'event.create'] },
+  ];
+  for (const role of roles) {
+    const created = await db.role.upsert({
+      where: { name: role.name },
+      update: { scope: role.scope, experience: role.experience },
+      create: { name: role.name, scope: role.scope, experience: role.experience },
+    });
+    const perms = await db.permission.findMany({ where: { key: { in: role.perms } }, select: { id: true } });
+    await db.rolePermission.deleteMany({ where: { roleId: created.id } });
+    await db.rolePermission.createMany({
+      data: perms.map((p) => ({ roleId: created.id, permissionId: p.id })),
+      skipDuplicates: true,
+    });
+  }
+}
+
+async function login(app: INestApplication, email: string): Promise<string> {
+  const res = await request(app.getHttpServer())
+    .post('/api/v1/auth/login')
+    .send({ email, password: PASSWORD })
+    .expect(200);
+  return res.body.accessToken as string;
+}
+
+describe('Identity (E2E)', () => {
+  let app: INestApplication;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+    await ensureIdentitySeed(app);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('inscrit un Explorer par défaut et expose son identité effective', async () => {
+    const email = uniqueEmail('explorer');
+    const register = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({ email, password: PASSWORD, displayName: 'Exploratrice' })
+      .expect(201);
+
+    const me = await request(app.getHttpServer())
+      .get('/api/v1/identity/me')
+      .set('Authorization', `Bearer ${register.body.accessToken}`)
+      .expect(200);
+
+    expect(me.body.roles).toContain('Explorer');
+    expect(me.body.experiences).toEqual(['EXPLORER']);
+    expect(me.body.activeExperience).toBe('EXPLORER');
+    expect(me.body.permissions).toContain('planning.manage');
+    expect(me.body.permissions).not.toContain('user.manage');
+  });
+
+  it('met à jour le profil (nom affiché)', async () => {
+    const email = uniqueEmail('profile');
+    const register = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({ email, password: PASSWORD, displayName: 'Avant' })
+      .expect(201);
+
+    const updated = await request(app.getHttpServer())
+      .patch('/api/v1/identity/me/profile')
+      .set('Authorization', `Bearer ${register.body.accessToken}`)
+      .send({ displayName: 'Après', preferences: { theme: 'dark' } })
+      .expect(200);
+
+    expect(updated.body.displayName).toBe('Après');
+  });
+
+  it("refuse de basculer vers une expérience non disponible (409)", async () => {
+    const email = uniqueEmail('exp');
+    const register = await request(app.getHttpServer())
+      .post('/api/v1/auth/register')
+      .send({ email, password: PASSWORD, displayName: 'Exp' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch('/api/v1/identity/me/experience')
+      .set('Authorization', `Bearer ${register.body.accessToken}`)
+      .send({ experience: 'OPERATOR' })
+      .expect(409);
+  });
+
+  it("interdit les routes d'administration sans la permission user.manage (403)", async () => {
+    const email = uniqueEmail('noperm');
+    await createUser(app, email, PASSWORD, ['Explorer']);
+    const token = await login(app, email);
+
+    await request(app.getHttpServer())
+      .get('/api/v1/identity/organizations')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+  });
+
+  it('un Operator administre organisations, membres et rôles (contexte org-scopé)', async () => {
+    const operatorEmail = uniqueEmail('operator');
+    await createUser(app, operatorEmail, PASSWORD, ['Explorer', 'Platform Operator']);
+    const operatorToken = await login(app, operatorEmail);
+
+    // Accès admin autorisé
+    await request(app.getHttpServer())
+      .get('/api/v1/identity/organizations')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .expect(200);
+
+    // Création d'une organisation
+    const slug = `org-${Date.now()}`;
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/identity/organizations')
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({ name: 'Boutique Test', slug })
+      .expect(201);
+    const orgId = created.body.id as string;
+    expect(orgId).toEqual(expect.any(String));
+
+    // Un membre Explorer, rattaché comme Organizer à l'organisation
+    const memberEmail = uniqueEmail('member');
+    const member = await createUser(app, memberEmail, PASSWORD, ['Explorer']);
+    await request(app.getHttpServer())
+      .post(`/api/v1/identity/organizations/${orgId}/members`)
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({ userId: member.id, role: 'Organizer' })
+      .expect(204);
+
+    // Le membre voit désormais l'organisation et l'expérience Organizer
+    const memberToken = await login(app, memberEmail);
+    const memberMe = await request(app.getHttpServer())
+      .get('/api/v1/identity/me')
+      .set('Authorization', `Bearer ${memberToken}`)
+      .expect(200);
+    expect(memberMe.body.experiences).toContain('ORGANIZER');
+    expect(memberMe.body.organizations.map((o: { id: string }) => o.id)).toContain(orgId);
+
+    // Affecter un rôle d'ORGANISATION comme rôle plateforme est refusé (422)
+    await request(app.getHttpServer())
+      .post(`/api/v1/identity/users/${member.id}/roles`)
+      .set('Authorization', `Bearer ${operatorToken}`)
+      .send({ role: 'Organizer' })
+      .expect(422);
+  });
+});

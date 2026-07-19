@@ -5,7 +5,7 @@ import { ExperienceNotAvailableException } from '../exceptions/experience-not-av
 import { OrganizationNotAccessibleException } from '../exceptions/organization-not-accessible.exception';
 import type { EffectiveIdentity } from '../interfaces/effective-identity';
 import type { IIdentityService } from '../interfaces/identity-service.interface';
-import { IdentityRepository } from '../repositories/identity.repository';
+import { IdentityRepository, type ProfileUpdate } from '../repositories/identity.repository';
 import { availableExperiences, computeEffectiveIdentity } from './effective-identity.util';
 
 const DEFAULT_ROLE = 'Explorer';
@@ -64,6 +64,11 @@ export class IdentityService implements IIdentityService {
 
     await this.repository.setActiveOrganization(userId, organizationId);
     this.logger.log(`OrganizationChanged user=${userId} organization=${organizationId ?? 'none'}`);
+    return this.getEffectiveIdentity(userId);
+  }
+
+  async updateProfile(userId: string, update: ProfileUpdate): Promise<EffectiveIdentity> {
+    await this.repository.updateProfile(userId, update);
     return this.getEffectiveIdentity(userId);
   }
 
