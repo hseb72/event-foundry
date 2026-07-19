@@ -331,9 +331,9 @@ Toute évolution future devra respecter ces principes.
 
 02-FSPEC.09-RecommendationEngine-v2.0
 
-99-ADR.09-DeterministicRecommendationEngine-v2.0
+99-ADR.09-DeterministicRecommendationEngine
 
-99-ADR.10-MultiExperiencePlatform-v2.0
+99-ADR.10-MultiExperiencePlatform
 
 ---
 

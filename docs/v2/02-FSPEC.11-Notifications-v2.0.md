@@ -2,7 +2,7 @@
 
 **Document** : V2.05
 
-**Fichier** : 12-V2.05-Notifications-v2.0.md
+**Fichier** : 02-FSPEC.11-Notifications-v2.0.md
 
 **Version** : 2.0
 
@@ -184,11 +184,11 @@ Ces évolutions devront respecter les principes définis dans ce document.
 
 # Documents liés
 
-12-V2.02-Planning-v2.0
+02-FSPEC.08-Planning-v2.0
 
-12-V2.03-RecommendationEngine-v2.0
+02-FSPEC.09-RecommendationEngine-v2.0
 
-12-V2.04-ProfilesAndPermissions-v2.0
+02-FSPEC.10-ProfilesAndPermissions-v2.0
 
 ---
 

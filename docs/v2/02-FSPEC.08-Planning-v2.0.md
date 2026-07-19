@@ -2,7 +2,7 @@
 
 **Document** : V2.03
 
-**Fichier** : 12-V2.03-Planning-v2.0.md
+**Fichier** : 02-FSPEC.08-Planning-v2.0.md
 
 **Version** : 2.0
 
@@ -220,15 +220,15 @@ Il devient un outil de décision.
 
 # Documents liés
 
-11-V2.01-ProductVision-v2.0
+10-STRAT.01-ProductVision-v2.0
 
-12-V2.01-FunctionalSpecifications-v2.0
+02-FSPEC.00-FunctionalSpecifications-v2.0
 
-12-V2.02-RecommendationEngine-v2.0
+02-FSPEC.09-RecommendationEngine-v2.0
 
-12-V2.04-ProfilesAndPermissions-v2.0
+02-FSPEC.10-ProfilesAndPermissions-v2.0
 
-12-V2.05-Notifications-v2.0
+02-FSPEC.11-Notifications-v2.0
 
 ---
 

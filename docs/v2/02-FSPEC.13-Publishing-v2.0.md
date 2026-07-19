@@ -2,7 +2,7 @@
 
 **Document** : V2.07
 
-**Fichier** : 12-V2.07-Publishing-v2.0.md
+**Fichier** : 02-FSPEC.13-Publishing-v2.0.md
 
 **Version** : 2.0
 
@@ -167,13 +167,13 @@ Chaque événement publié devient une ressource exploitable par l'ensemble de l
 
 # Documents liés
 
-12-V2.01-FunctionalSpecifications-v2.0
+02-FSPEC.00-FunctionalSpecifications-v2.0
 
-11-V2.03-UserExperiences-v2.0
+10-STRAT.03-UserExperiences-v2.0
 
 03-TechnicalSpecifications-v1.0
 
-ADR.10-MultiExperiencePlatform
+99-ADR.10-MultiExperiencePlatform
 
 ---
 

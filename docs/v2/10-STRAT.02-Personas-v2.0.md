@@ -2,7 +2,7 @@
 
 **Document** : V2.02
 
-**Fichier** : 11-V2.02-Personas-v2.0.md
+**Fichier** : 10-STRAT.02-Personas-v2.0.md
 
 **Version** : 2.0
 
@@ -323,13 +323,13 @@ Une fonctionnalité destinée à un persona ne doit pas perturber les autres exp
 
 # Documents liés
 
-11-V2.01-ProductVision-v2.0
+10-STRAT.01-ProductVision-v2.0
 
-11-V2.03-UserExperiences-v2.0
+10-STRAT.03-UserExperiences-v2.0
 
-12-V2.01-FunctionalSpecifications-v2.0
+02-FSPEC.00-FunctionalSpecifications-v2.0
 
-ADR.08-UserRolesAndRBAC
+99-ADR.08-RoleBasedAccessControl
 
 ---
 

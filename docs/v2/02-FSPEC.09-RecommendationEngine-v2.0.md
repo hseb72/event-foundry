@@ -2,7 +2,7 @@
 
 **Document** : V2.05
 
-**Fichier** : 12-V2.02-RecommendationEngine-v2.0.md
+**Fichier** : 02-FSPEC.09-RecommendationEngine-v2.0.md
 
 **Version** : 2.0
 
@@ -293,15 +293,15 @@ Ces évolutions devront toujours respecter les principes définis dans ce docume
 
 # Documents liés
 
-11-V2.01-ProductVision-v2.0
+10-STRAT.01-ProductVision-v2.0
 
-12-V2.01-FunctionalSpecifications-v2.0
+02-FSPEC.00-FunctionalSpecifications-v2.0
 
-12-V2.05-Planning-v2.0
+02-FSPEC.08-Planning-v2.0
 
-12-V2.06-Discovery-v2.0
+02-FSPEC.12-Discovery-v2.0
 
-ADR.09-RecommendationEngine
+99-ADR.09-DeterministicRecommendationEngine
 
 ---
 

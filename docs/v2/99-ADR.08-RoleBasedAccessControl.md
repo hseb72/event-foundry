@@ -121,11 +121,11 @@ Les permissions restent indépendantes :
 
 # Documents liés
 
-ADR.10-MultiExperiencePlatform
+99-ADR.10-MultiExperiencePlatform
 
-ADR.11-IdentityRolesExperiencesSubscriptions
+99-ADR.11-IdentityRolesExperiencesSubscriptions
 
-12-V2.04-ProfilesAndPermissions-v2.0
+02-FSPEC.10-ProfilesAndPermissions-v2.0
 
 ---
 

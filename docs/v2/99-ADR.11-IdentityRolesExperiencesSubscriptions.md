@@ -248,13 +248,13 @@ Toute évolution future devra respecter cette architecture.
 
 # Documents liés
 
-ADR.08-UserRolesAndRBAC
+99-ADR.08-RoleBasedAccessControl
 
-11-V2.02-Personas-v2.0
+10-STRAT.02-Personas-v2.0
 
-11-V2.03-UserExperiences-v2.0
+10-STRAT.03-UserExperiences-v2.0
 
-12-V2.04-ProfilesAndPermissions-v2.0
+02-FSPEC.10-ProfilesAndPermissions-v2.0
 
 ---
 

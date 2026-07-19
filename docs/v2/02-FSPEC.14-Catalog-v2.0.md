@@ -193,13 +193,13 @@ Cette évolution constitue l'un des changements majeurs de la plateforme.
 
 02-FSPEC.07-ReferenceData-v1.0
 
-02-FSPEC.09-Planning-v2.0
+02-FSPEC.08-Planning-v2.0
 
-02-FSPEC.10-RecommendationEngine-v2.0
+02-FSPEC.09-RecommendationEngine-v2.0
 
-02-FSPEC.13-Discovery-v2.0
+02-FSPEC.12-Discovery-v2.0
 
-02-FSPEC.14-Publishing-v2.0
+02-FSPEC.13-Publishing-v2.0
 
 ---
 

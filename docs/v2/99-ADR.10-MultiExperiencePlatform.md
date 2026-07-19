@@ -134,13 +134,13 @@ Les nouvelles expériences pourront être ajoutées sans remettre en cause l'arc
 
 # Documents liés
 
-11-V2.02-Personas-v2.0
+10-STRAT.02-Personas-v2.0
 
-11-V2.03-UserExperiences-v2.0
+10-STRAT.03-UserExperiences-v2.0
 
-ADR.08-RoleBasedAccessControl
+99-ADR.08-RoleBasedAccessControl
 
-ADR.11-IdentityRolesExperiencesSubscriptions
+99-ADR.11-IdentityRolesExperiencesSubscriptions
 
 ---
 

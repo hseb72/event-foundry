@@ -190,7 +190,7 @@ Le patrimoine culturel est exploité par Discovery, le moteur de recommandation 
 
 02-FSPEC.14-Catalog-v2.0
 
-99-ADR.11-IdentityRolesExperiencesSubscriptions-v2.0
+99-ADR.11-IdentityRolesExperiencesSubscriptions
 
 ---
 

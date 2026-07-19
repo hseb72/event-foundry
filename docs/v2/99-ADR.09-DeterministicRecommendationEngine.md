@@ -113,11 +113,11 @@ La confiance utilisateur est renforcée.
 
 # Documents liés
 
-12-V2.02-RecommendationEngine-v2.0
+02-FSPEC.09-RecommendationEngine-v2.0
 
-12-V2.03-Planning-v2.0
+02-FSPEC.08-Planning-v2.0
 
-11-V2.01-ProductVision-v2.0
+10-STRAT.01-ProductVision-v2.0
 
 ---
 
