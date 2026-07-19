@@ -28,6 +28,7 @@ const EXPERIENCES: ExperienceMeta[] = [
 const NAV: NavItem[] = [
   { label: 'Découvrir', path: '/discover', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },
+  { label: 'Mes événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Créer un événement', path: '/create', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Importer', path: '/import', experiences: ['ORGANIZER'], permission: 'import.create' },
   { label: 'Validation', path: '/validation', experiences: ['OPERATOR'], permission: 'validation.review' },

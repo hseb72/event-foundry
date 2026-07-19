@@ -26,6 +26,14 @@ export interface OrganizationAdmin {
   memberCount: number;
 }
 
+/** Entrée du journal des transitions de statut d'un Event. */
+export interface EventStatusEventDto {
+  fromStatus: string | null;
+  toStatus: string;
+  actorId: string | null;
+  occurredAt: string;
+}
+
 /** Média (image) d'un Event, avec URL de lecture temporaire. */
 export interface EventMediaDto {
   id: string;

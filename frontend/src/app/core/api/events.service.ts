@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { CreateEventInput, EventDto, EventMediaDto, PaginatedEvents } from '../models';
+import {
+  CreateEventInput,
+  EventDto,
+  EventMediaDto,
+  EventStatusEventDto,
+  PaginatedEvents,
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class EventsApi {
@@ -24,12 +30,32 @@ export class EventsApi {
     return this.http.get<EventDto>(`${API_BASE}/events/${id}`);
   }
 
+  private transition(id: string, action: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/${id}/${action}`, {});
+  }
+
+  submit(id: string): Observable<EventDto> {
+    return this.transition(id, 'submit');
+  }
+
+  publish(id: string): Observable<EventDto> {
+    return this.transition(id, 'publish');
+  }
+
+  unpublish(id: string): Observable<EventDto> {
+    return this.transition(id, 'unpublish');
+  }
+
   archive(id: string): Observable<EventDto> {
-    return this.http.post<EventDto>(`${API_BASE}/events/${id}/archive`, {});
+    return this.transition(id, 'archive');
   }
 
   restore(id: string): Observable<EventDto> {
-    return this.http.post<EventDto>(`${API_BASE}/events/${id}/restore`, {});
+    return this.transition(id, 'restore');
+  }
+
+  history(id: string): Observable<EventStatusEventDto[]> {
+    return this.http.get<EventStatusEventDto[]>(`${API_BASE}/events/${id}/history`);
   }
 
   uploadMedia(id: string, file: File): Observable<EventMediaDto> {

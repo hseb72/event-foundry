@@ -14,6 +14,7 @@ import { EventDetailComponent } from './features/event-detail/event-detail.compo
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
+import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
 import { ValidationComponent } from './features/validation/validation.component';
 import { ShellComponent } from './layout/shell.component';
@@ -30,6 +31,11 @@ export const routes: Routes = [
         path: 'operator/admin',
         component: OperatorAdminComponent,
         canActivate: [permissionGuard('user.manage')],
+      },
+      {
+        path: 'organizer/events',
+        component: OrganizerEventsComponent,
+        canActivate: [permissionGuard('event.create')],
       },
       { path: 'discover', component: CatalogueComponent },
       { path: 'calendar', component: CalendarComponent },
