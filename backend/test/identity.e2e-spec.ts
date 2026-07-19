@@ -1,41 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createTestApp, createUser, prisma, uniqueEmail } from './create-app';
+import { createTestApp, createUser, ensureIdentitySeed, uniqueEmail } from './create-app';
 
 const PASSWORD = 'un-mot-de-passe-solide';
-
-/** Réf. d'identité minimale requise par les tests (idempotent) : permissions, rôles, grants, offre. */
-async function ensureIdentitySeed(app: INestApplication): Promise<void> {
-  const db = prisma(app);
-  const permissions = ['catalog.read', 'planning.manage', 'reservation.manage', 'user.manage', 'event.create'];
-  for (const key of permissions) {
-    await db.permission.upsert({ where: { key }, update: {}, create: { key } });
-  }
-  await db.subscriptionPlan.upsert({
-    where: { key: 'FREE' },
-    update: {},
-    create: { key: 'FREE', name: 'Free', level: 0 },
-  });
-
-  const roles: { name: string; scope: 'PLATFORM' | 'ORGANIZATION'; experience: 'EXPLORER' | 'ORGANIZER' | 'OPERATOR'; perms: string[] }[] = [
-    { name: 'Explorer', scope: 'PLATFORM', experience: 'EXPLORER', perms: ['catalog.read', 'planning.manage', 'reservation.manage'] },
-    { name: 'Platform Operator', scope: 'PLATFORM', experience: 'OPERATOR', perms: ['catalog.read', 'user.manage'] },
-    { name: 'Organizer', scope: 'ORGANIZATION', experience: 'ORGANIZER', perms: ['catalog.read', 'event.create'] },
-  ];
-  for (const role of roles) {
-    const created = await db.role.upsert({
-      where: { name: role.name },
-      update: { scope: role.scope, experience: role.experience },
-      create: { name: role.name, scope: role.scope, experience: role.experience },
-    });
-    const perms = await db.permission.findMany({ where: { key: { in: role.perms } }, select: { id: true } });
-    await db.rolePermission.deleteMany({ where: { roleId: created.id } });
-    await db.rolePermission.createMany({
-      data: perms.map((p) => ({ roleId: created.id, permissionId: p.id })),
-      skipDuplicates: true,
-    });
-  }
-}
 
 async function login(app: INestApplication, email: string): Promise<string> {
   const res = await request(app.getHttpServer())

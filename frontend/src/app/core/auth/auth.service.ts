@@ -118,10 +118,6 @@ export class AuthService {
     return this.claims()?.organizationId ?? null;
   }
 
-  isAdmin(): boolean {
-    return this.roles().includes('ADMIN');
-  }
-
   /** Identifiant de l'utilisateur courant (claim `sub` du JWT), ou null. */
   userId(): string | null {
     return this.claims()?.sub ?? null;

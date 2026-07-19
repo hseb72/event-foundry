@@ -12,8 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { AliasesService } from './aliases.service';
 import { AliasResponseDto, CreateAliasDto, UpdateAliasDto } from './alias.dto';
 import { AliasMapper } from './alias.mapper';
@@ -34,7 +33,7 @@ export class AliasesController {
   }
 
   @Post('activities/:activityId/aliases')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async create(
     @Param('activityId', ParseUUIDPipe) activityId: string,
     @Body() dto: CreateAliasDto,
@@ -43,7 +42,7 @@ export class AliasesController {
   }
 
   @Put('aliases/:id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateAliasDto,
@@ -52,7 +51,7 @@ export class AliasesController {
   }
 
   @Delete('aliases/:id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   @HttpCode(HttpStatus.OK)
   async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<AliasResponseDto> {
     return AliasMapper.toResponse(await this.service.deactivate(id));

@@ -12,8 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import {
   CreateEventFormatDto,
   EventFormatResponseDto,
@@ -38,13 +37,13 @@ export class EventFormatsController {
   }
 
   @Post()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async create(@Body() dto: CreateEventFormatDto): Promise<EventFormatResponseDto> {
     return EventFormatMapper.toResponse(await this.service.create(dto));
   }
 
   @Put(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEventFormatDto,
@@ -53,7 +52,7 @@ export class EventFormatsController {
   }
 
   @Delete(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   @HttpCode(HttpStatus.OK)
   async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<EventFormatResponseDto> {
     return EventFormatMapper.toResponse(await this.service.deactivate(id));

@@ -12,8 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CreateOrganizerDto, OrganizerResponseDto, UpdateOrganizerDto } from './organizer.dto';
 import { OrganizerMapper } from './organizer.mapper';
 import { OrganizersService } from './organizers.service';
@@ -31,13 +30,13 @@ export class OrganizersController {
   }
 
   @Post()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async create(@Body() dto: CreateOrganizerDto): Promise<OrganizerResponseDto> {
     return OrganizerMapper.toResponse(await this.service.create(dto));
   }
 
   @Put(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateOrganizerDto,
@@ -46,7 +45,7 @@ export class OrganizersController {
   }
 
   @Delete(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   @HttpCode(HttpStatus.OK)
   async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<OrganizerResponseDto> {
     return OrganizerMapper.toResponse(await this.service.deactivate(id));

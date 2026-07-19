@@ -12,8 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CreateDomainDto, DomainResponseDto, UpdateDomainDto } from './domain.dto';
 import { DomainMapper } from './domain.mapper';
 import { DomainsService } from './domains.service';
@@ -31,13 +30,13 @@ export class DomainsController {
   }
 
   @Post()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async create(@Body() dto: CreateDomainDto): Promise<DomainResponseDto> {
     return DomainMapper.toResponse(await this.service.create(dto));
   }
 
   @Put(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDomainDto,
@@ -46,7 +45,7 @@ export class DomainsController {
   }
 
   @Delete(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   @HttpCode(HttpStatus.OK)
   async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<DomainResponseDto> {
     return DomainMapper.toResponse(await this.service.deactivate(id));

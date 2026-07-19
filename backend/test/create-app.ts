@@ -51,6 +51,65 @@ export async function ensureRoles(app: INestApplication): Promise<void> {
   }
 }
 
+/**
+ * Seed d'identité V2 minimal pour les tests (idempotent) : permissions atomiques, rôles V2
+ * (Explorer / Organizer / Platform Operator) avec leurs grants, et l'offre FREE. Aligné sur le
+ * seed applicatif ; le seed fait autorité sur les grants (resynchronisation stricte).
+ */
+export async function ensureIdentitySeed(app: INestApplication): Promise<void> {
+  const db = prisma(app);
+  const permissions = [
+    'catalog.read',
+    'event.read',
+    'event.create',
+    'planning.manage',
+    'reservation.manage',
+    'import.execute',
+    'validation.review',
+    'reference.manage',
+    'pipeline.manage',
+    'dashboard.view',
+    'user.manage',
+  ];
+  for (const key of permissions) {
+    await db.permission.upsert({ where: { key }, update: {}, create: { key } });
+  }
+  await db.subscriptionPlan.upsert({
+    where: { key: 'FREE' },
+    update: {},
+    create: { key: 'FREE', name: 'Free', level: 0 },
+  });
+
+  const roles: {
+    name: string;
+    scope: 'PLATFORM' | 'ORGANIZATION';
+    experience: 'EXPLORER' | 'ORGANIZER' | 'OPERATOR';
+    perms: string[];
+  }[] = [
+    { name: 'Explorer', scope: 'PLATFORM', experience: 'EXPLORER', perms: ['catalog.read', 'planning.manage', 'reservation.manage'] },
+    { name: 'Organizer', scope: 'ORGANIZATION', experience: 'ORGANIZER', perms: ['catalog.read', 'event.create'] },
+    {
+      name: 'Platform Operator',
+      scope: 'PLATFORM',
+      experience: 'OPERATOR',
+      perms: ['catalog.read', 'event.read', 'import.execute', 'validation.review', 'reference.manage', 'pipeline.manage', 'dashboard.view', 'user.manage'],
+    },
+  ];
+  for (const role of roles) {
+    const created = await db.role.upsert({
+      where: { name: role.name },
+      update: { scope: role.scope, experience: role.experience },
+      create: { name: role.name, scope: role.scope, experience: role.experience },
+    });
+    const perms = await db.permission.findMany({ where: { key: { in: role.perms } }, select: { id: true } });
+    await db.rolePermission.deleteMany({ where: { roleId: created.id } });
+    await db.rolePermission.createMany({
+      data: perms.map((permission) => ({ roleId: created.id, permissionId: permission.id })),
+      skipDuplicates: true,
+    });
+  }
+}
+
 /** Crée un utilisateur avec les rôles donnés (mot de passe haché), et le retourne. */
 export async function createUser(
   app: INestApplication,

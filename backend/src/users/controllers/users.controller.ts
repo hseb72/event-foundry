@@ -1,14 +1,13 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { SetUserRolesDto } from '../dto/set-user-roles.dto';
 import { UpdateUserStatusDto } from '../dto/update-user-status.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import { UserMapper } from '../mappers/user.mapper';
 import { UserNotFoundException } from '../exceptions/user-not-found.exception';
-import { SystemRole } from '../constants/role.constants';
 import { UsersService } from '../services/users.service';
 
 @ApiTags('users')
@@ -30,7 +29,7 @@ export class UsersController {
 
   /** Administration : liste des utilisateurs (réservé ADMIN). */
   @Get()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('user.manage')
   @ApiOkResponse({ type: [UserResponseDto] })
   async list(): Promise<UserResponseDto[]> {
     const users = await this.usersService.listAll();
@@ -39,7 +38,7 @@ export class UsersController {
 
   /** Administration : active / désactive un compte (réservé ADMIN). */
   @Patch(':id/status')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('user.manage')
   @ApiOkResponse({ type: UserResponseDto })
   async setStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -53,7 +52,7 @@ export class UsersController {
 
   /** Administration : remplace les rôles d'un utilisateur (réservé ADMIN). */
   @Put(':id/roles')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('user.manage')
   @ApiOkResponse({ type: UserResponseDto })
   async setRoles(
     @Param('id', ParseUUIDPipe) id: string,

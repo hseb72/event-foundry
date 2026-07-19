@@ -7,15 +7,14 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './controllers/auth.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
-import { RolesGuard } from './guards/roles.guard';
 import { AuthService } from './services/auth.service';
 
 /**
  * Authentification & autorisation.
  *
  * Les guards globaux (APP_GUARD) s'enchaînent : JwtAuthGuard authentifie (sauf @Public()), puis
- * RolesGuard (RBAC par rôle — @Roles, compat V1) et PermissionsGuard (RBAC fin — @RequirePermissions,
- * mécanisme V2). AuthModule dépend d'IdentityModule (calcul de l'identité effective + jetons).
+ * PermissionsGuard applique le RBAC fin (@RequirePermissions — ADR.08). AuthModule dépend
+ * d'IdentityModule (calcul de l'identité effective + émission des jetons).
  */
 @Module({
   imports: [ConfigModule, JwtModule.register({}), UsersModule, IdentityModule],
@@ -23,7 +22,6 @@ import { AuthService } from './services/auth.service';
   providers: [
     AuthService,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
   exports: [AuthService],

@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { createTestApp, createUser, ensureRoles, uniqueEmail } from './create-app';
+import { createTestApp, createUser, ensureIdentitySeed, ensureRoles, uniqueEmail } from './create-app';
 
 /** RBAC des référentiels et garde-fous d'administration des utilisateurs. */
 describe('Administration (E2E)', () => {
@@ -17,8 +17,11 @@ describe('Administration (E2E)', () => {
   beforeAll(async () => {
     app = await createTestApp();
     await ensureRoles(app);
+    await ensureIdentitySeed(app);
 
-    adminId = (await createUser(app, adminEmail, password, ['ADMIN', 'USER'])).id;
+    // L'« admin » porte le rôle Platform Operator (permissions reference.manage / user.manage)
+    // + le rôle legacy ADMIN (garde-fou anti-verrouillage de son propre compte).
+    adminId = (await createUser(app, adminEmail, password, ['ADMIN', 'Platform Operator'])).id;
     userId = (await createUser(app, userEmail, password, ['USER'])).id;
 
     adminToken = await login(app, adminEmail, password);

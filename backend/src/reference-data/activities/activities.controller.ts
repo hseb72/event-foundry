@@ -12,8 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { ActivitiesService } from './activities.service';
 import { ActivityResponseDto, CreateActivityDto, UpdateActivityDto } from './activity.dto';
 import { ActivityMapper } from './activity.mapper';
@@ -34,13 +33,13 @@ export class ActivitiesController {
   }
 
   @Post()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async create(@Body() dto: CreateActivityDto): Promise<ActivityResponseDto> {
     return ActivityMapper.toResponse(await this.service.create(dto));
   }
 
   @Put(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateActivityDto,
@@ -49,7 +48,7 @@ export class ActivitiesController {
   }
 
   @Delete(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('reference.manage')
   @HttpCode(HttpStatus.OK)
   async deactivate(@Param('id', ParseUUIDPipe) id: string): Promise<ActivityResponseDto> {
     return ActivityMapper.toResponse(await this.service.deactivate(id));

@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { ImportStatsResponseDto } from '../dto/import-stats-response.dto';
 import { StatsService } from '../services/stats.service';
 
@@ -13,7 +12,7 @@ export class StatsController {
 
   /** Tableau de bord du pipeline d'import (réservé ADMIN). */
   @Get('import-stats')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('dashboard.view')
   importStats(): Promise<ImportStatsResponseDto> {
     return this.service.importStats();
   }

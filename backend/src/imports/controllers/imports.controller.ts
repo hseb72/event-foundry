@@ -12,8 +12,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { SystemRole } from '../../users/constants/role.constants';
+import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CreateTextImportDto } from '../dto/create-text-import.dto';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
 import { DEFAULT_MAX_UPLOAD_BYTES } from '../imports.constants';
@@ -50,7 +49,7 @@ export class ImportsController {
 
   /** Administration : liste globale des imports (réservé ADMIN, pas de scope utilisateur). */
   @Get()
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('pipeline.manage')
   async list(
     @Query('skip') skip?: string,
     @Query('take') take?: string,
@@ -63,7 +62,7 @@ export class ImportsController {
   }
 
   @Get(':id')
-  @Roles(SystemRole.ADMIN)
+  @RequirePermissions('pipeline.manage')
   async detail(@Param('id', ParseUUIDPipe) id: string): Promise<ImportDetailResponseDto> {
     return ImportMapper.toDetail(await this.service.getDetailOrThrow(id));
   }
