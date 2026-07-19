@@ -43,6 +43,24 @@ import { ActivityDto, CreateEventInput, EventDraft, ReferentialItem } from '../c
         gap: 0.6rem;
         margin-top: 0.4rem;
       }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+      }
+      .tag-chip {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .tag-chip.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
       @media (max-width: 560px) {
         .row {
           grid-template-columns: 1fr;
@@ -107,15 +125,67 @@ import { ActivityDto, CreateEventInput, EventDraft, ReferentialItem } from '../c
         </div>
       </div>
 
-      <div>
-        <label>Lieu</label>
-        <select class="select" [(ngModel)]="model.venueId" name="venueId">
-          <option value="">— aucun —</option>
-          @for (v of venues; track v.id) {
-            <option [value]="v.id">{{ v.name }}</option>
-          }
-        </select>
+      <div class="row">
+        <div>
+          <label>Lieu</label>
+          <select class="select" [(ngModel)]="model.venueId" name="venueId">
+            <option value="">— aucun —</option>
+            @for (v of venues; track v.id) {
+              <option [value]="v.id">{{ v.name }}</option>
+            }
+          </select>
+        </div>
+        <div>
+          <label>Catégorie</label>
+          <select class="select" [(ngModel)]="model.categoryId" name="categoryId">
+            <option value="">— aucune —</option>
+            @for (c of categories; track c.id) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          </select>
+        </div>
       </div>
+
+      <div>
+        <label>Localisation (commune)</label>
+        <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+          <select class="select" [(ngModel)]="model.countryId" name="countryId"
+                  (ngModelChange)="onCountryChange()">
+            <option value="">Pays…</option>
+            @for (c of countries; track c.id) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          </select>
+          <select class="select" [(ngModel)]="model.regionId" name="regionId"
+                  (ngModelChange)="onRegionChange()" [disabled]="!model.countryId">
+            <option value="">Région…</option>
+            @for (r of regions; track r.id) {
+              <option [value]="r.id">{{ r.name }}</option>
+            }
+          </select>
+          <select class="select" [(ngModel)]="model.municipalityId" name="municipalityId"
+                  [disabled]="!model.regionId">
+            <option value="">Ville…</option>
+            @for (m of municipalities; track m.id) {
+              <option [value]="m.id">{{ m.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (tags.length) {
+        <div>
+          <label>Tags</label>
+          <div class="tags">
+            @for (t of tags; track t.id) {
+              <button type="button" class="tag-chip" [class.on]="model.tagIds.includes(t.id)"
+                      (click)="toggleTag(t.id)">
+                {{ t.name }}
+              </button>
+            }
+          </div>
+        </div>
+      }
 
       <div class="row">
         <div>
@@ -167,6 +237,11 @@ export class EventFormComponent implements OnInit {
   eventFormats: ReferentialItem[] = [];
   organizers: ReferentialItem[] = [];
   venues: ReferentialItem[] = [];
+  categories: ReferentialItem[] = [];
+  tags: ReferentialItem[] = [];
+  countries: ReferentialItem[] = [];
+  regions: ReferentialItem[] = [];
+  municipalities: ReferentialItem[] = [];
 
   error = '';
 
@@ -176,8 +251,13 @@ export class EventFormComponent implements OnInit {
     activityId: '',
     eventTypeId: '',
     eventFormatId: '',
+    categoryId: '',
     organizerId: '',
     venueId: '',
+    countryId: '',
+    regionId: '',
+    municipalityId: '',
+    tagIds: [] as string[],
     startsAt: '',
     endsAt: '',
     price: null as number | null,
@@ -195,11 +275,45 @@ export class EventFormComponent implements OnInit {
       this.venues = items;
       this.applyDraftVenue();
     });
+    this.referenceData.categories().subscribe((items) => (this.categories = items));
+    this.referenceData.tags().subscribe((items) => (this.tags = items));
+    this.referenceData.countries().subscribe((items) => (this.countries = items));
     this.referenceData.activities().subscribe((items) => {
       this.activities = items;
       this.applyDraftScalars();
       this.applyDraftActivity();
     });
+  }
+
+  onCountryChange(): void {
+    this.regions = [];
+    this.municipalities = [];
+    this.model.regionId = '';
+    this.model.municipalityId = '';
+    if (!this.model.countryId) {
+      return;
+    }
+    this.referenceData.regions(this.model.countryId).subscribe((items) => (this.regions = items));
+  }
+
+  onRegionChange(): void {
+    this.municipalities = [];
+    this.model.municipalityId = '';
+    if (!this.model.regionId) {
+      return;
+    }
+    this.referenceData
+      .municipalities(this.model.regionId)
+      .subscribe((items) => (this.municipalities = items));
+  }
+
+  toggleTag(id: string): void {
+    const index = this.model.tagIds.indexOf(id);
+    if (index >= 0) {
+      this.model.tagIds.splice(index, 1);
+    } else {
+      this.model.tagIds.push(id);
+    }
   }
 
   onActivityChange(): void {
@@ -234,8 +348,11 @@ export class EventFormComponent implements OnInit {
     };
     if (this.model.eventTypeId) input.eventTypeId = this.model.eventTypeId;
     if (this.model.eventFormatId) input.eventFormatId = this.model.eventFormatId;
+    if (this.model.categoryId) input.categoryId = this.model.categoryId;
     if (this.model.organizerId) input.organizerId = this.model.organizerId;
     if (this.model.venueId) input.venueId = this.model.venueId;
+    if (this.model.municipalityId) input.municipalityId = this.model.municipalityId;
+    if (this.model.tagIds.length) input.tagIds = [...this.model.tagIds];
     if (this.model.description.trim()) input.description = this.model.description.trim();
     if (this.model.endsAt) input.endsAt = toIso(this.model.endsAt);
     if (this.model.price != null && !Number.isNaN(this.model.price) && this.model.price > 0) {

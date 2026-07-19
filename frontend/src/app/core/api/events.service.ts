@@ -23,4 +23,12 @@ export class EventsApi {
   getById(id: string): Observable<EventDto> {
     return this.http.get<EventDto>(`${API_BASE}/events/${id}`);
   }
+
+  archive(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/${id}/archive`, {});
+  }
+
+  restore(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/${id}/restore`, {});
+  }
 }

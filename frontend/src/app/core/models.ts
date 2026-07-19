@@ -49,13 +49,19 @@ export interface ParticipationState {
 export interface EventDto {
   id: string;
   source: string;
+  status: string;
   title: string;
   description: string | null;
   activity: string;
   eventType: string | null;
   eventFormat: string | null;
+  category: string | null;
   organizer: string | null;
   venue: string | null;
+  municipality: string | null;
+  region: string | null;
+  country: string | null;
+  tags: string[];
   city: string | null;
   startsAt: string;
   endsAt: string | null;
@@ -154,8 +160,11 @@ export interface CreateEventInput {
   activityId: string;
   eventTypeId?: string;
   eventFormatId?: string;
+  categoryId?: string;
   organizerId?: string;
   venueId?: string;
+  municipalityId?: string;
+  tagIds?: string[];
   title: string;
   description?: string;
   startsAt: string;

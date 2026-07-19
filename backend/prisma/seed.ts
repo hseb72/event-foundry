@@ -297,6 +297,19 @@ const GEOGRAPHY: { country: string; code: string; regions: { name: string; citie
   ],
 };
 
+// Référentiels transverses de démonstration (EPIC 02/03).
+const CATEGORIES = ['Compétition', 'Découverte', 'Famille', 'Communautaire'];
+const TAGS = ['débutant', 'compétitif', 'famille', 'gratuit', 'nouveauté'];
+
+async function seedCatalogReferentials(): Promise<void> {
+  for (const name of CATEGORIES) {
+    await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
+  }
+  for (const name of TAGS) {
+    await prisma.tag.upsert({ where: { name }, update: {}, create: { name } });
+  }
+}
+
 async function seedGeography(): Promise<void> {
   const country = await prisma.country.upsert({
     where: { name: GEOGRAPHY.country },
@@ -326,9 +339,10 @@ async function main(): Promise<void> {
   await seedSubscriptionPlans();
   await seedAdminAndDemoOrg();
   await seedReferenceData();
+  await seedCatalogReferentials();
   await seedGeography();
   console.log(
-    'Seed terminé : permissions + rôles V2 + abonnements + admin de dev + organisation démo + référentiels TCG + géographie FR.',
+    'Seed terminé : permissions + rôles V2 + abonnements + admin + organisation démo + référentiels TCG + catégories/tags + géographie FR.',
   );
 }
 

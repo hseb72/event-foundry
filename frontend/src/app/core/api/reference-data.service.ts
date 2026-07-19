@@ -31,4 +31,24 @@ export class ReferenceDataApi {
   venues(): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/venues`);
   }
+
+  categories(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/categories`);
+  }
+
+  tags(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/tags`);
+  }
+
+  countries(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/countries`);
+  }
+
+  regions(countryId: string): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/regions`, { params: { countryId } });
+  }
+
+  municipalities(regionId: string): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/municipalities`, { params: { regionId } });
+  }
 }

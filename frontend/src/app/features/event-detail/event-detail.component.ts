@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
 import { ParticipationApi } from '../../core/api/participation.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { EventDto, ParticipationState, PaymentStatus, ReservationStatus } from '../../core/models';
 import { formatDateTime } from '../../shared/date-format';
 import { participationColor, participationLabel } from '../../shared/participation-color';
@@ -35,6 +36,25 @@ import { participationColor, participationLabel } from '../../shared/participati
         background: rgba(0, 0, 0, 0.06);
         vertical-align: middle;
         margin-left: 0.5rem;
+      }
+      .badge.archived {
+        background: rgba(220, 38, 38, 0.14);
+        color: var(--red);
+      }
+      .chip {
+        display: inline-block;
+        padding: 0.1rem 0.5rem;
+        margin: 0.1rem 0.2rem 0.1rem 0;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
+      .admin-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin: 0.5rem 0 0.25rem;
       }
       dl {
         display: grid;
@@ -79,6 +99,7 @@ import { participationColor, participationLabel } from '../../shared/participati
         <h1>
           {{ event.title }}
           <span class="badge">{{ event.source === 'IMPORT' ? 'Importé' : 'Manuel' }}</span>
+          <span class="badge" [class.archived]="event.status === 'ARCHIVED'">{{ statusLabel() }}</span>
         </h1>
 
         <dl>
@@ -96,6 +117,10 @@ import { participationColor, participationLabel } from '../../shared/participati
             }
           </dd>
 
+          @if (event.category) {
+            <dt>Catégorie</dt>
+            <dd>{{ event.category }}</dd>
+          }
           @if (event.organizer) {
             <dt>Organisateur</dt>
             <dd>{{ event.organizer }}</dd>
@@ -104,14 +129,37 @@ import { participationColor, participationLabel } from '../../shared/participati
             <dt>Lieu</dt>
             <dd>{{ event.venue }}{{ event.venue && event.city ? ' — ' : '' }}{{ event.city }}</dd>
           }
+          @if (event.municipality) {
+            <dt>Commune</dt>
+            <dd>{{ event.municipality }}{{ event.region ? ', ' + event.region : '' }}{{ event.country ? ' (' + event.country + ')' : '' }}</dd>
+          }
           @if (event.price !== null) {
             <dt>Prix</dt>
             <dd>{{ event.price }} {{ event.currency ?? 'EUR' }}</dd>
+          }
+          @if (event.tags.length) {
+            <dt>Tags</dt>
+            <dd>
+              @for (t of event.tags; track t) {
+                <span class="chip">{{ t }}</span>
+              }
+            </dd>
           }
         </dl>
 
         @if (event.description) {
           <p class="desc">{{ event.description }}</p>
+        }
+
+        @if (canArchive() || canRestore()) {
+          <div class="admin-actions">
+            @if (event.status !== 'ARCHIVED' && canArchive()) {
+              <button class="btn" (click)="archive()">Archiver</button>
+            }
+            @if (event.status === 'ARCHIVED' && canRestore()) {
+              <button class="btn btn-primary" (click)="restore()">Restaurer</button>
+            }
+          </div>
         }
 
         <div class="actions">
@@ -148,11 +196,40 @@ export class EventDetailComponent implements OnInit {
     paymentStatus: 'NONE',
   };
 
+  private readonly auth = inject(AuthService);
+
   constructor(
     private readonly route: ActivatedRoute,
     private readonly eventsApi: EventsApi,
     private readonly participationApi: ParticipationApi,
   ) {}
+
+  statusLabel(): string {
+    const map: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', ARCHIVED: 'Archivé' };
+    return this.event ? (map[this.event.status] ?? this.event.status) : '';
+  }
+
+  canArchive(): boolean {
+    return this.auth.hasPermission('event.archive');
+  }
+
+  canRestore(): boolean {
+    return this.auth.hasPermission('event.publish');
+  }
+
+  archive(): void {
+    if (!this.event) {
+      return;
+    }
+    this.eventsApi.archive(this.event.id).subscribe((event) => (this.event = event));
+  }
+
+  restore(): void {
+    if (!this.event) {
+      return;
+    }
+    this.eventsApi.restore(this.event.id).subscribe((event) => (this.event = event));
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
