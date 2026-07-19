@@ -30,6 +30,7 @@ const NAV: NavItem[] = [
   { label: 'Découvrir', path: '/discover', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Rechercher', path: '/search', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },
+  { label: 'Tableau de bord', path: '/organizer/dashboard', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Mes événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Créer un événement', path: '/create', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Importer', path: '/import', experiences: ['ORGANIZER'], permission: 'import.create' },
@@ -255,7 +256,17 @@ export class ShellComponent implements OnInit {
     if (experience === this.activeExperience() || !this.isAvailable(experience)) {
       return;
     }
-    this.identity.changeExperience(experience).subscribe();
+    this.identity.changeExperience(experience).subscribe(() => {
+      // Atterrissage sur l'accueil de l'expérience choisie (les autres restent sur place).
+      const landing: Partial<Record<Experience, string>> = {
+        EXPLORER: '/home',
+        ORGANIZER: '/organizer/dashboard',
+      };
+      const path = landing[experience];
+      if (path) {
+        void this.router.navigate([path]);
+      }
+    });
   }
 
   onOrgChange(event: Event): void {

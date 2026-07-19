@@ -225,6 +225,34 @@ describe('Catalog — Event enrichi (E2E)', () => {
     expect(other.body.items.map((e: { id: string }) => e.id)).not.toContain(id);
   });
 
+  it('inclut les événements passés dans createdByMe (espace Organizer), mais pas dans la découverte', async () => {
+    // Événement daté dans le passé (édition terminée) : l'organisateur doit continuer à le gérer.
+    const past = await request(app.getHttpServer())
+      .post('/api/v1/events')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ activityId: refs.activityId, title: 'Édition passée', startsAt: '2020-01-01T10:00:00.000Z' })
+      .expect(201);
+    const id = past.body.id as string;
+    await request(app.getHttpServer())
+      .post(`/api/v1/events/${id}/publish`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+
+    // Espace Organizer : l'événement passé est bien listé (aucune borne temporelle par défaut).
+    const mine = await request(app.getHttpServer())
+      .get('/api/v1/events?createdByMe=true&take=100')
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(mine.body.items.map((e: { id: string }) => e.id)).toContain(id);
+
+    // Découverte publique : par défaut, seuls les événements à venir → le passé est masqué.
+    const discover = await request(app.getHttpServer())
+      .get('/api/v1/events?take=100')
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .expect(200);
+    expect(discover.body.items.map((e: { id: string }) => e.id)).not.toContain(id);
+  });
+
   it('rejette un tag inexistant (422)', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/events')

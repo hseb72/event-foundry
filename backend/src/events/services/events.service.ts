@@ -65,7 +65,14 @@ export class EventsService {
     skip: number;
     take: number;
   }> {
-    const range = computeDateRange({ period: query.period, from: query.from, to: query.to });
+    // Découverte : par défaut, événements à venir. Espace Organizer (createdByMe) : aucune borne
+    // temporelle par défaut — l'organisateur voit tous ses événements (passés, archivés compris),
+    // sauf s'il applique explicitement un filtre de période.
+    const hasExplicitRange = Boolean(query.period || query.from || query.to);
+    const range =
+      hasExplicitRange || !query.createdByMe
+        ? computeDateRange({ period: query.period, from: query.from, to: query.to })
+        : {};
     const skip = query.skip ?? 0;
     const take = query.take ?? 20;
 

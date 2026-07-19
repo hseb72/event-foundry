@@ -16,6 +16,7 @@ import { EventDetailComponent } from './features/event-detail/event-detail.compo
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
+import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
 import { SearchComponent } from './features/search/search.component';
@@ -35,6 +36,11 @@ export const routes: Routes = [
         path: 'operator/admin',
         component: OperatorAdminComponent,
         canActivate: [permissionGuard('user.manage')],
+      },
+      {
+        path: 'organizer/dashboard',
+        component: OrganizerDashboardComponent,
+        canActivate: [permissionGuard('event.create')],
       },
       {
         path: 'organizer/events',
