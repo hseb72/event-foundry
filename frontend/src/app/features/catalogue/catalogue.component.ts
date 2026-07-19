@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DiscoveryApi } from '../../core/api/discovery.service';
 import { EventsApi } from '../../core/api/events.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
-import { ActivityDto, EventDto, ReferentialItem } from '../../core/models';
+import { ActivityDto, EventDto, FacetCount, ReferentialItem } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 
 @Component({
@@ -27,6 +28,30 @@ import { EventCardComponent } from '../../shared/event-card.component';
       .empty {
         color: var(--muted);
         padding: 2rem 0;
+      }
+      .facets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1.25rem;
+      }
+      .facet {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+      }
+      .facet.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .facet .n {
+        opacity: 0.6;
+        font-weight: 700;
+        margin-left: 0.25rem;
       }
     `,
   ],
@@ -67,8 +92,24 @@ import { EventCardComponent } from '../../shared/event-card.component';
         <option value="mine">Mes événements</option>
         <option value="none">Sans participation</option>
       </select>
+      <select class="select" [(ngModel)]="sort">
+        <option value="">À venir</option>
+        <option value="newest">Nouveautés</option>
+        <option value="title">A → Z</option>
+      </select>
       <button class="btn btn-primary" (click)="search()">Rechercher</button>
+      <button class="btn" (click)="surprise()">🎲 Surprends-moi</button>
     </div>
+
+    @if (categoryFacets.length) {
+      <div class="facets">
+        @for (facet of categoryFacets; track facet.id) {
+          <button class="facet" [class.on]="categoryId === facet.id" (click)="pickCategory(facet.id)">
+            {{ facet.name }}<span class="n">{{ facet.count }}</span>
+          </button>
+        }
+      </div>
+    }
 
     @if (loading) {
       <p class="muted">Chargement…</p>
@@ -87,6 +128,7 @@ export class CatalogueComponent implements OnInit {
   activities: ActivityDto[] = [];
   categories: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
+  categoryFacets: FacetCount[] = [];
   events: EventDto[] = [];
   q = '';
   activityId = '';
@@ -94,17 +136,20 @@ export class CatalogueComponent implements OnInit {
   tagId = '';
   period = '';
   participation = '';
+  sort = '';
   loading = false;
 
   constructor(
     private readonly eventsApi: EventsApi,
     private readonly referenceDataApi: ReferenceDataApi,
+    private readonly discoveryApi: DiscoveryApi,
   ) {}
 
   ngOnInit(): void {
     this.referenceDataApi.activities().subscribe((activities) => (this.activities = activities));
     this.referenceDataApi.categories().subscribe((categories) => (this.categories = categories));
     this.referenceDataApi.tags().subscribe((tags) => (this.tags = tags));
+    this.discoveryApi.facets().subscribe((facets) => (this.categoryFacets = facets.categories));
     this.search();
   }
 
@@ -116,11 +161,30 @@ export class CatalogueComponent implements OnInit {
     if (this.tagId) params['tagId'] = this.tagId;
     if (this.period) params['period'] = this.period;
     if (this.participation) params['participation'] = this.participation;
+    if (this.sort) params['sort'] = this.sort;
 
     this.loading = true;
     this.eventsApi.search(params).subscribe({
       next: (result) => {
         this.events = result.items;
+        this.loading = false;
+      },
+      error: () => (this.loading = false),
+    });
+  }
+
+  /** Bascule la catégorie sélectionnée depuis une facette et relance la recherche. */
+  pickCategory(id: string): void {
+    this.categoryId = this.categoryId === id ? '' : id;
+    this.search();
+  }
+
+  /** « Surprends-moi » : remplace les résultats par une sélection aléatoire. */
+  surprise(): void {
+    this.loading = true;
+    this.discoveryApi.surprise(6).subscribe({
+      next: (events) => {
+        this.events = events;
         this.loading = false;
       },
       error: () => (this.loading = false),

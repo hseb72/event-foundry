@@ -26,6 +26,21 @@ export interface OrganizationAdmin {
   memberCount: number;
 }
 
+/** Valeur de facette : un référentiel et le nombre d'événements publiés associés. */
+export interface FacetCount {
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** Facettes de navigation de la découverte. */
+export interface Facets {
+  activities: FacetCount[];
+  categories: FacetCount[];
+  municipalities: FacetCount[];
+  tags: FacetCount[];
+}
+
 /** Entrée du planning personnel : un événement + ses conflits d'horaire. */
 export interface PlanningEntry {
   event: EventDto;
