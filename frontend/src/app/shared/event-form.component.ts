@@ -1,12 +1,14 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReferenceDataApi } from '../core/api/reference-data.service';
+import { IdentityService } from '../core/api/identity.service';
 import {
   ActivityDto,
   CreateEventInput,
   EventDraft,
   EventEditValue,
   MunicipalityGeo,
+  OrganizationAddress,
   ReferentialItem,
 } from '../core/models';
 
@@ -153,6 +155,19 @@ import {
         </div>
       </div>
 
+      @if (orgAddresses.length) {
+        <div>
+          <label>Adresses de l'organisation</label>
+          <div class="tags">
+            @for (a of orgAddresses; track a.id) {
+              <button type="button" class="tag-chip" (click)="useOrgAddress(a)">
+                📍 {{ a.label }}@if (a.municipalityName) { — {{ a.municipalityName }} }
+              </button>
+            }
+          </div>
+        </div>
+      }
+
       <div>
         <label>Localisation (pays + code postal)</label>
         <div class="row" style="grid-template-columns:1fr 1fr">
@@ -285,9 +300,21 @@ export class EventFormComponent implements OnInit {
     currency: '',
   };
 
-  constructor(private readonly referenceData: ReferenceDataApi) {}
+  // Adresses de l'organisation active proposées comme localisation (chantier §8.2 / RG-LOC-05).
+  orgAddresses: OrganizationAddress[] = [];
+
+  constructor(
+    private readonly referenceData: ReferenceDataApi,
+    private readonly identity: IdentityService,
+  ) {}
 
   ngOnInit(): void {
+    const me = this.identity.me();
+    if (me?.activeOrganizationId && me.permissions.includes('organization.manage')) {
+      this.identity
+        .listOrganizationAddresses(me.activeOrganizationId)
+        .subscribe((addresses) => (this.orgAddresses = addresses));
+    }
     this.referenceData.organizers().subscribe((items) => {
       this.organizers = items;
       this.applyDraftOrganizer();
@@ -386,6 +413,34 @@ export class EventFormComponent implements OnInit {
   onMunicipalitySelect(): void {
     const chosen = this.resolvedMunicipalities.find((m) => m.id === this.model.municipalityId);
     this.selectedRegionName = chosen ? chosen.regionName : '';
+  }
+
+  /** Préremplit la localisation depuis une adresse de l'organisation (chantier §8.2 / RG-LOC-05). */
+  useOrgAddress(address: OrganizationAddress): void {
+    this.model.countryId = address.countryId;
+    this.postalCode = address.postalCode;
+    this.postalSearched = true;
+    if (address.municipalityId) {
+      this.resolvedMunicipalities = [
+        {
+          id: address.municipalityId,
+          name: address.municipalityName ?? '',
+          postalCode: address.postalCode,
+          regionId: '',
+          regionName: address.regionName ?? '',
+          countryId: address.countryId,
+          countryName: address.countryName,
+        },
+      ];
+      this.model.municipalityId = address.municipalityId;
+      this.selectedRegionName = address.regionName ?? '';
+    } else {
+      // Adresse sans commune résolue : proposer la recherche par code postal.
+      this.resolvedMunicipalities = [];
+      this.model.municipalityId = '';
+      this.selectedRegionName = '';
+      this.searchPostal();
+    }
   }
 
   toggleTag(id: string): void {

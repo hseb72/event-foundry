@@ -2,9 +2,16 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IdentityService } from '../../core/api/identity.service';
+import { ReferenceDataApi } from '../../core/api/reference-data.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme.service';
-import { Experience, ThemePreference } from '../../core/models';
+import {
+  Experience,
+  MunicipalityGeo,
+  OrganizationAddress,
+  ReferentialItem,
+  ThemePreference,
+} from '../../core/models';
 
 interface PermissionGroup {
   group: string;
@@ -312,6 +319,81 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           }
         </section>
 
+        @if (canManageOrg() && m.activeOrganizationId) {
+          <section class="card">
+            <h2>Adresses de l'organisation</h2>
+            <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
+              Adresses de « {{ activeOrgName(m) }} ». Proposées comme localisation à la création d'un
+              événement. La région est dérivée de la commune.
+            </p>
+
+            @for (a of addresses(); track a.id) {
+              <div class="org">
+                <div class="org-head">
+                  <span class="org-name">
+                    {{ a.label }}
+                    @if (a.isPrimary) { <span class="active-tag">● principale</span> }
+                  </span>
+                </div>
+                <div class="muted" style="font-size:0.84rem">
+                  {{ a.streetLines }} · {{ a.postalCode }}
+                  @if (a.municipalityName) { {{ a.municipalityName }} }
+                  @if (a.regionName) { <span class="muted">({{ a.regionName }})</span> }
+                  · {{ a.countryName }}
+                </div>
+                <div style="margin-top:0.5rem;display:flex;gap:0.5rem">
+                  @if (!a.isPrimary) {
+                    <button class="btn" (click)="setPrimary(m.activeOrganizationId!, a.id)">Définir principale</button>
+                  }
+                  <button class="btn" (click)="deleteAddress(m.activeOrganizationId!, a.id)">Supprimer</button>
+                </div>
+              </div>
+            }
+            @if (!addresses().length) {
+              <p class="muted" style="font-size:0.85rem">Aucune adresse enregistrée.</p>
+            }
+
+            <div style="border-top:1px solid var(--border);margin-top:0.6rem;padding-top:0.7rem">
+              <h3 style="font-size:0.85rem;margin:0 0 0.5rem">Ajouter une adresse</h3>
+              <div style="display:grid;gap:0.5rem">
+                <input class="input" [(ngModel)]="addr.label" placeholder="Libellé (ex. Boutique centre-ville)" />
+                <input class="input" [(ngModel)]="addr.streetLines" placeholder="Rue" />
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                  <select class="select" [(ngModel)]="addr.countryId" (ngModelChange)="onAddrCountryChange()">
+                    <option value="">Pays…</option>
+                    @for (c of countries; track c.id) {
+                      <option [value]="c.id">{{ c.name }}</option>
+                    }
+                  </select>
+                  <div style="display:flex;gap:0.4rem">
+                    <input class="input" [(ngModel)]="addr.postalCode" placeholder="Code postal"
+                           [disabled]="!addr.countryId" (keyup.enter)="resolveAddr()" />
+                    <button type="button" class="btn" [disabled]="!addr.countryId || !addr.postalCode.trim()"
+                            (click)="resolveAddr()">Résoudre</button>
+                  </div>
+                </div>
+                @if (addrResolved.length) {
+                  <select class="select" [(ngModel)]="addr.municipalityId">
+                    <option value="">Commune…</option>
+                    @for (mun of addrResolved; track mun.id) {
+                      <option [value]="mun.id">{{ mun.name }} ({{ mun.regionName }})</option>
+                    }
+                  </select>
+                } @else if (addrPostalSearched) {
+                  <p class="muted" style="font-size:0.8rem;margin:0">Aucune commune trouvée pour ce code postal.</p>
+                }
+                <label style="font-size:0.85rem;display:flex;gap:0.4rem;align-items:center">
+                  <input type="checkbox" [(ngModel)]="addr.isPrimary" /> Adresse principale
+                </label>
+                <div>
+                  <button class="btn btn-primary" [disabled]="!canSubmitAddr()"
+                          (click)="addAddress(m.activeOrganizationId!)">Ajouter l'adresse</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        }
+
         <section class="card">
           <h2>Configurations personnelles <span class="soon">Bientôt</span></h2>
           <p class="muted" style="font-size:0.85rem;margin:0">
@@ -407,9 +489,17 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 })
 export class IdentityComponent implements OnInit {
   private readonly identity = inject(IdentityService);
+  private readonly referenceData = inject(ReferenceDataApi);
   private readonly theme = inject(ThemeService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+
+  // Adresses de l'organisation active (chantier §8.2), si l'utilisateur peut la gérer.
+  readonly addresses = signal<OrganizationAddress[]>([]);
+  countries: ReferentialItem[] = [];
+  addrResolved: MunicipalityGeo[] = [];
+  addrPostalSearched = false;
+  addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
 
   readonly allExperiences: Experience[] = ['EXPLORER', 'ORGANIZER', 'OPERATOR'];
   readonly me = this.identity.me;
@@ -440,8 +530,94 @@ export class IdentityComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.me()) {
-      this.identity.loadMe().subscribe();
+      this.identity.loadMe().subscribe(() => this.loadAddresses());
+    } else {
+      this.loadAddresses();
     }
+  }
+
+  // --- Adresses de l'organisation active (chantier §8.2) ---
+
+  canManageOrg(): boolean {
+    return this.me()?.permissions.includes('organization.manage') ?? false;
+  }
+
+  activeOrgName(me: { organizations: { id: string; name: string }[]; activeOrganizationId: string | null }): string {
+    return me.organizations.find((o) => o.id === me.activeOrganizationId)?.name ?? '';
+  }
+
+  private loadAddresses(): void {
+    const me = this.me();
+    if (!me || !this.canManageOrg() || !me.activeOrganizationId) {
+      return;
+    }
+    if (!this.countries.length) {
+      this.referenceData.countries().subscribe((items) => (this.countries = items));
+    }
+    this.identity
+      .listOrganizationAddresses(me.activeOrganizationId)
+      .subscribe((addresses) => this.addresses.set(addresses));
+  }
+
+  onAddrCountryChange(): void {
+    this.addr.postalCode = '';
+    this.addr.municipalityId = '';
+    this.addrResolved = [];
+    this.addrPostalSearched = false;
+  }
+
+  resolveAddr(): void {
+    const postalCode = this.addr.postalCode.trim();
+    if (!this.addr.countryId || !postalCode) {
+      return;
+    }
+    this.referenceData.resolveMunicipalities(this.addr.countryId, postalCode).subscribe((communes) => {
+      this.addrResolved = communes;
+      this.addrPostalSearched = true;
+      this.addr.municipalityId = communes.length === 1 ? communes[0].id : '';
+    });
+  }
+
+  canSubmitAddr(): boolean {
+    return (
+      this.addr.label.trim().length > 0 &&
+      this.addr.streetLines.trim().length > 0 &&
+      this.addr.countryId.length > 0 &&
+      this.addr.postalCode.trim().length > 0
+    );
+  }
+
+  addAddress(organizationId: string): void {
+    if (!this.canSubmitAddr()) {
+      return;
+    }
+    this.identity
+      .createOrganizationAddress(organizationId, {
+        label: this.addr.label.trim(),
+        countryId: this.addr.countryId,
+        postalCode: this.addr.postalCode.trim(),
+        municipalityId: this.addr.municipalityId || undefined,
+        streetLines: this.addr.streetLines.trim(),
+        isPrimary: this.addr.isPrimary,
+      })
+      .subscribe(() => {
+        this.addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
+        this.addrResolved = [];
+        this.addrPostalSearched = false;
+        this.loadAddresses();
+      });
+  }
+
+  setPrimary(organizationId: string, addressId: string): void {
+    this.identity
+      .setPrimaryOrganizationAddress(organizationId, addressId)
+      .subscribe(() => this.loadAddresses());
+  }
+
+  deleteAddress(organizationId: string, addressId: string): void {
+    this.identity
+      .deleteOrganizationAddress(organizationId, addressId)
+      .subscribe(() => this.loadAddresses());
   }
 
   label(experience: Experience): string {
@@ -453,7 +629,7 @@ export class IdentityComponent implements OnInit {
   }
 
   activate(organizationId: string): void {
-    this.identity.switchOrganization(organizationId).subscribe();
+    this.identity.switchOrganization(organizationId).subscribe(() => this.loadAddresses());
   }
 
   startEdit(currentName: string): void {

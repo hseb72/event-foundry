@@ -218,6 +218,30 @@ export interface MunicipalityGeo {
   countryName: string;
 }
 
+/** Adresse d'organisation (Localisation V3, chantier §8.2), région/commune dérivées. */
+export interface OrganizationAddress {
+  id: string;
+  organizationId: string;
+  label: string;
+  countryId: string;
+  countryName: string;
+  postalCode: string;
+  municipalityId: string | null;
+  municipalityName: string | null;
+  regionName: string | null;
+  streetLines: string;
+  isPrimary: boolean;
+}
+
+export interface CreateOrganizationAddressInput {
+  label: string;
+  countryId: string;
+  postalCode: string;
+  municipalityId?: string;
+  streetLines: string;
+  isPrimary?: boolean;
+}
+
 export interface EventCandidateDto {
   id: string;
   importJobId: string;

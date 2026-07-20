@@ -3,7 +3,14 @@ import { Injectable, signal } from '@angular/core';
 import { Observable, switchMap, tap } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { AuthService } from '../auth/auth.service';
-import { AuthTokens, Experience, IdentityMe, OrganizationAdmin } from '../models';
+import {
+  AuthTokens,
+  CreateOrganizationAddressInput,
+  Experience,
+  IdentityMe,
+  OrganizationAddress,
+  OrganizationAdmin,
+} from '../models';
 
 /**
  * Client du domaine Identity (TSPEC.06). Expose la vue « moi » dans un signal partagé et pilote
@@ -65,6 +72,40 @@ export class IdentityService {
       userId,
       role,
     });
+  }
+
+  // --- Adresses d'organisation (organizer, permission organization.manage — chantier §8.2) ---
+
+  listOrganizationAddresses(organizationId: string): Observable<OrganizationAddress[]> {
+    return this.http.get<OrganizationAddress[]>(
+      `${API_BASE}/identity/organizations/${organizationId}/addresses`,
+    );
+  }
+
+  createOrganizationAddress(
+    organizationId: string,
+    input: CreateOrganizationAddressInput,
+  ): Observable<OrganizationAddress> {
+    return this.http.post<OrganizationAddress>(
+      `${API_BASE}/identity/organizations/${organizationId}/addresses`,
+      input,
+    );
+  }
+
+  setPrimaryOrganizationAddress(
+    organizationId: string,
+    addressId: string,
+  ): Observable<OrganizationAddress> {
+    return this.http.post<OrganizationAddress>(
+      `${API_BASE}/identity/organizations/${organizationId}/addresses/${addressId}/primary`,
+      {},
+    );
+  }
+
+  deleteOrganizationAddress(organizationId: string, addressId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${API_BASE}/identity/organizations/${organizationId}/addresses/${addressId}`,
+    );
   }
 
   assignRole(userId: string, role: string): Observable<void> {
