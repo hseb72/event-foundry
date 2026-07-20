@@ -3,6 +3,7 @@ import type { RecommendationContext } from './recommendation-rule';
 import {
   ActivityAffinityRule,
   CategoryAffinityRule,
+  FollowedAffinityRule,
   FreeSlotRule,
   NoveltyRule,
   ProximityRule,
@@ -31,6 +32,10 @@ function context(overrides: Partial<RecommendationContext> = {}): Recommendation
     activityIds: new Set(),
     categoryIds: new Set(),
     municipalityIds: new Set(),
+    followedOrganizerIds: new Set(),
+    followedActivityIds: new Set(),
+    followedCategoryIds: new Set(),
+    followedVenueIds: new Set(),
     plannedSlots: [],
     now: NOW,
     ...overrides,
@@ -96,5 +101,40 @@ describe('Règles de recommandation (déterministes, explicables — ADR.09)', (
     const rule = new ActivityAffinityRule();
     const ctx = context({ activityIds: new Set(['act-magic']) });
     expect(rule.evaluate(event(), ctx)).toEqual(rule.evaluate(event(), ctx));
+  });
+
+  describe('FollowedAffinity (signal de suivi — ADR.19)', () => {
+    const rule = new FollowedAffinityRule();
+
+    it('sans suivi correspondant : aucune contribution', () => {
+      expect(rule.evaluate(event(), context())).toBeNull();
+    });
+
+    it('organisateur suivi : bonus fort et justification explicite', () => {
+      const contribution = rule.evaluate(
+        event({ organizerId: 'org-1', organizer: { name: 'GG Studio' } } as Partial<EventWithRefs>),
+        context({ followedOrganizerIds: new Set(['org-1']) }),
+      );
+      expect(contribution?.points).toBe(50);
+      expect(contribution?.reason).toContain('GG Studio');
+    });
+
+    it('activité suivie : bonus fort', () => {
+      expect(
+        rule.evaluate(event(), context({ followedActivityIds: new Set(['act-magic']) }))?.points,
+      ).toBe(50);
+    });
+
+    it('catégorie suivie : bonus moyen', () => {
+      expect(
+        rule.evaluate(event(), context({ followedCategoryIds: new Set(['cat-compet']) }))?.points,
+      ).toBe(30);
+    });
+
+    it('mode « Surprends-moi » : poids réduit', () => {
+      expect(
+        rule.evaluate(event(), context({ surprise: true, followedActivityIds: new Set(['act-magic']) }))?.points,
+      ).toBe(15);
+    });
   });
 });

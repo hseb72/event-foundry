@@ -59,6 +59,33 @@ export class NoveltyRule implements RecommendationRule {
   }
 }
 
+/**
+ * Affinité de suivi (Follow — ADR.19) : l'événement relève d'un objet **explicitement suivi**
+ * (organisateur, activité, catégorie ou lieu). Signal d'intérêt fort — priorité au match le plus
+ * spécifique, avec une justification claire. En mode « Surprends-moi », le poids est réduit.
+ */
+export class FollowedAffinityRule implements RecommendationRule {
+  readonly name = 'followed-affinity';
+
+  evaluate(event: EventWithRefs, context: RecommendationContext): RuleContribution | null {
+    const strong = context.surprise ? 15 : 50;
+    const medium = context.surprise ? 10 : 30;
+    if (event.organizerId && context.followedOrganizerIds.has(event.organizerId)) {
+      return { points: strong, reason: `Vous suivez cet organisateur : ${event.organizer?.name ?? ''}`.trim() };
+    }
+    if (context.followedActivityIds.has(event.activityId)) {
+      return { points: strong, reason: `Vous suivez cette activité : ${event.activity.name}` };
+    }
+    if (event.categoryId && context.followedCategoryIds.has(event.categoryId)) {
+      return { points: medium, reason: `Vous suivez cette catégorie : ${event.category?.name ?? ''}`.trim() };
+    }
+    if (event.venueId && context.followedVenueIds.has(event.venueId)) {
+      return { points: medium, reason: `Vous suivez ce lieu : ${event.venue?.name ?? ''}`.trim() };
+    }
+    return null;
+  }
+}
+
 /** Complète le planning : bonus si le créneau est libre, malus s'il chevauche un événement prévu. */
 export class FreeSlotRule implements RecommendationRule {
   readonly name = 'free-slot';
@@ -96,6 +123,7 @@ export class RecencyRule implements RecommendationRule {
  */
 export function defaultRecommendationRules(): RecommendationRule[] {
   return [
+    new FollowedAffinityRule(),
     new ActivityAffinityRule(),
     new CategoryAffinityRule(),
     new ProximityRule(),

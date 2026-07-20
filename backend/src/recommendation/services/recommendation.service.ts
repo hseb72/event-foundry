@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { RecommendationAction } from '@prisma/client';
+import { FollowTargetType, RecommendationAction } from '@prisma/client';
 import type { EventWithRefs } from '../../events/entities/event.entity';
 import { EventNotFoundException } from '../../events/exceptions/event-validation.exceptions';
 import { EventMapper } from '../../events/mappers/event.mapper';
+import { FollowService } from '../../follow/follow.service';
 import type { RecommendationContext, RecommendationRule } from '../domain/recommendation-rule';
 import { defaultRecommendationRules } from '../domain/rules';
 import { RecommendationDto } from '../dto/recommendation-response.dto';
@@ -18,7 +19,10 @@ import { RecommendationRepository } from '../repositories/recommendation.reposit
 export class RecommendationService {
   private readonly rules: RecommendationRule[] = defaultRecommendationRules();
 
-  constructor(private readonly repository: RecommendationRepository) {}
+  constructor(
+    private readonly repository: RecommendationRepository,
+    private readonly follows: FollowService,
+  ) {}
 
   async recommend(
     userId: string,
@@ -27,12 +31,17 @@ export class RecommendationService {
     const now = new Date();
     const signals = await this.repository.loadSignals(userId);
     const candidates = await this.repository.loadCandidates(userId, now);
+    const followed = await this.loadFollowedSets(userId);
 
     const context: RecommendationContext = {
       surprise: options.surprise,
       activityIds: signals.activityIds,
       categoryIds: signals.categoryIds,
       municipalityIds: signals.municipalityIds,
+      followedOrganizerIds: followed.get(FollowTargetType.ORGANIZER) ?? new Set(),
+      followedActivityIds: followed.get(FollowTargetType.ACTIVITY) ?? new Set(),
+      followedCategoryIds: followed.get(FollowTargetType.CATEGORY) ?? new Set(),
+      followedVenueIds: followed.get(FollowTargetType.VENUE) ?? new Set(),
       plannedSlots: signals.plannedSlots,
       now,
     };
@@ -53,6 +62,18 @@ export class RecommendationService {
         score: scored.score,
         reasons: scored.reasons,
       }));
+  }
+
+  /** Regroupe les suivis actifs de l'utilisateur par type de cible (signaux d'intérêt explicites). */
+  private async loadFollowedSets(userId: string): Promise<Map<FollowTargetType, Set<string>>> {
+    const follows = await this.follows.listByUser(userId);
+    const byType = new Map<FollowTargetType, Set<string>>();
+    for (const follow of follows) {
+      const set = byType.get(follow.targetType) ?? new Set<string>();
+      set.add(follow.targetId);
+      byType.set(follow.targetType, set);
+    }
+    return byType;
   }
 
   /** Enregistre la décision de l'utilisateur (accepter / ignorer / refuser). */
