@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ImportJobStatus } from '@prisma/client';
 import { type OCRResult, QUEUES } from '@event-foundry/contracts';
 import { type Job, Worker } from 'bullmq';
+import { AiCallLogService } from '../../ai/ai-call-log.service';
 import { QueueService } from '../../infra/queue/queue.service';
 import { ImportJobRepository } from '../repositories/import-job.repository';
 
@@ -21,6 +22,7 @@ export class OcrResultConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly importJobs: ImportJobRepository,
     private readonly queue: QueueService,
     private readonly config: ConfigService,
+    private readonly aiCallLog: AiCallLogService,
   ) {}
 
   onModuleInit(): void {
@@ -38,6 +40,19 @@ export class OcrResultConsumer implements OnModuleInit, OnModuleDestroy {
 
   private async handle(job: Job): Promise<void> {
     const ocr = job.data as OCRResult;
+
+    // Traçabilité IA (RG-AI-04) : si l'extraction a été assistée par IA (engine « ai:<provider> »),
+    // on journalise l'appel — sans contenu ni clé. L'OCR interne (Tesseract) n'est pas journalisé.
+    if (ocr.engine.startsWith('ai:')) {
+      await this.aiCallLog.record({
+        useCase: 'OCR',
+        provider: ocr.engine.slice('ai:'.length),
+        model: ocr.engineVersion,
+        durationMs: ocr.processingTimeMs,
+        status: 'SUCCESS',
+        correlationId: ocr.correlationId,
+      });
+    }
 
     // OCR terminé : conservation de l'OCRResult source (traçabilité) + historisation.
     await this.importJobs.transition(ocr.importJobId, ImportJobStatus.OCR_DONE, ocr.correlationId, {

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiCallLogService } from './ai-call-log.service';
 import { AiConfigController } from './ai-config.controller';
 import { AiConfigRepository } from './ai-config.repository';
 import { AiConfigService } from './ai-config.service';
@@ -10,7 +11,7 @@ import { AiConfigService } from './ai-config.service';
  */
 @Module({
   controllers: [AiConfigController],
-  providers: [AiConfigService, AiConfigRepository],
-  exports: [AiConfigService],
+  providers: [AiConfigService, AiConfigRepository, AiCallLogService],
+  exports: [AiConfigService, AiCallLogService],
 })
 export class AiModule {}

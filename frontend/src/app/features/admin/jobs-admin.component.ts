@@ -89,6 +89,16 @@ const STATUS_LABELS: Record<string, string> = {
         padding: 0.7rem;
         border-radius: 8px;
       }
+      .ai-badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: var(--exp-weak);
+        color: var(--exp);
+        margin-right: 0.4rem;
+      }
       .empty {
         color: var(--muted);
         padding: 2rem 0;
@@ -137,6 +147,9 @@ const STATUS_LABELS: Record<string, string> = {
                 @if (selected.ocr) {
                   <dt>Moteur OCR</dt>
                   <dd>
+                    @if (isAiEngine(selected.ocr.engine)) {
+                      <span class="ai-badge">✨ assisté par IA</span>
+                    }
                     {{ selected.ocr.engine }} {{ selected.ocr.engineVersion }}
                     @if (selected.ocr.confidence !== null) {
                       · confiance {{ percent(selected.ocr.confidence) }}
@@ -214,6 +227,11 @@ export class JobsAdminComponent implements OnInit {
 
   percent(value: number): string {
     return `${Math.round(value * 100)}%`;
+  }
+
+  /** Vrai si l'extraction OCR a été assistée par IA (moteur « ai:<provider> »). */
+  isAiEngine(engine: string | null): boolean {
+    return engine != null && engine.startsWith('ai:');
   }
 
   totalDuration(): string {

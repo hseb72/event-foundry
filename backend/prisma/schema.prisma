@@ -195,6 +195,24 @@ model PlatformSetting {
   @@map("platform_settings")
 }
 
+/**
+ * Journal des appels IA (traçabilité — ADR.16 §Traçabilité / RG-AI-04). Ne contient **jamais** de
+ * contenu ni de clé : uniquement fournisseur, modèle, durée, statut, cas d'usage et correlationId.
+ */
+model AiCallLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  useCase       String   @map("use_case")
+  provider      String
+  model         String
+  durationMs    Int      @map("duration_ms")
+  status        String
+  correlationId String   @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([useCase, createdAt])
+  @@map("ai_call_logs")
+}
+
 /// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
 enum FollowTargetType {
   ORGANIZATION
