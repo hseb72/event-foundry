@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { label: 'Accueil', path: '/home', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Découvrir', path: '/discover', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Rechercher', path: '/search', experiences: ['EXPLORER'], permission: 'catalog.read' },
+  { label: 'Pour vous', path: '/recommendations', experiences: ['EXPLORER'], permission: 'recommendation.view' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },
   { label: 'Tableau de bord', path: '/organizer/dashboard', experiences: ['ORGANIZER'], permission: 'event.create' },
   { label: 'Mes événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create' },

@@ -19,6 +19,7 @@ import { OperatorAdminComponent } from './features/operator/operator-admin.compo
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
+import { RecommendationsComponent } from './features/recommendations/recommendations.component';
 import { SearchComponent } from './features/search/search.component';
 import { ValidationComponent } from './features/validation/validation.component';
 import { ShellComponent } from './layout/shell.component';
@@ -49,6 +50,11 @@ export const routes: Routes = [
       },
       { path: 'discover', component: CatalogueComponent },
       { path: 'search', component: SearchComponent },
+      {
+        path: 'recommendations',
+        component: RecommendationsComponent,
+        canActivate: [permissionGuard('recommendation.view')],
+      },
       { path: 'calendar', component: CalendarComponent },
       { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },

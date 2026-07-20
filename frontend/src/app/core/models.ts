@@ -41,6 +41,16 @@ export interface Facets {
   tags: FacetCount[];
 }
 
+/** Action possible sur une recommandation (EPIC 06). */
+export type RecommendationAction = 'ACCEPTED' | 'IGNORED' | 'REJECTED';
+
+/** Recommandation explicable : un événement, son score déterministe et ses justifications. */
+export interface Recommendation {
+  event: EventDto;
+  score: number;
+  reasons: string[];
+}
+
 /** Entrée du planning personnel : un événement + ses conflits d'horaire. */
 export interface PlanningEntry {
   event: EventDto;
