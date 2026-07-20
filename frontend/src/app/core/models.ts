@@ -122,6 +122,10 @@ export interface EventDto {
   category: string | null;
   organizer: string | null;
   venue: string | null;
+  activityId: string;
+  categoryId: string | null;
+  organizerId: string | null;
+  venueId: string | null;
   municipality: string | null;
   region: string | null;
   country: string | null;

@@ -48,6 +48,18 @@ export class EventResponseDto {
   @ApiPropertyOptional({ nullable: true })
   venue!: string | null;
 
+  @ApiProperty({ description: "Identifiant de l'activité (pour le suivi — Follow)." })
+  activityId!: string;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Identifiant de la catégorie (pour le suivi).' })
+  categoryId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: "Identifiant de l'organisateur (pour le suivi)." })
+  organizerId!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Identifiant du lieu (pour le suivi).' })
+  venueId!: string | null;
+
   @ApiPropertyOptional({ nullable: true, description: 'Commune (référentiel géographique).' })
   municipality!: string | null;
 

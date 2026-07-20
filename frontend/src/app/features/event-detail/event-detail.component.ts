@@ -6,13 +6,14 @@ import { ParticipationApi } from '../../core/api/participation.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { EventDto, ParticipationState, PaymentStatus, ReservationStatus } from '../../core/models';
 import { formatDateTime } from '../../shared/date-format';
+import { FollowButtonComponent } from '../../shared/follow-button.component';
 import { participationColor, participationLabel } from '../../shared/participation-color';
 
 /** Fiche détaillée d'un Event (EPIC 11). Consultation complète + actions de participation. */
 @Component({
   selector: 'app-event-detail',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, FollowButtonComponent],
   styles: [
     `
       .back {
@@ -117,6 +118,12 @@ import { participationColor, participationLabel } from '../../shared/participati
         white-space: pre-wrap;
         line-height: 1.5;
       }
+      .loc-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
       .actions {
         display: flex;
         flex-wrap: wrap;
@@ -155,26 +162,52 @@ import { participationColor, participationLabel } from '../../shared/participati
 
           <dt>Activité</dt>
           <dd>
-            {{ event.activity }}
-            @if (event.eventType) {
-              · {{ event.eventType }}
-            }
-            @if (event.eventFormat) {
-              · {{ event.eventFormat }}
-            }
+            <span class="loc-line">
+              <span>
+                {{ event.activity }}
+                @if (event.eventType) {
+                  · {{ event.eventType }}
+                }
+                @if (event.eventFormat) {
+                  · {{ event.eventFormat }}
+                }
+              </span>
+              <app-follow-button targetType="ACTIVITY" [targetId]="event.activityId" />
+            </span>
           </dd>
 
           @if (event.category) {
             <dt>Catégorie</dt>
-            <dd>{{ event.category }}</dd>
+            <dd>
+              <span class="loc-line">
+                <span>{{ event.category }}</span>
+                @if (event.categoryId) {
+                  <app-follow-button targetType="CATEGORY" [targetId]="event.categoryId" />
+                }
+              </span>
+            </dd>
           }
           @if (event.organizer) {
             <dt>Organisateur</dt>
-            <dd>{{ event.organizer }}</dd>
+            <dd>
+              <span class="loc-line">
+                <span>{{ event.organizer }}</span>
+                @if (event.organizerId) {
+                  <app-follow-button targetType="ORGANIZER" [targetId]="event.organizerId" />
+                }
+              </span>
+            </dd>
           }
           @if (event.venue || event.city) {
             <dt>Lieu</dt>
-            <dd>{{ event.venue }}{{ event.venue && event.city ? ' — ' : '' }}{{ event.city }}</dd>
+            <dd>
+              <span class="loc-line">
+                <span>{{ event.venue }}{{ event.venue && event.city ? ' — ' : '' }}{{ event.city }}</span>
+                @if (event.venueId) {
+                  <app-follow-button targetType="VENUE" [targetId]="event.venueId" />
+                }
+              </span>
+            </dd>
           }
           @if (event.municipality) {
             <dt>Commune</dt>
