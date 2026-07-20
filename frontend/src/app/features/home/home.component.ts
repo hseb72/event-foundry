@@ -1,9 +1,12 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 import { DiscoveryApi } from '../../core/api/discovery.service';
 import { EventsApi } from '../../core/api/events.service';
 import { IdentityService } from '../../core/api/identity.service';
+import { RecommendationApi } from '../../core/api/recommendation.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { EventDto, PlanningEntry } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 import { formatDateTime } from '../../shared/date-format';
@@ -231,6 +234,8 @@ const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMo
 export class HomeComponent implements OnInit {
   private readonly eventsApi = inject(EventsApi);
   private readonly discoveryApi = inject(DiscoveryApi);
+  private readonly recommendationApi = inject(RecommendationApi);
+  private readonly auth = inject(AuthService);
   private readonly identity = inject(IdentityService);
   private readonly router = inject(Router);
 
@@ -274,8 +279,19 @@ export class HomeComponent implements OnInit {
         this.loadingPlanning = false;
       },
     });
-    // « À découvrir » = suggestions non qualifiées (moteur de découverte).
-    this.discoveryApi.surprise(12).subscribe({
+    this.loadDiscover();
+  }
+
+  /**
+   * « À découvrir » = suggestions non qualifiées (RG-PLN-03). Utilise le moteur de recommandation
+   * déterministe (qui tient compte des suivis) si l'utilisateur y a droit ; sinon repli sur la
+   * découverte aléatoire.
+   */
+  private loadDiscover(): void {
+    const source = this.auth.hasPermission('recommendation.view')
+      ? this.recommendationApi.list(false, 12).pipe(map((recos) => recos.map((r) => r.event)))
+      : this.discoveryApi.surprise(12);
+    source.subscribe({
       next: (events) => {
         this.discoverBuckets = bucketByPeriod(events, (e) => e.startsAt);
         this.loadingDiscover = false;
