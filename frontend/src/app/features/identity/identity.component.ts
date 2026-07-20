@@ -403,6 +403,33 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               </div>
             </div>
           </section>
+
+          <section class="card">
+            <h2>IA de l'organisation</h2>
+            <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
+              IA appliquée aux imports réalisés au nom de « {{ activeOrgName(m) }} ». Prioritaire sur
+              votre IA personnelle. La clé est stockée comme un secret.
+            </p>
+            <div style="display:grid;gap:0.5rem">
+              <label class="switch"><input type="checkbox" [(ngModel)]="orgAi.enabled" /> Activer l'IA de l'organisation</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                <input class="input" [(ngModel)]="orgAi.provider" placeholder="Fournisseur" />
+                <input class="input" [(ngModel)]="orgAi.model" placeholder="Modèle" />
+              </div>
+              <input class="input" type="password" [(ngModel)]="orgAi.apiKey"
+                     [placeholder]="orgAiSecretMasked() ? 'Clé enregistrée (' + orgAiSecretMasked() + ') — vide = inchangée' : 'Clé API'" />
+              <div class="chips">
+                @for (uc of aiUseCases; track uc) {
+                  <button type="button" class="theme-opt" [class.on]="orgAi.useCases[uc]" (click)="toggleOrgUseCase(uc)">{{ uc }}</button>
+                }
+              </div>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <button class="btn btn-primary" (click)="saveOrgAi(m.activeOrganizationId!)">Enregistrer</button>
+                <button class="btn" (click)="testOrgAi(m.activeOrganizationId!)" [disabled]="!orgAiSecretMasked()">Tester</button>
+                @if (orgAiStatus()) { <span class="sub">{{ aiStatusLabelOf(orgAiStatus()) }}</span> }
+              </div>
+            </div>
+          </section>
         }
 
         <section class="card">
@@ -548,6 +575,17 @@ export class IdentityComponent implements OnInit {
     apiKey: '',
   };
 
+  // Configuration IA de l'organisation active (portée ORGANIZATION).
+  private readonly orgAiSecret = signal<{ masked: string } | null>(null);
+  private readonly orgAiTestStatus = signal<string>('');
+  orgAi = {
+    provider: '',
+    model: '',
+    enabled: false,
+    useCases: {} as Record<string, boolean>,
+    apiKey: '',
+  };
+
   // Adresses de l'organisation active (chantier §8.2), si l'utilisateur peut la gérer.
   readonly addresses = signal<OrganizationAddress[]>([]);
   countries: ReferentialItem[] = [];
@@ -615,12 +653,63 @@ export class IdentityComponent implements OnInit {
   }
 
   aiStatusLabel(): string {
+    return this.aiStatusLabelOf(this.aiTestStatus());
+  }
+
+  aiStatusLabelOf(status: string): string {
     const map: Record<string, string> = {
       CONFIGURED: 'Configuré (non testé)',
       TESTED: '✓ Testé',
       FAILED: '✗ Test échoué',
     };
-    return map[this.aiTestStatus()] ?? this.aiTestStatus();
+    return map[status] ?? status;
+  }
+
+  // --- IA de l'organisation active ---
+
+  private loadOrgAi(organizationId: string): void {
+    this.aiConfigApi.getOrg(organizationId).subscribe((config) => {
+      if (config) {
+        this.orgAi.provider = config.provider;
+        this.orgAi.model = config.model;
+        this.orgAi.enabled = config.enabled;
+        this.orgAi.useCases = { ...config.useCases };
+        this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+        this.orgAiTestStatus.set(config.status);
+      }
+    });
+  }
+
+  orgAiSecretMasked(): string {
+    return this.orgAiSecret()?.masked ?? '';
+  }
+
+  orgAiStatus(): string {
+    return this.orgAiTestStatus();
+  }
+
+  toggleOrgUseCase(useCase: AiUseCase): void {
+    this.orgAi.useCases = { ...this.orgAi.useCases, [useCase]: !this.orgAi.useCases[useCase] };
+  }
+
+  saveOrgAi(organizationId: string): void {
+    this.aiConfigApi
+      .updateOrg(organizationId, {
+        provider: this.orgAi.provider.trim(),
+        model: this.orgAi.model.trim(),
+        enabled: this.orgAi.enabled,
+        useCases: this.orgAi.useCases,
+        apiKey: this.orgAi.apiKey.trim() || undefined,
+      })
+      .subscribe((config) => {
+        this.orgAi.apiKey = '';
+        this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+        this.orgAiTestStatus.set(config.status);
+      });
+  }
+
+  testOrgAi(organizationId: string): void {
+    this.aiConfigApi.testOrg(organizationId).subscribe((result) => this.orgAiTestStatus.set(result.status));
   }
 
   toggleUseCase(useCase: AiUseCase): void {
@@ -668,6 +757,7 @@ export class IdentityComponent implements OnInit {
     this.identity
       .listOrganizationAddresses(me.activeOrganizationId)
       .subscribe((addresses) => this.addresses.set(addresses));
+    this.loadOrgAi(me.activeOrganizationId);
   }
 
   onAddrCountryChange(): void {

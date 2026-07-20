@@ -20,4 +20,21 @@ export class AiConfigApi {
   test(): Observable<{ status: string }> {
     return this.http.post<{ status: string }>(`${API_BASE}/me/ai-config/test`, {});
   }
+
+  // --- Configuration IA d'organisation (organizer, organization.manage) ---
+
+  getOrg(organizationId: string): Observable<AiConfig | null> {
+    return this.http.get<AiConfig | null>(`${API_BASE}/identity/organizations/${organizationId}/ai-config`);
+  }
+
+  updateOrg(organizationId: string, input: UpdateAiConfigInput): Observable<AiConfig> {
+    return this.http.put<AiConfig>(`${API_BASE}/identity/organizations/${organizationId}/ai-config`, input);
+  }
+
+  testOrg(organizationId: string): Observable<{ status: string }> {
+    return this.http.post<{ status: string }>(
+      `${API_BASE}/identity/organizations/${organizationId}/ai-config/test`,
+      {},
+    );
+  }
 }
