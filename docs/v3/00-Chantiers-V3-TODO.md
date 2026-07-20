@@ -90,7 +90,33 @@
 
 ---
 
-## 5. Transverse — « Suivis » (follows)
+## 5. Menu profil / identité (navigation Web)
+
+- **Problème actuel** : le bloc bas-gauche de la barre latérale (login/email · mode de
+  souscription · `[Se déconnecter]`) **sort du viewport** quand le contenu de droite est long
+  (la sidebar défile avec la page). De plus, `[Mon identité]` est **dissocié** de ce bloc alors
+  qu'il lui est lié.
+- [ ] **Menu profil unique** : une **pastille avatar + nickname**, **toujours visible en bas à
+      gauche** (sidebar sticky, hauteur viewport), point d'entrée unique vers la gestion du profil.
+- [ ] Sections de la gestion de profil :
+  - [ ] **Données personnelles** : nickname **modifiable**, rappel du **mail de login**
+        (non modifiable).
+  - [ ] **Rôles et permissions**.
+  - [ ] **Organisations**.
+  - [ ] **Configurations personnelles** (IA, … — cf. §2).
+  - [ ] **Autres préférences** : thème clair / obscur / système / (autres ?).
+- **Existant V2** : `IdentityComponent` (`/me`) affiche déjà rôles / permissions / expériences /
+  organisations ; `updateProfile` gère `displayName` + `preferences` (JSONB). À réorganiser en
+  sections. **Avatar** : pas de champ image aujourd'hui. **Thème** : pas encore implémenté.
+- **Correctif indépendant (quick win possible)** : rendre la sidebar **sticky** (hauteur viewport,
+  scroll interne) pour que le bloc profil reste visible — corrigeable sans attendre la refonte.
+- **[à trancher]** Avatar : image uploadée (MinIO) **vs** initiales générées / gravatar.
+- **[à trancher]** Le sélecteur d'expérience (Explorer/Organizer/Operator) et le contexte
+  d'organisation active restent-ils en **haut** de la sidebar, ou rejoignent-ils ce menu profil ?
+
+---
+
+## 6. Transverse — « Suivis » (follows)
 
 - [ ] Introduire l'entité **Follow** (organisateur / lieu / activité) — hors V1 (backlog), requise
       par la catégorie « information Explorer » des notifications (§1) et par les recommandations à
