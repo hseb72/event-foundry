@@ -264,6 +264,26 @@ export interface UpdateAiConfigInput {
   apiKey?: string;
 }
 
+/** Configuration mail plateforme (le mot de passe n'est jamais renvoyé). */
+export interface MailConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  from: string;
+  username: string | null;
+  passwordMasked: string | null;
+  status: string;
+}
+
+export interface UpdateMailConfigInput {
+  host: string;
+  port: number;
+  secure: boolean;
+  from: string;
+  username?: string;
+  password?: string;
+}
+
 /** Adresse d'organisation (Localisation V3, chantier §8.2), région/commune dérivées. */
 export interface OrganizationAddress {
   id: string;

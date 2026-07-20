@@ -17,6 +17,7 @@ import { FollowsComponent } from './features/follows/follows.component';
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
+import { OperatorConfigComponent } from './features/operator/operator-config.component';
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
@@ -40,6 +41,11 @@ export const routes: Routes = [
         path: 'operator/admin',
         component: OperatorAdminComponent,
         canActivate: [permissionGuard('user.manage')],
+      },
+      {
+        path: 'operator/config',
+        component: OperatorConfigComponent,
+        canActivate: [permissionGuard('pipeline.manage')],
       },
       {
         path: 'organizer/dashboard',
