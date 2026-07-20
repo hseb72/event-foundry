@@ -57,6 +57,8 @@ describe('Identity (E2E)', () => {
       .expect(200);
 
     expect(updated.body.displayName).toBe('Après');
+    // Les préférences sont renvoyées par /me (round-trip du thème / notifications).
+    expect(updated.body.preferences).toEqual({ theme: 'dark' });
   });
 
   it("refuse de basculer vers une expérience non disponible (409)", async () => {

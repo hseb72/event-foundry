@@ -75,6 +75,41 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         color: var(--exp);
         margin-left: 0.4rem;
       }
+      .vecteurs {
+        display: grid;
+        gap: 0.5rem;
+      }
+      .vec {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.5rem 0.65rem;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+      .vec-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .pill {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        border-radius: 999px;
+        padding: 0.3rem 0.85rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+      .pill.on {
+        background: var(--exp);
+        border-color: var(--exp);
+        color: var(--exp-contrast);
+      }
+      .pill.locked {
+        cursor: default;
+        opacity: 0.85;
+      }
       .head h1 {
         margin: 0;
       }
@@ -307,6 +342,55 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         </section>
 
         <section class="card">
+          <h2>Préférences de notification</h2>
+          <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
+            Choisissez les vecteurs de diffusion. L'application (in-app) reste toujours active :
+            elle conserve l'historique consultable.
+          </p>
+          <div class="vecteurs">
+            <div class="vec">
+              <div>
+                <div class="vec-name">In-app</div>
+                <div class="muted" style="font-size:0.76rem">Historique — toujours actif</div>
+              </div>
+              <span class="pill on locked">Actif</span>
+            </div>
+            <div class="vec">
+              <div>
+                <div class="vec-name">E-mail</div>
+                <div class="muted" style="font-size:0.76rem">Recevoir un e-mail</div>
+              </div>
+              <button
+                type="button"
+                class="pill"
+                [class.on]="notifPref('email')"
+                (click)="toggleNotif('email')"
+              >
+                {{ notifPref('email') ? 'Activé' : 'Désactivé' }}
+              </button>
+            </div>
+            <div class="vec">
+              <div>
+                <div class="vec-name">Push</div>
+                <div class="muted" style="font-size:0.76rem">Notification poussée</div>
+              </div>
+              <button
+                type="button"
+                class="pill"
+                [class.on]="notifPref('push')"
+                (click)="toggleNotif('push')"
+              >
+                {{ notifPref('push') ? 'Activé' : 'Désactivé' }}
+              </button>
+            </div>
+          </div>
+          <p class="muted" style="font-size:0.76rem;margin:0.7rem 0 0">
+            Les fréquences (immédiat / récap quotidien / hebdomadaire) arriveront avec le moteur de
+            notifications de la V3.
+          </p>
+        </section>
+
+        <section class="card">
           <h2>Session</h2>
           @if (m.subscription) {
             <p style="margin:0 0 0.6rem">
@@ -383,6 +467,20 @@ export class IdentityComponent implements OnInit {
       return;
     }
     this.identity.updateProfile({ displayName }).subscribe(() => this.editing.set(false));
+  }
+
+  /** État courant d'un vecteur de notification (lu depuis les préférences renvoyées par /me). */
+  notifPref(channel: 'email' | 'push'): boolean {
+    const notifications = (this.me()?.preferences?.['notifications'] ?? {}) as Record<string, unknown>;
+    return notifications[channel] === true;
+  }
+
+  /** Active/désactive un vecteur ; honoré directement par le dispatcher de notifications. */
+  toggleNotif(channel: 'email' | 'push'): void {
+    const current = (this.me()?.preferences?.['notifications'] ?? {}) as Record<string, unknown>;
+    const notifications = { ...current, [channel]: !this.notifPref(channel) };
+    const preferences = { ...(this.me()?.preferences ?? {}), notifications };
+    this.identity.updateProfile({ preferences }).subscribe();
   }
 
   setTheme(preference: ThemePreference): void {
