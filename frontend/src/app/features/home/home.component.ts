@@ -7,6 +7,9 @@ import { IdentityService } from '../../core/api/identity.service';
 import { EventDto, PlanningEntry } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 import { formatDateTime } from '../../shared/date-format';
+import { bucketByPeriod, PeriodBuckets } from '../../shared/date-buckets';
+
+const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMonth: [] };
 
 /**
  * Accueil de l'expérience Explorer (UISPEC.01 EXP-001). Point d'entrée qui agrège la recherche,
@@ -87,6 +90,16 @@ import { formatDateTime } from '../../shared/date-format';
         gap: 0.9rem;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       }
+      .bucket {
+        margin-bottom: 1.1rem;
+      }
+      .bucket-title {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin: 0 0 0.55rem;
+      }
       .planning-list {
         display: grid;
         gap: 0.5rem;
@@ -141,18 +154,25 @@ import { formatDateTime } from '../../shared/date-format';
     <section>
       <div class="section-head">
         <h2>À venir</h2>
-        <a routerLink="/search" [queryParams]="{ sort: 'upcoming' }">Tout voir</a>
+        <a routerLink="/calendar">Mon planning</a>
       </div>
       @if (loadingUpcoming) {
         <p class="muted">Chargement…</p>
-      } @else if (upcoming.length === 0) {
-        <p class="empty">Aucun événement à venir pour le moment.</p>
+      } @else if (isEmpty(upcomingBuckets)) {
+        <p class="empty">Aucun événement qualifié à venir. Déclarez votre intérêt depuis « Découvrir ».</p>
       } @else {
-        <div class="grid">
-          @for (event of upcoming; track event.id) {
-            <app-event-card [event]="event" />
+        @for (s of sections; track s.key) {
+          @if (upcomingBuckets[s.key].length) {
+            <div class="bucket">
+              <h3 class="bucket-title">{{ s.label }}</h3>
+              <div class="grid">
+                @for (event of upcomingBuckets[s.key]; track event.id) {
+                  <app-event-card [event]="event" />
+                }
+              </div>
+            </div>
           }
-        </div>
+        }
       }
     </section>
 
@@ -163,14 +183,21 @@ import { formatDateTime } from '../../shared/date-format';
       </div>
       @if (loadingDiscover) {
         <p class="muted">Chargement…</p>
-      } @else if (discover.length === 0) {
+      } @else if (isEmpty(discoverBuckets)) {
         <p class="empty">Rien à suggérer pour l'instant.</p>
       } @else {
-        <div class="grid">
-          @for (event of discover; track event.id) {
-            <app-event-card [event]="event" />
+        @for (s of sections; track s.key) {
+          @if (discoverBuckets[s.key].length) {
+            <div class="bucket">
+              <h3 class="bucket-title">{{ s.label }}</h3>
+              <div class="grid">
+                @for (event of discoverBuckets[s.key]; track event.id) {
+                  <app-event-card [event]="event" />
+                }
+              </div>
+            </div>
           }
-        </div>
+        }
       }
     </section>
 
@@ -208,39 +235,52 @@ export class HomeComponent implements OnInit {
   private readonly router = inject(Router);
 
   q = '';
-  upcoming: EventDto[] = [];
-  discover: EventDto[] = [];
+  // Blocs « À venir » (qualifiés — RG-PLN-02) et « À découvrir » (recommandés non qualifiés),
+  // chacun réparti en 3 sections disjointes aujourd'hui / semaine / mois (RG-PLN-04).
+  upcomingBuckets: PeriodBuckets<EventDto> = EMPTY_BUCKETS;
+  discoverBuckets: PeriodBuckets<EventDto> = EMPTY_BUCKETS;
   planning: PlanningEntry[] = [];
   loadingUpcoming = true;
   loadingDiscover = true;
   loadingPlanning = true;
+
+  readonly sections: { key: keyof PeriodBuckets<EventDto>; label: string }[] = [
+    { key: 'today', label: "Aujourd'hui" },
+    { key: 'thisWeek', label: 'Cette semaine' },
+    { key: 'thisMonth', label: 'Ce mois-ci' },
+  ];
 
   firstName(): string {
     const name = this.identity.me()?.displayName ?? '';
     return name.split(' ')[0] ?? '';
   }
 
+  isEmpty(buckets: PeriodBuckets<EventDto>): boolean {
+    return !buckets.today.length && !buckets.thisWeek.length && !buckets.thisMonth.length;
+  }
+
   ngOnInit(): void {
-    this.eventsApi.search({ sort: 'upcoming', take: '4' }).subscribe({
-      next: (page) => {
-        this.upcoming = page.items;
+    // « À venir » = événements qualifiés (participation) → endpoint planning.
+    this.eventsApi.planning().subscribe({
+      next: (entries) => {
+        const events = entries.map((entry) => entry.event);
+        this.upcomingBuckets = bucketByPeriod(events, (e) => e.startsAt);
+        this.planning = entries.slice(0, 3);
         this.loadingUpcoming = false;
+        this.loadingPlanning = false;
       },
-      error: () => (this.loadingUpcoming = false),
+      error: () => {
+        this.loadingUpcoming = false;
+        this.loadingPlanning = false;
+      },
     });
-    this.discoveryApi.surprise(3).subscribe({
+    // « À découvrir » = suggestions non qualifiées (moteur de découverte).
+    this.discoveryApi.surprise(12).subscribe({
       next: (events) => {
-        this.discover = events;
+        this.discoverBuckets = bucketByPeriod(events, (e) => e.startsAt);
         this.loadingDiscover = false;
       },
       error: () => (this.loadingDiscover = false),
-    });
-    this.eventsApi.planning().subscribe({
-      next: (entries) => {
-        this.planning = entries.slice(0, 3);
-        this.loadingPlanning = false;
-      },
-      error: () => (this.loadingPlanning = false),
     });
   }
 

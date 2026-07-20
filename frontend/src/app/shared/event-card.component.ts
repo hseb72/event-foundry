@@ -17,6 +17,28 @@ import { participationColor, participationLabel } from './participation-color';
         gap: 0.6rem;
         border-left: 6px solid var(--stripe, transparent);
       }
+      .cover {
+        margin: -1rem -1.25rem 0.2rem;
+        border-radius: var(--radius) var(--radius) 0 0;
+        overflow: hidden;
+      }
+      .cover img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        display: block;
+      }
+      .cover-fallback {
+        display: flex;
+        align-items: center;
+        height: 40px;
+        padding: 0 0.85rem;
+        background: linear-gradient(135deg, var(--exp-weak), transparent), var(--surface-2);
+        color: var(--exp);
+        font-weight: 700;
+        font-size: 0.8rem;
+        letter-spacing: 0.02em;
+      }
       .title {
         font-weight: 700;
         font-size: 1.05rem;
@@ -62,6 +84,14 @@ import { participationColor, participationLabel } from './participation-color';
   ],
   template: `
     <div class="card event" [style.--stripe]="color()">
+      <!-- Couverture (RG-PLN-01) : 1ʳᵉ image si disponible, sinon repli coloré par activité. -->
+      <div class="cover">
+        @if (coverUrl(); as url) {
+          <img [src]="url" [alt]="event.title" loading="lazy" />
+        } @else {
+          <div class="cover-fallback">{{ event.activity }}</div>
+        }
+      </div>
       <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
       <div class="meta">
         {{ displayDate() }} · {{ event.activity }}
@@ -130,6 +160,10 @@ export class EventCardComponent {
     if (this.event.participation) {
       this.participation = { ...this.event.participation };
     }
+  }
+
+  coverUrl(): string | null {
+    return this.event.media?.[0]?.url ?? null;
   }
 
   color(): string {
