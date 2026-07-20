@@ -13,6 +13,7 @@ import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
 import { EditEventComponent } from './features/edit-event/edit-event.component';
 import { EventDetailComponent } from './features/event-detail/event-detail.component';
+import { FollowsComponent } from './features/follows/follows.component';
 import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
@@ -58,6 +59,7 @@ export const routes: Routes = [
         canActivate: [permissionGuard('recommendation.view')],
       },
       { path: 'calendar', component: CalendarComponent },
+      { path: 'follows', component: FollowsComponent },
       { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },
       { path: 'create', component: CreateEventComponent },

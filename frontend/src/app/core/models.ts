@@ -218,6 +218,24 @@ export interface MunicipalityGeo {
   countryName: string;
 }
 
+/** Types d'objets suivables (Follow — ADR.19 / FSPEC.06). */
+export type FollowTargetType =
+  | 'ORGANIZATION'
+  | 'ORGANIZER'
+  | 'VENUE'
+  | 'ACTIVITY'
+  | 'CATEGORY'
+  | 'EVENT_SERIES';
+
+/** Suivi durable utilisateur → objet. */
+export interface Follow {
+  id: string;
+  targetType: FollowTargetType;
+  targetId: string;
+  notify: boolean;
+  createdAt: string;
+}
+
 /** Adresse d'organisation (Localisation V3, chantier §8.2), région/commune dérivées. */
 export interface OrganizationAddress {
   id: string;

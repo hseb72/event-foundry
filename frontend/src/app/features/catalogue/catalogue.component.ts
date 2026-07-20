@@ -5,11 +5,12 @@ import { EventsApi } from '../../core/api/events.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
 import { ActivityDto, EventDto, FacetCount, ReferentialItem } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
+import { FollowButtonComponent } from '../../shared/follow-button.component';
 
 @Component({
   selector: 'app-catalogue',
   standalone: true,
-  imports: [FormsModule, EventCardComponent],
+  imports: [FormsModule, EventCardComponent, FollowButtonComponent],
   styles: [
     `
       .filters {
@@ -34,6 +35,11 @@ import { EventCardComponent } from '../../shared/event-card.component';
         flex-wrap: wrap;
         gap: 0.4rem;
         margin-bottom: 1.25rem;
+      }
+      .facet-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
       }
       .facet {
         border: 1px solid var(--border);
@@ -104,9 +110,12 @@ import { EventCardComponent } from '../../shared/event-card.component';
     @if (categoryFacets.length) {
       <div class="facets">
         @for (facet of categoryFacets; track facet.id) {
-          <button class="facet" [class.on]="categoryId === facet.id" (click)="pickCategory(facet.id)">
-            {{ facet.name }}<span class="n">{{ facet.count }}</span>
-          </button>
+          <div class="facet-wrap">
+            <button class="facet" [class.on]="categoryId === facet.id" (click)="pickCategory(facet.id)">
+              {{ facet.name }}<span class="n">{{ facet.count }}</span>
+            </button>
+            <app-follow-button targetType="CATEGORY" [targetId]="facet.id" />
+          </div>
         }
       </div>
     }
