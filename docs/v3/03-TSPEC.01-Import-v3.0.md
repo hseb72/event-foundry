@@ -1,8 +1,8 @@
 # Import — Spécification technique
 
-**Document** : TSPEC.Import
+**Document** : TSPEC.01
 
-**Fichier** : 03-TSPEC.Import-v3.0.md
+**Fichier** : 03-TSPEC.01-Import-v3.0.md
 
 **Version** : 3.0
 
@@ -161,7 +161,7 @@ durées par étape, taux d'erreur par connecteur.
 
 # Documents liés
 
-99-ADR.13/14/15/16/21/23 · 02-FSPEC.Import-v3.0 · 04-UISPEC.Import-v3.0 · 01-ARCHI.02/03/04-v3.0 ·
+99-ADR.13/14/15/16/21/23 · 02-FSPEC.01-Import-v3.0 · 04-UISPEC.01-Import-v3.0 · 01-ARCHI.02/03/04-v3.0 ·
 (V2) 03-TSPEC.03-ImportPipeline · shared/contracts
 
 ---

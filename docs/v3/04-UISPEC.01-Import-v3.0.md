@@ -1,8 +1,8 @@
 # Import — Spécification d'interface
 
-**Document** : UISPEC.Import
+**Document** : UISPEC.01
 
-**Fichier** : 04-UISPEC.Import-v3.0.md
+**Fichier** : 04-UISPEC.01-Import-v3.0.md
 
 **Version** : 3.0
 
@@ -107,7 +107,7 @@ Chaque écran prévoit : chargement · succès · vide · erreur (comportements 
 
 # Documents liés
 
-02-FSPEC.Import-v3.0 · 03-TSPEC.Import-v3.0 · 99-ADR.13/14/16/22/23 · 01-ARCHI.02-v3.0 ·
+02-FSPEC.01-Import-v3.0 · 03-TSPEC.01-Import-v3.0 · 99-ADR.13/14/16/22/23 · 01-ARCHI.02-v3.0 ·
 (V2) 04-UISPEC.02-OrganizerExperience · 04-UISPEC.03-OperatorExperience
 
 ---

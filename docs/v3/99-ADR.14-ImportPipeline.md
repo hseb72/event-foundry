@@ -364,9 +364,9 @@ Elle est retenue.
 
 01-ARCHI.*
 
-02-FSPEC.Import.*
+02-FSPEC.01-Import.*
 
-03-TSPEC.Import.*
+03-TSPEC.01-Import.*
 
 03-TSPEC.Connectors.*
 

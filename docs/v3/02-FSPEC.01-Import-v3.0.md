@@ -1,8 +1,8 @@
 # Import — Spécification fonctionnelle
 
-**Document** : FSPEC.Import
+**Document** : FSPEC.01
 
-**Fichier** : 02-FSPEC.Import-v3.0.md
+**Fichier** : 02-FSPEC.01-Import-v3.0.md
 
 **Version** : 3.0
 
@@ -162,7 +162,7 @@ la V2.
 # Documents liés
 
 99-ADR.13-ImportConnectorFramework · 99-ADR.14-ImportPipeline · 99-ADR.15-RawEventModel ·
-99-ADR.16-AIBoundaries · 99-ADR.17-NotificationFramework · 03-TSPEC.Import-v3.0 · 04-UISPEC.Import-v3.0 ·
+99-ADR.16-AIBoundaries · 99-ADR.17-NotificationFramework · 03-TSPEC.01-Import-v3.0 · 04-UISPEC.01-Import-v3.0 ·
 01-ARCHI.01-Domain-v3.0
 
 ---

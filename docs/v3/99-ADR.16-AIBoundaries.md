@@ -259,13 +259,13 @@ Cette solution est retenue.
 
 01-ARCHI.*
 
-02-FSPEC.Import.*
+02-FSPEC.01-Import.*
 
 02-FSPEC.AI.*
 
 03-TSPEC.AI.*
 
-03-TSPEC.Import.*
+03-TSPEC.01-Import.*
 
 99-ADR.*
 
