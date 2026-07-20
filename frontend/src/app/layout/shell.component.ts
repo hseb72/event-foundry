@@ -5,6 +5,7 @@ import { NotificationsApi } from '../core/api/notifications.service';
 import { AuthService } from '../core/auth/auth.service';
 import { ThemeService } from '../core/theme.service';
 import { Experience } from '../core/models';
+import { toInitials } from '../shared/initials';
 
 interface ExperienceMeta {
   key: Experience;
@@ -384,17 +385,4 @@ export class ShellComponent implements OnInit {
     this.auth.logout();
     void this.router.navigate(['/login']);
   }
-}
-
-/** Initiales d'affichage (avatar par défaut — 1 à 2 lettres) à partir du nom ou de l'e-mail. */
-function toInitials(source: string): string {
-  const name = source.split('@')[0].trim();
-  if (!name) {
-    return '?';
-  }
-  const parts = name.split(/[\s._-]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
 }
