@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EventStatus, type EventStatusEvent } from '@prisma/client';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { SearchIndexService } from '../../search/services/search-index.service';
 import type { EventWithRefs } from '../entities/event.entity';
 import {
@@ -31,6 +32,7 @@ export class PublishingService {
     private readonly events: EventsService,
     private readonly repository: EventRepository,
     private readonly searchIndex: SearchIndexService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Soumet un brouillon à validation (DRAFT → SUBMITTED). */
@@ -79,7 +81,26 @@ export class PublishingService {
     }
     const updated = await this.repository.applyTransition(id, from, to, actorId);
     await this.syncSearchIndex(updated);
+    await this.notifyParticipants(updated, from, actorId);
     return updated;
+  }
+
+  /**
+   * Émet une notification aux participants lorsqu'une transition affecte un événement de leur
+   * planning (dépublication, archivage, remise en ligne). Best-effort : n'altère jamais la transition.
+   */
+  private async notifyParticipants(
+    event: EventWithRefs,
+    from: EventStatus,
+    actorId: string,
+  ): Promise<void> {
+    if (event.status === EventStatus.PUBLISHED) {
+      await this.notifications.notifyEventChange(event.id, 'EVENT_REPUBLISHED', actorId);
+    } else if (event.status === EventStatus.ARCHIVED) {
+      await this.notifications.notifyEventChange(event.id, 'EVENT_ARCHIVED', actorId);
+    } else if (from === EventStatus.PUBLISHED && event.status === EventStatus.DRAFT) {
+      await this.notifications.notifyEventChange(event.id, 'EVENT_UNPUBLISHED', actorId);
+    }
   }
 
   /**

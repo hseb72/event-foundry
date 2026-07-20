@@ -79,6 +79,20 @@ enum RecommendationAction {
   REJECTED
 }
 
+/// Canal de diffusion d'une notification (EPIC 08). IN_APP est le canal interne (source de vérité
+/// consultable) ; EMAIL / PUSH sont des canaux de diffusion complémentaires.
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+/// État d'une notification interne (in-app) du point de vue du destinataire.
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
 // --- Identity V2 (EPIC 01) : Roles / Permissions / Experiences / Subscriptions / Organizations.
 // Modèle aligné sur ADR.08 (RBAC), ADR.11 (Identity/Role/Experience/Subscription) et FSPEC.10.
 // Concepts volontairement indépendants : les rôles portent les permissions ; l'expérience ne
@@ -112,6 +126,7 @@ model User {
   roles                UserRole[]
   participations       UserParticipation[]
   recommendationFeedback RecommendationFeedback[]
+  notifications        Notification[]
   createdEvents        Event[]
   // Identity V2 : appartenances aux organisations, expérience active et contexte org actif.
   memberships          OrganizationMembership[]
@@ -551,6 +566,7 @@ model Event {
   candidate      EventCandidate?
   searchDocument SearchDocument?
   recommendationFeedback RecommendationFeedback[]
+  notifications  Notification[]
   participations UserParticipation[]
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -660,6 +676,29 @@ model RecommendationFeedback {
   @@index([userId])
   @@index([eventId])
   @@map("recommendation_feedback")
+}
+
+/// Notification interne destinée à un utilisateur (EPIC 08). Le domaine Notifications transforme
+/// des événements métier d'autres domaines en messages ; il ne porte aucune décision métier. La
+/// notification est un canal de communication, jamais un objet métier (TSPEC.07). Le lien vers
+/// l'Event est optionnel (contexte de rebond) et facultatif.
+model Notification {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  type      String
+  title     String
+  body      String
+  channel   NotificationChannel @default(IN_APP)
+  status    NotificationStatus  @default(UNREAD)
+  eventId   String?             @map("event_id") @db.Uuid
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime?           @map("read_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@map("notifications")
 }
 
 /// Relation personnelle d'un utilisateur avec un Event (FSPEC.06). Trois axes indépendants.
