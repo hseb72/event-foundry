@@ -60,6 +60,12 @@ const NAV: NavItem[] = [
         display: flex;
         flex-direction: column;
         gap: 1.1rem;
+        /* Barre latérale épinglée : le bloc profil reste visible même si le contenu défile. */
+        position: sticky;
+        top: 0;
+        align-self: start;
+        height: 100vh;
+        overflow-y: auto;
       }
       .brand {
         font-weight: 800;
@@ -174,6 +180,12 @@ const NAV: NavItem[] = [
       @media (max-width: 720px) {
         .layout {
           grid-template-columns: 1fr;
+        }
+        /* Empilée en mobile : on rétablit un flux normal (pas d'épinglage plein écran). */
+        .sidebar {
+          position: static;
+          height: auto;
+          overflow-y: visible;
         }
         .main {
           padding: 1rem;
