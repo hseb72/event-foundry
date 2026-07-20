@@ -39,8 +39,8 @@ const STATUS_LABELS: Record<string, string> = {
         cursor: pointer;
       }
       .item.selected {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent);
+        border-color: var(--exp);
+        box-shadow: 0 0 0 1px var(--exp);
       }
       .item small {
         color: var(--muted);

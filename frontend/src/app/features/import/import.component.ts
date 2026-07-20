@@ -26,7 +26,7 @@ import { ImportResponse } from '../../core/models';
         resize: vertical;
       }
       .result {
-        border-left: 4px solid var(--accent);
+        border-left: 4px solid var(--exp);
       }
       .ok {
         color: var(--green);

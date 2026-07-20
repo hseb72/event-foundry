@@ -50,8 +50,8 @@ type FacetKind = 'activityId' | 'categoryId' | 'municipalityId' | 'tagId';
         cursor: pointer;
       }
       .chip.on {
-        background: var(--accent);
-        border-color: var(--accent);
+        background: var(--exp);
+        border-color: var(--exp);
         color: #fff;
       }
       .chip .n {
@@ -75,7 +75,7 @@ type FacetKind = 'activityId' | 'categoryId' | 'municipalityId' | 'tagId';
       .reset {
         background: transparent;
         border: 0;
-        color: var(--accent);
+        color: var(--exp);
         cursor: pointer;
         font-size: 0.82rem;
         padding: 0;

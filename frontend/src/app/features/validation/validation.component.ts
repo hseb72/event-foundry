@@ -42,8 +42,8 @@ import { EventFormComponent } from '../../shared/event-form.component';
         cursor: pointer;
       }
       .item.selected {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 1px var(--accent);
+        border-color: var(--exp);
+        box-shadow: 0 0 0 1px var(--exp);
       }
       .item small {
         color: var(--muted);

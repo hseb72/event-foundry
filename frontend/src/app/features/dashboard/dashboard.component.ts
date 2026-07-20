@@ -70,7 +70,7 @@ const SOURCE_LABELS: [string, string][] = [
       }
       .alert a {
         margin-left: auto;
-        color: var(--accent);
+        color: var(--exp);
         font-weight: 600;
         font-size: 0.85rem;
       }
@@ -119,7 +119,7 @@ const SOURCE_LABELS: [string, string][] = [
       }
       .fill {
         height: 100%;
-        background: var(--accent);
+        background: var(--exp);
         border-radius: 999px;
         min-width: 2px;
       }

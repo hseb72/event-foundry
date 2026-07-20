@@ -15,9 +15,9 @@ const EXPERIENCE_LABELS: Record<Experience, string> = {
 };
 
 const EXPERIENCE_COLORS: Record<Experience, string> = {
-  EXPLORER: 'var(--accent)',
+  EXPLORER: 'var(--explorer)',
   ORGANIZER: 'var(--organizer)',
-  OPERATOR: 'var(--admin)',
+  OPERATOR: 'var(--operator)',
 };
 
 @Component({

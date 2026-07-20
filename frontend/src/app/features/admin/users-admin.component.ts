@@ -42,7 +42,7 @@ const ROLES = ['USER', 'ADMIN'];
       }
       .me {
         font-size: 0.72rem;
-        color: var(--accent);
+        color: var(--exp);
         font-weight: 700;
       }
       .pill {

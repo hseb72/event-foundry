@@ -100,8 +100,8 @@ import { participationColor, participationLabel } from '../../shared/participati
         padding: 0 0.5rem;
       }
       .upload:hover {
-        border-color: var(--accent);
-        color: var(--accent);
+        border-color: var(--exp);
+        color: var(--exp);
       }
       dl {
         display: grid;

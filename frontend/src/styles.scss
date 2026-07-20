@@ -1,14 +1,39 @@
-/* EventFoundry — design system V1 (cf. docs/11-UX.01).
-   Accents par profil : Consommateur = rose, Organisateur = vert, Administrateur = violet. */
+/* EventFoundry — design system (cf. docs/v3 04-UISPEC.13-VisualIdentity).
+   Identité par univers : Explorer = magenta, Organizer = vert, Operator = violet.
+   Les composants n'utilisent QUE des tokens (jamais de couleur en dur) :
+   - `--exp*`  : couleur de l'EXPÉRIENCE ACTIVE (suit le rôle en cours) ;
+   - `--surface/--text/…` : tokens neutres, pilotés par le THÈME (clair/sombre). */
 
 :root {
-  --accent: #ec4899;
-  --accent-strong: #db2777;
-  --admin: #6d28d9;
-  --organizer: #16a34a;
+  /* Couleurs de référence par univers (source de --exp). */
+  --explorer: #ec4899;
+  --explorer-strong: #db2777;
+  --explorer-weak: rgba(236, 72, 153, 0.12);
 
+  --organizer: #16a34a;
+  --organizer-strong: #15803d;
+  --organizer-weak: rgba(22, 163, 74, 0.12);
+
+  --operator: #6d28d9;
+  --operator-strong: #5b21b6;
+  --operator-weak: rgba(109, 40, 217, 0.12);
+
+  /* Famille « expérience active » : par défaut Explorer (surchargée par [data-exp]). */
+  --exp: var(--explorer);
+  --exp-strong: var(--explorer-strong);
+  --exp-weak: var(--explorer-weak);
+  --exp-contrast: #ffffff;
+
+  /* Rétrocompatibilité (anciens usages) : --accent suit désormais l'expérience active. */
+  --accent: var(--exp);
+  --accent-strong: var(--exp-strong);
+  --admin: var(--operator);
+  --organizer-legacy: var(--organizer);
+
+  /* Neutres — thème CLAIR par défaut. */
   --bg: #f5f6fa;
   --surface: #ffffff;
+  --surface-2: #f0f1f6;
   --border: #e6e8ef;
   --text: #1f2333;
   --muted: #6b7185;
@@ -22,6 +47,36 @@
   --radius: 14px;
   --shadow: 0 6px 20px rgba(30, 35, 51, 0.06);
   --shadow-sm: 0 2px 8px rgba(30, 35, 51, 0.05);
+}
+
+/* La couleur SUIT l'expérience active : posée par le layout via [data-exp] (ADR.22 / RG-VIS-03). */
+[data-exp='EXPLORER'] {
+  --exp: var(--explorer);
+  --exp-strong: var(--explorer-strong);
+  --exp-weak: var(--explorer-weak);
+}
+[data-exp='ORGANIZER'] {
+  --exp: var(--organizer);
+  --exp-strong: var(--organizer-strong);
+  --exp-weak: var(--organizer-weak);
+}
+[data-exp='OPERATOR'] {
+  --exp: var(--operator);
+  --exp-strong: var(--operator-strong);
+  --exp-weak: var(--operator-weak);
+}
+
+/* Thème SOMBRE (préférence utilisateur — orthogonale à l'univers, ADR.22 §Thèmes).
+   Appliqué via l'attribut data-theme posé sur <html> par le ThemeService. */
+:root[data-theme='dark'] {
+  --bg: #14151c;
+  --surface: #1e2029;
+  --surface-2: #262933;
+  --border: #313543;
+  --text: #eceef5;
+  --muted: #9aa0b4;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 * {
@@ -65,23 +120,24 @@ button {
 }
 
 .btn:hover {
-  border-color: var(--accent);
+  border-color: var(--exp);
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--exp);
+  border-color: var(--exp);
+  color: var(--exp-contrast);
 }
 
 .btn-primary:hover {
-  background: var(--accent-strong);
+  background: var(--exp-strong);
+  border-color: var(--exp-strong);
 }
 
 .btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
+  background: var(--exp);
+  border-color: var(--exp);
+  color: var(--exp-contrast);
 }
 
 .card {

@@ -23,7 +23,7 @@ import { participationColor, participationLabel } from './participation-color';
         color: inherit;
       }
       .title:hover {
-        color: var(--accent);
+        color: var(--exp);
       }
       .meta {
         color: var(--muted);

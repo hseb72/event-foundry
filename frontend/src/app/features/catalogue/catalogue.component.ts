@@ -44,8 +44,8 @@ import { EventCardComponent } from '../../shared/event-card.component';
         cursor: pointer;
       }
       .facet.on {
-        background: var(--accent);
-        border-color: var(--accent);
+        background: var(--exp);
+        border-color: var(--exp);
         color: #fff;
       }
       .facet .n {

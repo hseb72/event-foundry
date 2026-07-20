@@ -63,8 +63,8 @@ import {
         cursor: pointer;
       }
       .tag-chip.on {
-        background: var(--accent);
-        border-color: var(--accent);
+        background: var(--exp);
+        border-color: var(--exp);
         color: #fff;
       }
       @media (max-width: 560px) {

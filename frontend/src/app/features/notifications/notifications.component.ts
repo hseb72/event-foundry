@@ -34,7 +34,7 @@ import { formatDateTime } from '../../shared/date-format';
         padding: 0.75rem 0.9rem;
       }
       .notif.unread {
-        border-left: 4px solid var(--accent);
+        border-left: 4px solid var(--exp);
         background: rgba(124, 58, 237, 0.04);
       }
       .dot {
@@ -42,7 +42,7 @@ import { formatDateTime } from '../../shared/date-format';
         height: 9px;
         border-radius: 50%;
         margin-top: 0.35rem;
-        background: var(--accent);
+        background: var(--exp);
         flex: 0 0 auto;
       }
       .notif.read .dot {

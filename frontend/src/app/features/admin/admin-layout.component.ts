@@ -26,7 +26,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         background: rgba(0, 0, 0, 0.05);
       }
       .subnav a.active {
-        background: var(--accent);
+        background: var(--exp);
         color: #fff;
       }
     `,

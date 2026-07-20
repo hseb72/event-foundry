@@ -78,7 +78,7 @@ import { formatDateTime } from '../../shared/date-format';
         font-size: 1.15rem;
       }
       .section-head a {
-        color: var(--accent);
+        color: var(--exp);
         font-size: 0.85rem;
         font-weight: 600;
       }
@@ -98,7 +98,7 @@ import { formatDateTime } from '../../shared/date-format';
         padding: 0.6rem 0.8rem;
         border: 1px solid var(--border);
         border-radius: 10px;
-        border-left: 5px solid var(--stripe, var(--accent));
+        border-left: 5px solid var(--stripe, var(--exp));
       }
       .planning-row .title {
         font-weight: 600;

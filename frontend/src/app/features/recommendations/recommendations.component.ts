@@ -39,7 +39,7 @@ import { EventCardComponent } from '../../shared/event-card.component';
         color: var(--muted);
       }
       .toggle button.on {
-        background: var(--accent);
+        background: var(--exp);
         color: #fff;
       }
       .reco {
@@ -56,7 +56,7 @@ import { EventCardComponent } from '../../shared/event-card.component';
       }
       .reason {
         background: rgba(124, 58, 237, 0.1);
-        color: var(--accent);
+        color: var(--exp);
         border-radius: 999px;
         padding: 0.15rem 0.6rem;
         font-size: 0.78rem;

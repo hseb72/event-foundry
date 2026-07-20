@@ -24,9 +24,9 @@ import { EntityDef, REFERENCE_ENTITIES } from './reference-admin.model';
         font-weight: 500;
       }
       .tab.active {
-        background: var(--accent);
+        background: var(--exp);
         color: #fff;
-        border-color: var(--accent);
+        border-color: var(--exp);
       }
     `,
   ],

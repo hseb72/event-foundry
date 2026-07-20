@@ -19,9 +19,9 @@ interface NavItem {
 }
 
 const EXPERIENCES: ExperienceMeta[] = [
-  { key: 'EXPLORER', label: 'Explorer', color: 'var(--accent)' },
+  { key: 'EXPLORER', label: 'Explorer', color: 'var(--explorer)' },
   { key: 'ORGANIZER', label: 'Organizer', color: 'var(--organizer)' },
-  { key: 'OPERATOR', label: 'Operator', color: 'var(--admin)' },
+  { key: 'OPERATOR', label: 'Operator', color: 'var(--operator)' },
 ];
 
 // Navigation pilotée par l'EXPÉRIENCE active ET conditionnée par les PERMISSIONS (ADR.08/ADR.11) :
@@ -147,8 +147,8 @@ const NAV: NavItem[] = [
         justify-content: space-between;
       }
       .badge {
-        background: var(--accent);
-        color: #fff;
+        background: var(--exp);
+        color: var(--exp-contrast);
         border-radius: 999px;
         font-size: 0.72rem;
         font-weight: 700;
@@ -194,7 +194,7 @@ const NAV: NavItem[] = [
     `,
   ],
   template: `
-    <div class="layout" [style.--exp]="accent()">
+    <div class="layout" [attr.data-exp]="activeExperience()">
       <aside class="sidebar">
         <div class="brand">EventFoundry</div>
 
@@ -264,9 +264,6 @@ export class ShellComponent implements OnInit {
 
   readonly activeExperience = computed<Experience | null>(() => this.me()?.activeExperience ?? null);
   readonly organizations = computed(() => this.me()?.organizations ?? []);
-  readonly accent = computed(
-    () => EXPERIENCES.find((e) => e.key === this.activeExperience())?.color ?? 'var(--accent)',
-  );
 
   readonly visibleNav = computed<NavItem[]>(() => {
     const me = this.me();
