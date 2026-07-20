@@ -177,6 +177,24 @@ model AiConfig {
   @@map("ai_configs")
 }
 
+/**
+ * Paramètre de configuration plateforme (FSPEC.09 / TSPEC.09), à la main de l'Operator. Valeurs
+ * **non secrètes** en JSONB ; les identifiants sensibles (SMTP) sont référencés via `secret_ref`
+ * (ADR.21), jamais stockés ici en clair.
+ */
+model PlatformSetting {
+  id        String       @id @default(uuid()) @db.Uuid
+  section   String
+  key       String
+  value     Json
+  secretRef String?      @map("secret_ref")
+  status    SecretStatus @default(CONFIGURED)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([section, key])
+  @@map("platform_settings")
+}
+
 /// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
 enum FollowTargetType {
   ORGANIZATION

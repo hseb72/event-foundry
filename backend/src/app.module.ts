@@ -20,6 +20,7 @@ import { SearchModule } from './search/search.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { SecretsModule } from './secrets/secrets.module';
 import { AiModule } from './ai/ai.module';
+import { PlatformConfigModule } from './platform-config/platform-config.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
 import { StatsModule } from './stats/stats.module';
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     SecretsModule,
     AiModule,
+    PlatformConfigModule,
     MinioModule,
     QueueModule,
     UsersModule,
