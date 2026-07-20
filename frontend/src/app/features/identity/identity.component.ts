@@ -2,10 +2,13 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { IdentityService } from '../../core/api/identity.service';
+import { AiConfigApi } from '../../core/api/ai-config.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme.service';
 import {
+  AI_USE_CASES,
+  AiUseCase,
   Experience,
   MunicipalityGeo,
   OrganizationAddress,
@@ -59,6 +62,13 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         display: flex;
         gap: 0.4rem;
         flex-wrap: wrap;
+      }
+      .switch {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+        font-size: 0.9rem;
+        font-weight: 600;
       }
       .theme-opt {
         border: 1px solid var(--border);
@@ -396,12 +406,42 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         }
 
         <section class="card">
-          <h2>Configurations personnelles <span class="soon">Bientôt</span></h2>
-          <p class="muted" style="font-size:0.85rem;margin:0">
-            Branchez votre propre IA (fournisseur, clé API, cas d'usage) pour assister vos imports.
-            La clé sera stockée comme un secret (jamais affichée en clair). Disponible avec le
-            domaine IA de la V3.
+          <h2>Configuration IA</h2>
+          <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
+            Branchez votre propre IA pour assister vos imports (OCR, traduction…). La clé est stockée
+            comme un secret : jamais réaffichée. L'IA reste une assistance — la décision reste
+            déterministe.
           </p>
+          <div style="display:grid;gap:0.5rem">
+            <label class="switch">
+              <input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+              <input class="input" [(ngModel)]="ai.provider" placeholder="Fournisseur (openai, anthropic, ollama…)" />
+              <input class="input" [(ngModel)]="ai.model" placeholder="Modèle (gpt-4o-mini…)" />
+            </div>
+            <div style="display:flex;gap:0.4rem;align-items:center">
+              <input class="input" type="password" [(ngModel)]="ai.apiKey"
+                     [placeholder]="aiSecretMasked() ? 'Clé enregistrée (' + aiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
+            </div>
+            <div>
+              <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Cas d'usage autorisés</div>
+              <div class="chips">
+                @for (uc of aiUseCases; track uc) {
+                  <button type="button" class="theme-opt" [class.on]="ai.useCases[uc]" (click)="toggleUseCase(uc)">
+                    {{ uc }}
+                  </button>
+                }
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+              <button class="btn btn-primary" (click)="saveAi()">Enregistrer</button>
+              <button class="btn" (click)="testAi()" [disabled]="!aiSecretMasked()">Tester</button>
+              @if (aiStatus()) {
+                <span class="sub">{{ aiStatusLabel() }}</span>
+              }
+            </div>
+          </div>
         </section>
 
         <section class="card">
@@ -490,10 +530,23 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 })
 export class IdentityComponent implements OnInit {
   private readonly identity = inject(IdentityService);
+  private readonly aiConfigApi = inject(AiConfigApi);
   private readonly referenceData = inject(ReferenceDataApi);
   private readonly theme = inject(ThemeService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+
+  // Configuration IA personnelle (ADR.16 / TSPEC.07).
+  readonly aiUseCases = AI_USE_CASES;
+  private readonly aiSecret = signal<{ masked: string } | null>(null);
+  private readonly aiTestStatus = signal<string>('');
+  ai = {
+    provider: '',
+    model: '',
+    enabled: false,
+    useCases: {} as Record<string, boolean>,
+    apiKey: '',
+  };
 
   // Adresses de l'organisation active (chantier §8.2), si l'utilisateur peut la gérer.
   readonly addresses = signal<OrganizationAddress[]>([]);
@@ -535,6 +588,63 @@ export class IdentityComponent implements OnInit {
     } else {
       this.loadAddresses();
     }
+    this.loadAiConfig();
+  }
+
+  // --- Configuration IA personnelle (ADR.16 / TSPEC.07) ---
+
+  private loadAiConfig(): void {
+    this.aiConfigApi.get().subscribe((config) => {
+      if (config) {
+        this.ai.provider = config.provider;
+        this.ai.model = config.model;
+        this.ai.enabled = config.enabled;
+        this.ai.useCases = { ...config.useCases };
+        this.aiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+        this.aiTestStatus.set(config.status);
+      }
+    });
+  }
+
+  aiSecretMasked(): string {
+    return this.aiSecret()?.masked ?? '';
+  }
+
+  aiStatus(): string {
+    return this.aiTestStatus();
+  }
+
+  aiStatusLabel(): string {
+    const map: Record<string, string> = {
+      CONFIGURED: 'Configuré (non testé)',
+      TESTED: '✓ Testé',
+      FAILED: '✗ Test échoué',
+    };
+    return map[this.aiTestStatus()] ?? this.aiTestStatus();
+  }
+
+  toggleUseCase(useCase: AiUseCase): void {
+    this.ai.useCases = { ...this.ai.useCases, [useCase]: !this.ai.useCases[useCase] };
+  }
+
+  saveAi(): void {
+    this.aiConfigApi
+      .update({
+        provider: this.ai.provider.trim(),
+        model: this.ai.model.trim(),
+        enabled: this.ai.enabled,
+        useCases: this.ai.useCases,
+        apiKey: this.ai.apiKey.trim() || undefined,
+      })
+      .subscribe((config) => {
+        this.ai.apiKey = '';
+        this.aiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+        this.aiTestStatus.set(config.status);
+      });
+  }
+
+  testAi(): void {
+    this.aiConfigApi.test().subscribe((result) => this.aiTestStatus.set(result.status));
   }
 
   // --- Adresses de l'organisation active (chantier §8.2) ---

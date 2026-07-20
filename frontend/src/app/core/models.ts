@@ -240,6 +240,30 @@ export interface Follow {
   createdAt: string;
 }
 
+/** Cas d'usage IA activables (ADR.16). */
+export const AI_USE_CASES = ['OCR', 'DOC_UNDERSTANDING', 'TRANSLATE', 'SUMMARIZE', 'REPHRASE', 'ENRICH'] as const;
+export type AiUseCase = (typeof AI_USE_CASES)[number];
+
+/** Configuration IA d'une portée (la clé n'est jamais renvoyée — seulement des métadonnées masquées). */
+export interface AiConfig {
+  scope: string;
+  scopeKey: string;
+  provider: string;
+  model: string;
+  enabled: boolean;
+  useCases: Record<string, boolean>;
+  status: string;
+  secret: { reference: string; masked: string; status: string } | null;
+}
+
+export interface UpdateAiConfigInput {
+  provider: string;
+  model: string;
+  enabled: boolean;
+  useCases: Record<string, boolean>;
+  apiKey?: string;
+}
+
 /** Adresse d'organisation (Localisation V3, chantier §8.2), région/commune dérivées. */
 export interface OrganizationAddress {
   id: string;
