@@ -1,7 +1,10 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { IdentityService } from '../../core/api/identity.service';
-import { Experience } from '../../core/models';
+import { AuthService } from '../../core/auth/auth.service';
+import { ThemeService } from '../../core/theme.service';
+import { Experience, ThemePreference } from '../../core/models';
 
 interface PermissionGroup {
   group: string;
@@ -28,10 +31,49 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
     `
       .head {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 0.75rem;
         flex-wrap: wrap;
         margin-bottom: 1.25rem;
+      }
+      .avatar {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--exp);
+        color: var(--exp-contrast);
+        font-weight: 800;
+        font-size: 1rem;
+      }
+      .theme-opts {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+      .theme-opt {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .theme-opt.on {
+        background: var(--exp);
+        border-color: var(--exp);
+        color: var(--exp-contrast);
+      }
+      .soon {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: var(--exp-weak);
+        color: var(--exp);
+        margin-left: 0.4rem;
       }
       .head h1 {
         margin: 0;
@@ -131,6 +173,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
   template: `
     @if (me(); as m) {
       <div class="head">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
         <h1>{{ m.displayName }}</h1>
         <span class="muted">{{ m.email }}</span>
         @if (m.activeExperience) {
@@ -142,9 +185,10 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 
       <div class="grid">
         <section class="card">
-          <h2>Profil</h2>
+          <h2>Données personnelles</h2>
           @if (editing()) {
             <div style="display:grid;gap:0.5rem;max-width:280px">
+              <label class="muted" style="font-size:0.78rem">Nom affiché (nickname)</label>
               <input class="input" [(ngModel)]="draftName" placeholder="Nom affiché" />
               <div style="display:flex;gap:0.5rem">
                 <button class="btn btn-primary" (click)="saveProfile()">Enregistrer</button>
@@ -152,7 +196,10 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               </div>
             </div>
           } @else {
-            <p style="margin:0 0 0.6rem"><strong>{{ m.displayName }}</strong></p>
+            <p style="margin:0 0 0.3rem"><strong>{{ m.displayName }}</strong></p>
+            <p class="muted" style="margin:0 0 0.6rem;font-size:0.85rem">
+              {{ m.email }} <span class="muted">· e-mail de connexion (non modifiable)</span>
+            </p>
             <button class="btn" (click)="startEdit(m.displayName)">Modifier le nom affiché</button>
           }
         </section>
@@ -229,6 +276,45 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             </div>
           }
         </section>
+
+        <section class="card">
+          <h2>Configurations personnelles <span class="soon">Bientôt</span></h2>
+          <p class="muted" style="font-size:0.85rem;margin:0">
+            Branchez votre propre IA (fournisseur, clé API, cas d'usage) pour assister vos imports.
+            La clé sera stockée comme un secret (jamais affichée en clair). Disponible avec le
+            domaine IA de la V3.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Autres préférences</h2>
+          <label class="muted" style="font-size:0.78rem;display:block;margin-bottom:0.4rem">Thème</label>
+          <div class="theme-opts">
+            @for (opt of themeOptions; track opt.value) {
+              <button
+                type="button"
+                class="theme-opt"
+                [class.on]="themePreference() === opt.value"
+                (click)="setTheme(opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            }
+          </div>
+          <p class="muted" style="font-size:0.78rem;margin:0.6rem 0 0">
+            « Système » suit le réglage clair/sombre de votre appareil.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Session</h2>
+          @if (m.subscription) {
+            <p style="margin:0 0 0.6rem">
+              Souscription : <span class="sub">{{ m.subscription }}</span>
+            </p>
+          }
+          <button class="btn" (click)="logout()">Se déconnecter</button>
+        </section>
       </div>
     } @else {
       <p class="muted">Chargement de l'identité…</p>
@@ -237,9 +323,21 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 })
 export class IdentityComponent implements OnInit {
   private readonly identity = inject(IdentityService);
+  private readonly theme = inject(ThemeService);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly allExperiences: Experience[] = ['EXPLORER', 'ORGANIZER', 'OPERATOR'];
   readonly me = this.identity.me;
+
+  readonly themePreference = this.theme.preference;
+  readonly themeOptions: { value: ThemePreference; label: string }[] = [
+    { value: 'light', label: 'Clair' },
+    { value: 'dark', label: 'Sombre' },
+    { value: 'system', label: 'Système' },
+  ];
+
+  readonly initials = computed(() => toInitials(this.me()?.displayName || this.me()?.email || ''));
 
   readonly editing = signal(false);
   draftName = '';
@@ -286,4 +384,29 @@ export class IdentityComponent implements OnInit {
     }
     this.identity.updateProfile({ displayName }).subscribe(() => this.editing.set(false));
   }
+
+  setTheme(preference: ThemePreference): void {
+    // Application immédiate (rendu) + persistance dans les préférences (User Preferences, ADR.20).
+    this.theme.set(preference);
+    const preferences = { ...(this.me()?.preferences ?? {}), theme: preference };
+    this.identity.updateProfile({ preferences }).subscribe();
+  }
+
+  logout(): void {
+    this.auth.logout();
+    void this.router.navigate(['/login']);
+  }
+}
+
+/** Initiales d'affichage (1 à 2 lettres) à partir du nom ou de l'e-mail. */
+function toInitials(source: string): string {
+  const name = source.split('@')[0].trim();
+  if (!name) {
+    return '?';
+  }
+  const parts = name.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
 }

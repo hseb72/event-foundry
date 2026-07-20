@@ -54,4 +54,10 @@ export class IdentityMeDto {
 
   @ApiProperty({ type: [IdentityOrganizationDto] })
   organizations!: IdentityOrganizationDto[];
+
+  @ApiProperty({
+    type: Object,
+    description: 'Préférences personnelles (thème, langue, notifications…). Source : User Preferences.',
+  })
+  preferences!: Record<string, unknown>;
 }

@@ -97,7 +97,12 @@ export interface IdentityMe {
   activeOrganizationId: string | null;
   subscription: string | null;
   organizations: IdentityOrganization[];
+  /** Préférences personnelles (thème, langue, notifications…). Source : User Preferences (ADR.20). */
+  preferences?: Record<string, unknown> | null;
 }
+
+/** Thème d'interface (préférence utilisateur, ADR.22 §Thèmes). */
+export type ThemePreference = 'light' | 'dark' | 'system';
 
 export interface ParticipationState {
   interested: boolean;

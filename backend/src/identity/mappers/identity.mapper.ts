@@ -23,5 +23,6 @@ export function toIdentityMeDto(identity: EffectiveIdentity, graph: IdentityGrap
     activeOrganizationId: identity.activeOrganizationId,
     subscription: identity.subscription,
     organizations,
+    preferences: (graph.preferences as Record<string, unknown> | null) ?? {},
   };
 }

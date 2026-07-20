@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { IdentityService } from '../core/api/identity.service';
 import { NotificationsApi } from '../core/api/notifications.service';
 import { AuthService } from '../core/auth/auth.service';
+import { ThemeService } from '../core/theme.service';
 import { Experience } from '../core/models';
 
 interface ExperienceMeta {
@@ -161,17 +162,78 @@ const NAV: NavItem[] = [
         color: #9a94ad;
         padding: 0.4rem 0.2rem;
       }
-      .user {
+      .profile {
         margin-top: auto;
-        display: grid;
-        gap: 0.5rem;
-        font-size: 0.8rem;
-        color: #cfc9de;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding-top: 0.6rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
       }
-      .logout {
+      .profile-link {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0.45rem;
+        border-radius: 12px;
+        min-width: 0;
+      }
+      .profile-link:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .profile-link.on {
+        background: var(--exp);
+      }
+      .avatar {
+        flex: 0 0 auto;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--exp);
+        color: var(--exp-contrast);
+        font-weight: 800;
+        font-size: 0.82rem;
+        letter-spacing: 0.02em;
+      }
+      .profile-link.on .avatar {
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .profile-info {
+        display: grid;
+        gap: 0.1rem;
+        min-width: 0;
+      }
+      .profile-name {
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .profile-sub {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        color: #b7b1c8;
+        text-transform: uppercase;
+      }
+      .logout-icon {
+        flex: 0 0 auto;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
         background: transparent;
         color: #d9d5e6;
-        border-color: rgba(255, 255, 255, 0.2);
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .logout-icon:hover {
+        background: rgba(255, 255, 255, 0.1);
       }
       .main {
         padding: 2rem;
@@ -235,15 +297,21 @@ const NAV: NavItem[] = [
           @if (!visibleNav().length) {
             <div class="empty">Aucun écran disponible dans ce contexte.</div>
           }
-          <a routerLink="/me" routerLinkActive="active">Mon identité</a>
         </nav>
 
-        <div class="user">
-          <div>{{ me()?.email }}</div>
-          @if (me()?.subscription; as sub) {
-            <div><span class="sub">{{ sub }}</span></div>
-          }
-          <button class="btn logout" (click)="logout()">Se déconnecter</button>
+        <!-- Menu profil unifié (FSPEC.11) : pastille avatar + nickname, toujours visible
+             (sidebar sticky), point d'entrée unique vers la gestion du profil. -->
+        <div class="profile">
+          <a class="profile-link" routerLink="/me" routerLinkActive="on" aria-label="Mon profil">
+            <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+            <span class="profile-info">
+              <span class="profile-name">{{ me()?.displayName || me()?.email }}</span>
+              @if (me()?.subscription; as sub) {
+                <span class="profile-sub">{{ sub }}</span>
+              }
+            </span>
+          </a>
+          <button class="logout-icon" (click)="logout()" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>
         </div>
       </aside>
       <main class="main">
@@ -256,6 +324,7 @@ export class ShellComponent implements OnInit {
   private readonly identity = inject(IdentityService);
   private readonly notificationsApi = inject(NotificationsApi);
   private readonly auth = inject(AuthService);
+  private readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
 
   readonly experiences = EXPERIENCES;
@@ -264,6 +333,7 @@ export class ShellComponent implements OnInit {
 
   readonly activeExperience = computed<Experience | null>(() => this.me()?.activeExperience ?? null);
   readonly organizations = computed(() => this.me()?.organizations ?? []);
+  readonly initials = computed(() => toInitials(this.me()?.displayName || this.me()?.email || ''));
 
   readonly visibleNav = computed<NavItem[]>(() => {
     const me = this.me();
@@ -279,7 +349,7 @@ export class ShellComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.identity.loadMe().subscribe();
+    this.identity.loadMe().subscribe((me) => this.theme.syncFromPreferences(me.preferences));
     this.notificationsApi.refreshUnread();
   }
 
@@ -313,4 +383,17 @@ export class ShellComponent implements OnInit {
     this.auth.logout();
     void this.router.navigate(['/login']);
   }
+}
+
+/** Initiales d'affichage (avatar par défaut — 1 à 2 lettres) à partir du nom ou de l'e-mail. */
+function toInitials(source: string): string {
+  const name = source.split('@')[0].trim();
+  if (!name) {
+    return '?';
+  }
+  const parts = name.split(/[\s._-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
 }
