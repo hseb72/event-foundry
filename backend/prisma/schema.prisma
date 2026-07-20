@@ -93,6 +93,39 @@ enum NotificationStatus {
   READ
 }
 
+/// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
+enum FollowTargetType {
+  ORGANIZATION
+  ORGANIZER
+  VENUE
+  ACTIVITY
+  CATEGORY
+  EVENT_SERIES
+}
+
+/**
+ * Follow (ADR.19 / FSPEC.06) : relation durable entre un utilisateur et un objet suivi. Référence
+ * polymorphe (targetType + targetId), intégrité vers l'objet assurée applicativement. Alimente la
+ * découverte, les recommandations et les notifications « information Explorer ». Suppression logique
+ * (unfollow) ; re-suivre réactive l'enregistrement (unicité par (user, type, cible)).
+ */
+model Follow {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType FollowTargetType @map("target_type")
+  targetId   String           @map("target_id") @db.Uuid
+  notify     Boolean          @default(true)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt  DateTime?        @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@index([userId, deletedAt])
+  @@map("follows")
+}
+
 // --- Identity V2 (EPIC 01) : Roles / Permissions / Experiences / Subscriptions / Organizations.
 // Modèle aligné sur ADR.08 (RBAC), ADR.11 (Identity/Role/Experience/Subscription) et FSPEC.10.
 // Concepts volontairement indépendants : les rôles portent les permissions ; l'expérience ne
@@ -127,6 +160,7 @@ model User {
   participations       UserParticipation[]
   recommendationFeedback RecommendationFeedback[]
   notifications        Notification[]
+  follows              Follow[]
   createdEvents        Event[]
   // Identity V2 : appartenances aux organisations, expérience active et contexte org actif.
   memberships          OrganizationMembership[]

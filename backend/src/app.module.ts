@@ -13,6 +13,7 @@ import { ImportsModule } from './imports/imports.module';
 import { MinioModule } from './infra/minio/minio.module';
 import { ParticipationModule } from './participation/participation.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { FollowModule } from './follow/follow.module';
 import { PlanningModule } from './planning/planning.module';
 import { RecommendationModule } from './recommendation/recommendation.module';
 import { SearchModule } from './search/search.module';
@@ -51,6 +52,7 @@ import { UsersModule } from './users/users.module';
     SearchModule,
     RecommendationModule,
     NotificationsModule,
+    FollowModule,
     StatsModule,
     HealthModule,
     MetricsModule,
