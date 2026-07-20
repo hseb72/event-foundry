@@ -146,6 +146,44 @@
 
 ---
 
+## 8. Localisation (sélection par pays + code postal) & adresses d'organisation
+
+### 8.1 Sélection de localisation
+
+- **Existant V2** : hiérarchie `Country → Region → Municipality` (la commune porte `postalCode`) ;
+  l'Event pointe `municipalityId` ; le formulaire propose une cascade à 3 sélecteurs
+  (pays / région / ville).
+- **Cible** : sélection/recherche par **pays + code postal** (plus efficace). L'utilisateur saisit
+  un code postal → on résout la/les commune(s) ; **la région est une conséquence de la ville**
+  (dérivée, jamais sélectionnée).
+- [ ] Recherche `pays + zip → commune(s)` ; afficher la région en lecture seule (conséquence).
+- [ ] Indexer `postalCode` (aujourd'hui non indexé) pour la recherche.
+- **[à trancher]** Le modèle sous-jacent : **garder** `Region` comme niveau de hiérarchie (région
+  seulement *dérivée* à l'affichage) **vs** la rétrograder en simple attribut de la commune. Un même
+  code postal peut couvrir plusieurs communes (ou l'inverse) → gérer la désambiguïsation.
+
+### 8.2 Adresses d'organisation
+
+- **Constat** : l'organisateur agit **dans le cadre d'une organisation** (tenant Identity V2), qui
+  ne porte aujourd'hui **aucune propriété d'adresse**.
+- [ ] Doter l'**Organization** de ses propriétés, dont **une ou plusieurs adresses** (structurées :
+      pays, code postal, commune, ligne de rue, libellé).
+- [ ] **Création manuelle d'un événement** : proposer les **adresses de l'organisation** comme
+      choix de localisation (naturel pour l'organizer).
+- **[à trancher]** Relation entre **adresse d'organisation**, entité **Venue** (référentiel existant)
+  et localisation de l'Event : une adresse d'org crée/alimente-t-elle un Venue, ou l'Event référence-t-il
+  directement l'adresse ? (rappel : `Organizer` = fiche référentielle ≠ `Organization` = tenant.)
+
+### 8.3 Page de paramètres d'organisation (à la main de l'organizer)
+
+- [ ] Écran de **paramètres d'organisation** géré par l'**organizer** (permission `organization.manage`,
+      déjà détenue par le rôle Organizer) : propriétés + adresses.
+- **Gouvernance** : l'**admin ne devrait y toucher qu'à la demande** de l'organizer (correction de
+  bug, support). **[à trancher]** restriction **dure** (l'admin ne peut pas écrire) **vs** convention
+  **support-only** (accès conservé pour le support, tracé/audité).
+
+---
+
 ## Notes de méthode
 
 - Une fois cette liste stabilisée : rédiger la V3 structurée (un **ADR** par décision structurante —
