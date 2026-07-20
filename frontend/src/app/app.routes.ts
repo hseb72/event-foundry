@@ -19,6 +19,7 @@ import { OperatorAdminComponent } from './features/operator/operator-admin.compo
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
 import { LoginComponent } from './features/login/login.component';
+import { NotificationsComponent } from './features/notifications/notifications.component';
 import { RecommendationsComponent } from './features/recommendations/recommendations.component';
 import { SearchComponent } from './features/search/search.component';
 import { ValidationComponent } from './features/validation/validation.component';
@@ -33,6 +34,7 @@ export const routes: Routes = [
     children: [
       { path: 'home', component: HomeComponent },
       { path: 'me', component: IdentityComponent },
+      { path: 'notifications', component: NotificationsComponent },
       {
         path: 'operator/admin',
         component: OperatorAdminComponent,

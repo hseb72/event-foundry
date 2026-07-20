@@ -41,6 +41,18 @@ export interface Facets {
   tags: FacetCount[];
 }
 
+/** Notification interne de l'utilisateur (EPIC 08). */
+export interface NotificationDto {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  status: 'UNREAD' | 'READ';
+  eventId: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
 /** Action possible sur une recommandation (EPIC 06). */
 export type RecommendationAction = 'ACCEPTED' | 'IGNORED' | 'REJECTED';
 

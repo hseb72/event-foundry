@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { IdentityService } from '../core/api/identity.service';
+import { NotificationsApi } from '../core/api/notifications.service';
 import { AuthService } from '../core/auth/auth.service';
 import { Experience } from '../core/models';
 
@@ -38,6 +39,7 @@ const NAV: NavItem[] = [
   { label: 'Validation', path: '/validation', experiences: ['OPERATOR'], permission: 'validation.review' },
   { label: 'Utilisateurs & organisations', path: '/operator/admin', experiences: ['OPERATOR'], permission: 'user.manage' },
   { label: 'Administration', path: '/admin', experiences: ['OPERATOR'], permission: 'reference.manage' },
+  { label: 'Notifications', path: '/notifications', experiences: ['EXPLORER', 'ORGANIZER', 'OPERATOR'] },
 ];
 
 @Component({
@@ -133,6 +135,21 @@ const NAV: NavItem[] = [
         background: var(--exp);
         color: #fff;
       }
+      nav a {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .badge {
+        background: var(--accent);
+        color: #fff;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        min-width: 1.2rem;
+        text-align: center;
+        padding: 0.05rem 0.35rem;
+      }
       .empty {
         font-size: 0.8rem;
         color: #9a94ad;
@@ -196,7 +213,12 @@ const NAV: NavItem[] = [
 
         <nav>
           @for (item of visibleNav(); track item.path) {
-            <a [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+            <a [routerLink]="item.path" routerLinkActive="active">
+              <span>{{ item.label }}</span>
+              @if (item.path === '/notifications' && unreadNotifications() > 0) {
+                <span class="badge">{{ unreadNotifications() }}</span>
+              }
+            </a>
           }
           @if (!visibleNav().length) {
             <div class="empty">Aucun écran disponible dans ce contexte.</div>
@@ -220,11 +242,13 @@ const NAV: NavItem[] = [
 })
 export class ShellComponent implements OnInit {
   private readonly identity = inject(IdentityService);
+  private readonly notificationsApi = inject(NotificationsApi);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly experiences = EXPERIENCES;
   readonly me = this.identity.me;
+  readonly unreadNotifications = this.notificationsApi.unread;
 
   readonly activeExperience = computed<Experience | null>(() => this.me()?.activeExperience ?? null);
   readonly organizations = computed(() => this.me()?.organizations ?? []);
@@ -247,6 +271,7 @@ export class ShellComponent implements OnInit {
 
   ngOnInit(): void {
     this.identity.loadMe().subscribe();
+    this.notificationsApi.refreshUnread();
   }
 
   isAvailable(experience: Experience): boolean {
