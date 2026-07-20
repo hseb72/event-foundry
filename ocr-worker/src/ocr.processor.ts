@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { ImportRequest, OCRResult } from '@event-foundry/contracts';
+import { AI_OCR_ENGINE_FACTORY, type AiOcrEngineFactory } from './engine/ai-ocr-engine';
 import { DOCUMENT_LOADER, type DocumentLoader } from './interfaces/document-loader.interface';
 import { IMAGE_PROCESSOR, type ImageProcessor } from './interfaces/image-processor.interface';
 import { OCR_ENGINE, type OcrEngine, type OcrEngineResult } from './interfaces/ocr-engine.interface';
@@ -27,6 +28,7 @@ export class OcrProcessor {
     @Inject(OCR_ENGINE) private readonly engine: OcrEngine,
     private readonly postProcessor: OcrPostProcessor,
     @Optional() @Inject(OCR_LEXICON_PROVIDER) private readonly lexicon?: ReferenceLexiconProvider,
+    @Optional() @Inject(AI_OCR_ENGINE_FACTORY) private readonly aiEngineFactory?: AiOcrEngineFactory,
   ) {}
 
   async process(request: ImportRequest): Promise<OCRResult> {
@@ -34,15 +36,24 @@ export class OcrProcessor {
     const document = await this.loader.load(request.attachmentId);
     const variants = await this.imageProcessor.preprocess(document.buffer, document.contentType);
 
-    // Multi-passes déterministe : OCR de chaque variante, on retient la meilleure confiance.
+    // 1er cas d'usage IA (ADR.16) : si le Backend a résolu un assistant OCR, on l'utilise ; en cas
+    // d'échec (indisponible, format inattendu…), repli déterministe sur l'OCR interne (RG-AI-06).
     let best: OcrEngineResult | null = null;
     let bestLabel = '';
-    for (const variant of variants) {
-      const recognized = await this.engine.recognize(variant.buffer);
-      if (!best || recognized.confidence > best.confidence) {
-        best = recognized;
-        bestLabel = variant.label;
+    if (request.ocrAssistant && this.aiEngineFactory) {
+      try {
+        const aiEngine = this.aiEngineFactory.forAssistant(request.ocrAssistant);
+        ({ best, bestLabel } = await this.recognizeBest(aiEngine, variants));
+        this.logger.log(`OCR assisté par IA (${request.ocrAssistant.provider}).`);
+      } catch (error) {
+        this.logger.warn(
+          `IA OCR indisponible, repli sur l'OCR interne : ${(error as Error).message}`,
+        );
+        best = null;
       }
+    }
+    if (!best) {
+      ({ best, bestLabel } = await this.recognizeBest(this.engine, variants));
     }
     if (!best) {
       throw new Error('Aucune variante de prétraitement à traiter.');
@@ -67,6 +78,23 @@ export class OcrProcessor {
       engineVersion: best.engineVersion,
       correlationId: request.correlationId,
     };
+  }
+
+  /** OCR multi-passes déterministe : retient la variante à la meilleure confiance. */
+  private async recognizeBest(
+    engine: OcrEngine,
+    variants: { label: string; buffer: Buffer }[],
+  ): Promise<{ best: OcrEngineResult | null; bestLabel: string }> {
+    let best: OcrEngineResult | null = null;
+    let bestLabel = '';
+    for (const variant of variants) {
+      const recognized = await engine.recognize(variant.buffer);
+      if (!best || recognized.confidence > best.confidence) {
+        best = recognized;
+        bestLabel = variant.label;
+      }
+    }
+    return { best, bestLabel };
   }
 
   /**

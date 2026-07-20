@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AI_OCR_ENGINE_FACTORY, AiOcrEngineFactory } from './engine/ai-ocr-engine';
 import { TesseractOcrEngine } from './engine/tesseract-ocr-engine';
 import { DOCUMENT_LOADER } from './interfaces/document-loader.interface';
 import { IMAGE_PROCESSOR } from './interfaces/image-processor.interface';
@@ -22,6 +23,7 @@ import { OcrWorker } from './worker';
     { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessor },
     { provide: OCR_LEXICON_PROVIDER, useClass: HttpReferenceLexiconProvider },
     { provide: OCR_ENGINE, useClass: TesseractOcrEngine },
+    { provide: AI_OCR_ENGINE_FACTORY, useClass: AiOcrEngineFactory },
     OcrPostProcessor,
     OcrProcessor,
     OcrResultPublisher,

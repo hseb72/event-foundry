@@ -3,8 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { ImportJobStatus } from '@prisma/client';
 import { generateCorrelationId, getCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
+import { AiConfigService } from '../../ai/ai-config.service';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
+import type { OcrAssistant } from '@event-foundry/contracts';
 import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
 import { ImportJobNotFoundException } from '../exceptions/import-job-not-found.exception';
 import { UnsupportedFileTypeException } from '../exceptions/unsupported-file-type.exception';
@@ -23,6 +25,7 @@ export class ImportsService {
     private readonly minio: MinioService,
     private readonly queue: QueueService,
     private readonly config: ConfigService,
+    private readonly aiConfig: AiConfigService,
   ) {}
 
   list(skip: number, take: number): Promise<ImportJobWithAttachment[]> {
@@ -37,8 +40,11 @@ export class ImportsService {
     return job;
   }
 
-  /** Import d'un fichier (image/PDF) : déclenche l'OCR. */
-  async importFile(file: Express.Multer.File): Promise<ImportJobWithAttachment> {
+  /** Import d'un fichier (image/PDF) : déclenche l'OCR (assisté par IA si configuré). */
+  async importFile(
+    file: Express.Multer.File,
+    actor?: { userId: string; organizationId: string | null },
+  ): Promise<ImportJobWithAttachment> {
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
       throw new UnsupportedFileTypeException(file.mimetype);
     }
@@ -66,10 +72,16 @@ export class ImportsService {
       correlationId,
     });
 
+    // 1er cas d'usage IA (ADR.16) : si une IA « OCR » est configurée pour l'utilisateur/organisation,
+    // le Backend la résout (le Worker est découplé de PostgreSQL et ne peut pas résoudre les secrets)
+    // et la passe au Worker. Sinon, OCR interne déterministe (Tesseract).
+    const ocrAssistant = actor ? await this.resolveOcrAssistant(actor) : undefined;
+
     await this.queue.enqueueImport({
       importJobId: job.id,
       attachmentId: job.attachmentId,
       correlationId,
+      ...(ocrAssistant ? { ocrAssistant } : {}),
     });
 
     // Le job entre dans l'étape OCR : transition historisée (le Backend orchestre chaque
@@ -83,6 +95,20 @@ export class ImportsService {
     job.startedAt = startedAt;
 
     return job;
+  }
+
+  /**
+   * Résout l'assistant IA pour le cas d'usage « OCR » (fallback organisation → utilisateur →
+   * plateforme). Retourne `undefined` si aucun n'est activé → repli sur l'OCR interne (RG-AI-06).
+   */
+  private async resolveOcrAssistant(actor: {
+    userId: string;
+    organizationId: string | null;
+  }): Promise<OcrAssistant | undefined> {
+    const resolved = await this.aiConfig.resolveForUseCase(actor.userId, actor.organizationId, 'OCR');
+    return resolved
+      ? { provider: resolved.provider, model: resolved.model, apiKey: resolved.apiKey }
+      : undefined;
   }
 
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */

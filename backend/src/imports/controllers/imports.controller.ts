@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CreateTextImportDto } from '../dto/create-text-import.dto';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
@@ -35,11 +37,16 @@ export class ImportsController {
   @Post()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: DEFAULT_MAX_UPLOAD_BYTES } }))
-  async importFile(@UploadedFile() file?: Express.Multer.File): Promise<ImportResponseDto> {
+  async importFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<ImportResponseDto> {
     if (!file) {
       throw new BadRequestException('Fichier manquant (champ « file »).');
     }
-    return ImportMapper.toResponse(await this.service.importFile(file));
+    return ImportMapper.toResponse(
+      await this.service.importFile(file, { userId: user.userId, organizationId: user.activeOrganizationId }),
+    );
   }
 
   @Post('text')

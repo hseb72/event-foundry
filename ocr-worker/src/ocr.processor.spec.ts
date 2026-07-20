@@ -26,6 +26,24 @@ function build(
   );
 }
 
+function buildWithAi(
+  engine: OcrEngine,
+  imageProcessor: ImageProcessor,
+  aiFactory: { forAssistant: jest.Mock },
+): OcrProcessor {
+  const loader = {
+    load: jest.fn().mockResolvedValue({ buffer: Buffer.from('img'), contentType: 'image/png' }),
+  };
+  return new OcrProcessor(
+    loader as unknown as DocumentLoader,
+    imageProcessor,
+    engine,
+    new OcrPostProcessor(),
+    undefined,
+    aiFactory as never,
+  );
+}
+
 describe('OcrProcessor', () => {
   it('produit un OCRResult, nettoie le texte et propage le correlationId', async () => {
     const engine = {
@@ -92,5 +110,58 @@ describe('OcrProcessor', () => {
     });
 
     expect(result.rawText).toBe('Tournoi a la Boutique');
+  });
+
+  it('utilise l’assistant IA quand le Backend en a résolu un (1er cas d’usage — ADR.16)', async () => {
+    const internal = { recognize: jest.fn().mockResolvedValue(engineResult('OCR INTERNE', 0.5)) };
+    const aiEngine = {
+      recognize: jest.fn().mockResolvedValue({
+        text: 'TEXTE IA',
+        confidence: 0.99,
+        language: 'auto',
+        engine: 'ai:openai',
+        engineVersion: 'gpt-4o-mini',
+      }),
+    };
+    const imageProcessor = {
+      preprocess: jest.fn().mockResolvedValue([{ label: 'grayscale-normalized', buffer: Buffer.from('x') }]),
+    };
+    const processor = buildWithAi(internal as unknown as OcrEngine, imageProcessor, {
+      forAssistant: jest.fn().mockReturnValue(aiEngine),
+    });
+
+    const result = await processor.process({
+      importJobId: 'job-4',
+      attachmentId: 'att-4',
+      correlationId: 'corr-4',
+      ocrAssistant: { provider: 'openai', model: 'gpt-4o-mini', apiKey: 'sk' },
+    });
+
+    expect(aiEngine.recognize).toHaveBeenCalled();
+    expect(internal.recognize).not.toHaveBeenCalled();
+    expect(result.rawText).toBe('TEXTE IA');
+    expect(result.engine).toBe('ai:openai');
+  });
+
+  it('retombe sur l’OCR interne si l’assistant IA échoue (RG-AI-06)', async () => {
+    const internal = { recognize: jest.fn().mockResolvedValue(engineResult('OCR INTERNE', 0.7)) };
+    const aiEngine = { recognize: jest.fn().mockRejectedValue(new Error('IA indisponible')) };
+    const imageProcessor = {
+      preprocess: jest.fn().mockResolvedValue([{ label: 'grayscale-normalized', buffer: Buffer.from('x') }]),
+    };
+    const processor = buildWithAi(internal as unknown as OcrEngine, imageProcessor, {
+      forAssistant: jest.fn().mockReturnValue(aiEngine),
+    });
+
+    const result = await processor.process({
+      importJobId: 'job-5',
+      attachmentId: 'att-5',
+      correlationId: 'corr-5',
+      ocrAssistant: { provider: 'openai', model: 'gpt-4o-mini', apiKey: 'sk' },
+    });
+
+    expect(aiEngine.recognize).toHaveBeenCalled();
+    expect(internal.recognize).toHaveBeenCalled();
+    expect(result.rawText).toBe('OCR INTERNE');
   });
 });

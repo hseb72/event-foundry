@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiModule } from '../ai/ai.module';
 import { OcrResultConsumer } from './consumers/ocr-result.consumer';
 import { ImportsController } from './controllers/imports.controller';
 import { ImportJobRepository } from './repositories/import-job.repository';
@@ -10,6 +11,7 @@ import { ImportsService } from './services/imports.service';
  * consomme OCR_RESULT_QUEUE (OcrResultConsumer) pour enchaîner sur la classification.
  */
 @Module({
+  imports: [AiModule],
   controllers: [ImportsController],
   providers: [ImportsService, ImportJobRepository, OcrResultConsumer],
   exports: [ImportJobRepository],

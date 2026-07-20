@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { AiConfigService } from '../../ai/ai-config.service';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
 import type { ImportJobWithAttachment } from '../entities/import-job.entity';
@@ -39,6 +40,7 @@ describe('ImportsService', () => {
   >;
   let minio: jest.Mocked<Pick<MinioService, 'putObject' | 'bucketName'>>;
   let queue: jest.Mocked<Pick<QueueService, 'enqueueImport' | 'enqueueClassification'>>;
+  let aiConfig: jest.Mocked<Pick<AiConfigService, 'resolveForUseCase'>>;
   let service: ImportsService;
 
   beforeEach(() => {
@@ -54,11 +56,13 @@ describe('ImportsService', () => {
       enqueueClassification: jest.fn().mockResolvedValue(undefined),
     };
     const config = { get: jest.fn().mockReturnValue('fra+eng') } as unknown as ConfigService;
+    aiConfig = { resolveForUseCase: jest.fn().mockResolvedValue(null) };
     service = new ImportsService(
       repository as unknown as ImportJobRepository,
       minio as unknown as MinioService,
       queue as unknown as QueueService,
       config,
+      aiConfig as unknown as AiConfigService,
     );
   });
 
@@ -81,6 +85,8 @@ describe('ImportsService', () => {
     expect(minio.putObject).toHaveBeenCalledTimes(1);
     expect(queue.enqueueImport).toHaveBeenCalledTimes(1);
     expect(queue.enqueueClassification).not.toHaveBeenCalled();
+    // Sans IA configurée : pas d'assistant dans le job (OCR interne).
+    expect(queue.enqueueImport.mock.calls[0][0].ocrAssistant).toBeUndefined();
     // Le Backend historise l'entrée dans l'étape OCR.
     expect(repository.transition).toHaveBeenCalledWith(
       'job-1',
@@ -88,6 +94,25 @@ describe('ImportsService', () => {
       expect.any(String),
       expect.objectContaining({ startedAt: expect.any(Date) }),
     );
+  });
+
+  it('joint l’assistant IA au job quand une IA « OCR » est configurée', async () => {
+    aiConfig.resolveForUseCase.mockResolvedValue({
+      scope: 'USER' as never,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      apiKey: 'sk-secret',
+    });
+    const file = { mimetype: 'image/png', buffer: Buffer.from('img'), originalname: 'a.png', size: 3 };
+
+    await service.importFile(file as Express.Multer.File, { userId: 'u-1', organizationId: 'org-1' });
+
+    expect(aiConfig.resolveForUseCase).toHaveBeenCalledWith('u-1', 'org-1', 'OCR');
+    expect(queue.enqueueImport.mock.calls[0][0].ocrAssistant).toEqual({
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      apiKey: 'sk-secret',
+    });
   });
 
   it('classe directement un import texte, sans OCR', async () => {
