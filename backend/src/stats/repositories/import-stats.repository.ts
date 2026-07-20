@@ -1,10 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { EventCandidateStatus, EventSource, ImportJobStatus } from '@prisma/client';
+import {
+  EventCandidateStatus,
+  EventSource,
+  EventStatus,
+  ImportJobStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 
 export interface StatusCount<T extends string> {
   status: T;
   count: number;
+}
+
+/** Comptes transverses de l'état de la plateforme (tableau de bord Operator — OPE-001). */
+export interface PlatformCounts {
+  users: number;
+  activeUsers: number;
+  organizations: number;
+  eventsByStatus: StatusCount<EventStatus>[];
+  pendingValidations: number;
+  failedImports: number;
 }
 
 /**
@@ -60,5 +75,31 @@ export class ImportStatsRepository {
     return rows.filter(
       (r): r is { startedAt: Date; finishedAt: Date } => r.startedAt !== null && r.finishedAt !== null,
     );
+  }
+
+  /** Vision globale de l'état de la plateforme (comptes séquentiels : une requête par connexion). */
+  async platformCounts(): Promise<PlatformCounts> {
+    const users = await this.prisma.user.count();
+    const activeUsers = await this.prisma.user.count({ where: { isActive: true } });
+    const organizations = await this.prisma.organization.count();
+    const eventGroups = await this.prisma.event.groupBy({
+      by: ['status'],
+      where: { deletedAt: null },
+      _count: { _all: true },
+    });
+    const pendingValidations = await this.prisma.eventCandidate.count({
+      where: { status: EventCandidateStatus.PENDING },
+    });
+    const failedImports = await this.prisma.importJob.count({
+      where: { status: ImportJobStatus.FAILED },
+    });
+    return {
+      users,
+      activeUsers,
+      organizations,
+      eventsByStatus: eventGroups.map((g) => ({ status: g.status, count: g._count._all })),
+      pendingValidations,
+      failedImports,
+    };
   }
 }

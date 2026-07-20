@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { EventCandidateStatus, EventSource, ImportJobStatus } from '@prisma/client';
+import { EventCandidateStatus, EventSource, EventStatus, ImportJobStatus } from '@prisma/client';
 import { ImportStatsResponseDto } from '../dto/import-stats-response.dto';
+import { PlatformOverviewDto } from '../dto/platform-overview-response.dto';
 import { ImportStatsRepository, StatusCount } from '../repositories/import-stats.repository';
 
 /**
@@ -10,6 +11,22 @@ import { ImportStatsRepository, StatusCount } from '../repositories/import-stats
 @Injectable()
 export class StatsService {
   constructor(private readonly repository: ImportStatsRepository) {}
+
+  /** Vision globale de l'état de la plateforme pour la supervision Operator (OPE-001). */
+  async platformOverview(): Promise<PlatformOverviewDto> {
+    const counts = await this.repository.platformCounts();
+    const eventsByStatus = fill(counts.eventsByStatus, Object.values(EventStatus));
+    return {
+      totalUsers: counts.users,
+      activeUsers: counts.activeUsers,
+      suspendedUsers: counts.users - counts.activeUsers,
+      organizations: counts.organizations,
+      totalEvents: sum(eventsByStatus),
+      eventsByStatus,
+      pendingValidations: counts.pendingValidations,
+      failedImports: counts.failedImports,
+    };
+  }
 
   async importStats(): Promise<ImportStatsResponseDto> {
     const [importsByStatus, transitionsByStatus, candidatesByStatus, eventsBySource, avgOcr, durations] =

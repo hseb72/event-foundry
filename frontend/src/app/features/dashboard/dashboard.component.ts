@@ -1,6 +1,14 @@
 import { Component, OnInit } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { StatsApi } from '../../core/api/stats.service';
-import { ImportStatsDto } from '../../core/models';
+import { ImportStatsDto, PlatformOverviewDto } from '../../core/models';
+
+const EVENT_STATUS_LABELS: [string, string][] = [
+  ['DRAFT', 'Brouillons'],
+  ['SUBMITTED', 'En validation'],
+  ['PUBLISHED', 'Publiés'],
+  ['ARCHIVED', 'Archivés'],
+];
 
 interface BarRow {
   label: string;
@@ -36,8 +44,40 @@ const SOURCE_LABELS: [string, string][] = [
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  imports: [RouterLink],
   styles: [
     `
+      .alerts {
+        display: grid;
+        gap: 0.6rem;
+        margin: 0.5rem 0 1.5rem;
+      }
+      .alert {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border-radius: 10px;
+        padding: 0.7rem 0.9rem;
+        border: 1px solid var(--border);
+      }
+      .alert.warn {
+        border-left: 4px solid #e08600;
+        background: rgba(224, 134, 0, 0.06);
+      }
+      .alert.ok {
+        border-left: 4px solid var(--green, #2e7d32);
+        background: rgba(46, 125, 50, 0.05);
+      }
+      .alert a {
+        margin-left: auto;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+      .section-title {
+        font-size: 1.05rem;
+        margin: 1.5rem 0 0.25rem;
+      }
       .tiles {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -94,8 +134,52 @@ const SOURCE_LABELS: [string, string][] = [
     `,
   ],
   template: `
-    <h1>Tableau de bord</h1>
-    <p class="muted">Pipeline d'import — volumes, passages entre états et durées.</p>
+    <h1>Supervision</h1>
+    <p class="muted">Vision globale de l'état de la plateforme.</p>
+
+    @if (overview) {
+      <div class="alerts">
+        @if (overview.pendingValidations > 0) {
+          <div class="alert warn">
+            <span>⚠ {{ overview.pendingValidations }} candidat(s) d'import en attente de validation.</span>
+            <a routerLink="/validation">Traiter</a>
+          </div>
+        }
+        @if (overview.failedImports > 0) {
+          <div class="alert warn">
+            <span>⚠ {{ overview.failedImports }} import(s) en échec.</span>
+            <a routerLink="/admin/jobs">Voir les imports</a>
+          </div>
+        }
+        @if (overview.pendingValidations === 0 && overview.failedImports === 0) {
+          <div class="alert ok"><span>✓ Aucune alerte : le pipeline est sain.</span></div>
+        }
+      </div>
+
+      <div class="tiles">
+        <div class="card tile">
+          <div class="value">{{ overview.totalUsers }}</div>
+          <div class="caption">Utilisateurs ({{ overview.activeUsers }} actifs · {{ overview.suspendedUsers }} suspendus)</div>
+        </div>
+        <div class="card tile">
+          <div class="value">{{ overview.organizations }}</div>
+          <div class="caption">Organisations</div>
+        </div>
+        <div class="card tile">
+          <div class="value">{{ overview.totalEvents }}</div>
+          <div class="caption">Événements</div>
+        </div>
+        @for (row of eventRows; track row.label) {
+          <div class="card tile">
+            <div class="value">{{ row.value }}</div>
+            <div class="caption">{{ row.label }}</div>
+          </div>
+        }
+      </div>
+    }
+
+    <h2 class="section-title">Pipeline d'import</h2>
+    <p class="muted">Volumes, passages entre états et durées.</p>
 
     @if (loading) {
       <p class="muted">Chargement…</p>
@@ -175,6 +259,8 @@ const SOURCE_LABELS: [string, string][] = [
 })
 export class DashboardComponent implements OnInit {
   stats: ImportStatsDto | null = null;
+  overview: PlatformOverviewDto | null = null;
+  eventRows: BarRow[] = [];
   loading = true;
 
   importRows: BarRow[] = [];
@@ -189,6 +275,12 @@ export class DashboardComponent implements OnInit {
   constructor(private readonly api: StatsApi) {}
 
   ngOnInit(): void {
+    this.api.overview().subscribe({
+      next: (overview) => {
+        this.overview = overview;
+        this.eventRows = toRows(overview.eventsByStatus, EVENT_STATUS_LABELS);
+      },
+    });
     this.api.importStats().subscribe({
       next: (stats) => {
         this.stats = stats;

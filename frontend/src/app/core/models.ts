@@ -256,6 +256,18 @@ export interface CreateEventInput {
   currency?: string;
 }
 
+/** Vision globale de l'état de la plateforme (tableau de bord Operator — OPE-001). */
+export interface PlatformOverviewDto {
+  totalUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  organizations: number;
+  totalEvents: number;
+  eventsByStatus: Record<string, number>;
+  pendingValidations: number;
+  failedImports: number;
+}
+
 export interface ImportStatsDto {
   totalImports: number;
   importsByStatus: Record<string, number>;

@@ -90,6 +90,24 @@ describe('Administration (E2E)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
   });
+
+  it('expose la vision globale de la plateforme à l\'Operator (dashboard.view)', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/admin/overview')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    expect(res.body.totalUsers).toBeGreaterThanOrEqual(2);
+    expect(res.body.suspendedUsers).toBe(res.body.totalUsers - res.body.activeUsers);
+    expect(typeof res.body.eventsByStatus.PUBLISHED).toBe('number');
+    expect(typeof res.body.pendingValidations).toBe('number');
+    expect(typeof res.body.failedImports).toBe('number');
+
+    // Un utilisateur sans dashboard.view ne voit pas la supervision.
+    await request(app.getHttpServer())
+      .get('/api/v1/admin/overview')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+  });
 });
 
 async function login(app: INestApplication, email: string, password: string): Promise<string> {
