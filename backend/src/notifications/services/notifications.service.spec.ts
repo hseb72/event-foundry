@@ -1,0 +1,63 @@
+import { FollowTargetType, type Notification } from '@prisma/client';
+import { FollowService } from '../../follow/follow.service';
+import { NotificationRepository } from '../repositories/notification.repository';
+import { NotificationDispatcher } from './notification-dispatcher.service';
+import { NotificationsService, type PublishedEventTargets } from './notifications.service';
+
+describe('NotificationsService — information Explorer (Follow → notification)', () => {
+  let repository: jest.Mocked<Pick<NotificationRepository, 'create' | 'notificationPreferences'>>;
+  let dispatcher: jest.Mocked<Pick<NotificationDispatcher, 'dispatch'>>;
+  let follows: jest.Mocked<Pick<FollowService, 'listFollowerIds'>>;
+  let service: NotificationsService;
+
+  const event: PublishedEventTargets = {
+    id: 'e-1',
+    title: 'Tournoi Magic',
+    organizerId: 'org-1',
+    activityId: 'act-1',
+    categoryId: 'cat-1',
+    venueId: null,
+  };
+
+  beforeEach(() => {
+    repository = {
+      create: jest.fn().mockResolvedValue({ id: 'n-1' } as Notification),
+      notificationPreferences: jest.fn().mockResolvedValue({ email: false, push: false }),
+    };
+    dispatcher = { dispatch: jest.fn().mockResolvedValue(undefined) };
+    follows = { listFollowerIds: jest.fn() };
+    service = new NotificationsService(
+      repository as unknown as NotificationRepository,
+      dispatcher as unknown as NotificationDispatcher,
+      follows as unknown as FollowService,
+    );
+  });
+
+  it('notifie chaque abonné une seule fois (dédoublonnage entre types de cibles)', async () => {
+    // u-1 suit l'organisateur ET l'activité → une seule notification. u-2 suit la catégorie.
+    follows.listFollowerIds.mockImplementation((type: FollowTargetType) => {
+      if (type === FollowTargetType.ORGANIZER) return Promise.resolve(['u-1']);
+      if (type === FollowTargetType.ACTIVITY) return Promise.resolve(['u-1']);
+      if (type === FollowTargetType.CATEGORY) return Promise.resolve(['u-2']);
+      return Promise.resolve([]);
+    });
+
+    await service.notifyFollowersOfNewEvent(event);
+
+    expect(repository.create).toHaveBeenCalledTimes(2);
+    const recipients = repository.create.mock.calls.map((call) => call[0].userId).sort();
+    expect(recipients).toEqual(['u-1', 'u-2']);
+  });
+
+  it("exclut l'auteur de la publication", async () => {
+    follows.listFollowerIds.mockResolvedValue(['organizer-user', 'u-2']);
+    await service.notifyFollowersOfNewEvent(event, 'organizer-user');
+    const recipients = repository.create.mock.calls.map((call) => call[0].userId);
+    expect(recipients).not.toContain('organizer-user');
+  });
+
+  it('best-effort : une erreur de diffusion ne remonte pas', async () => {
+    follows.listFollowerIds.mockRejectedValue(new Error('db down'));
+    await expect(service.notifyFollowersOfNewEvent(event)).resolves.toBeUndefined();
+  });
+});

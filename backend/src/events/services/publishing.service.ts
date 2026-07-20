@@ -79,10 +79,33 @@ export class PublishingService {
     if (to === EventStatus.PUBLISHED) {
       this.validatePublishable(event);
     }
+    // Première publication : publishedAt est encore nul avant cette transition (réécrit ensuite).
+    const isFirstPublish = to === EventStatus.PUBLISHED && event.publishedAt == null;
     const updated = await this.repository.applyTransition(id, from, to, actorId);
     await this.syncSearchIndex(updated);
     await this.notifyParticipants(updated, from, actorId);
+    if (isFirstPublish) {
+      await this.notifyFollowers(updated, actorId);
+    }
     return updated;
+  }
+
+  /**
+   * « Information Explorer » (ADR.17 / FSPEC.04) : à la première publication, informe les abonnés
+   * (Follow — ADR.19) de l'organisateur / activité / catégorie / lieu de l'événement. Best-effort.
+   */
+  private async notifyFollowers(event: EventWithRefs, actorId: string): Promise<void> {
+    await this.notifications.notifyFollowersOfNewEvent(
+      {
+        id: event.id,
+        title: event.title,
+        organizerId: event.organizerId,
+        activityId: event.activityId,
+        categoryId: event.categoryId,
+        venueId: event.venueId,
+      },
+      actorId,
+    );
   }
 
   /**
