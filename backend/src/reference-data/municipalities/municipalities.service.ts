@@ -4,6 +4,7 @@ import { MunicipalityNotFoundException, RegionNotFoundException } from '../commo
 import { rethrowAsConflict } from '../common/prisma-error';
 import { RegionRepository } from '../regions/region.repository';
 import { CreateMunicipalityDto, UpdateMunicipalityDto } from './municipality.dto';
+import type { MunicipalityWithGeo } from './municipality.mapper';
 import { MunicipalityRepository } from './municipality.repository';
 
 @Injectable()
@@ -17,6 +18,20 @@ export class MunicipalitiesService {
     return regionId
       ? this.repository.listByRegion(regionId, includeInactive)
       : this.repository.list(includeInactive);
+  }
+
+  /** Résout « pays + code postal → commune(s) » (Localisation V3, chantier §8.1). */
+  resolveByPostalCode(countryId: string, postalCode: string): Promise<MunicipalityWithGeo[]> {
+    return this.repository.resolveByPostalCode(countryId, postalCode.trim());
+  }
+
+  /** Vue géographique d'une commune (région/pays dérivés) — préremplissage en édition. */
+  async getGeoOrThrow(id: string): Promise<MunicipalityWithGeo> {
+    const municipality = await this.repository.findWithGeo(id);
+    if (!municipality) {
+      throw new MunicipalityNotFoundException(id);
+    }
+    return municipality;
   }
 
   async getOrThrow(id: string): Promise<Municipality> {

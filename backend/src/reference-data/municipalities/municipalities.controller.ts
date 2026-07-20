@@ -15,6 +15,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import {
   CreateMunicipalityDto,
+  MunicipalityGeoDto,
   MunicipalityResponseDto,
   UpdateMunicipalityDto,
 } from './municipality.dto';
@@ -34,6 +35,28 @@ export class MunicipalitiesController {
   ): Promise<MunicipalityResponseDto[]> {
     const municipalities = await this.service.list(includeInactive === 'true', regionId);
     return municipalities.map(MunicipalityMapper.toResponse);
+  }
+
+  /**
+   * Résolution « pays + code postal → commune(s) » (Localisation V3, chantier §8.1). La région est
+   * dérivée (jamais saisie). Déclaré avant `:id` pour ne pas être capturé par la route paramétrée.
+   */
+  @Get('resolve')
+  async resolve(
+    @Query('countryId', ParseUUIDPipe) countryId: string,
+    @Query('postalCode') postalCode: string,
+  ): Promise<MunicipalityGeoDto[]> {
+    if (!postalCode || !postalCode.trim()) {
+      return [];
+    }
+    const municipalities = await this.service.resolveByPostalCode(countryId, postalCode);
+    return municipalities.map(MunicipalityMapper.toGeo);
+  }
+
+  /** Vue géographique d'une commune (région/pays dérivés) — préremplissage en édition. */
+  @Get(':id/geo')
+  async geo(@Param('id', ParseUUIDPipe) id: string): Promise<MunicipalityGeoDto> {
+    return MunicipalityMapper.toGeo(await this.service.getGeoOrThrow(id));
   }
 
   @Post()

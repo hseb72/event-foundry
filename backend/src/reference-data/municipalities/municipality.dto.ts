@@ -58,3 +58,30 @@ export class MunicipalityResponseDto {
   @ApiProperty({ description: 'ISO 8601, UTC.' })
   createdAt!: string;
 }
+
+/**
+ * Vue géographique d'une commune (Localisation V3, chantier §8.1) : la commune reste l'unité de
+ * localisation ; la **région est dérivée** (jamais saisie) et exposée en lecture seule.
+ */
+export class MunicipalityGeoDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty({ nullable: true })
+  postalCode!: string | null;
+
+  @ApiProperty()
+  regionId!: string;
+
+  @ApiProperty({ description: 'Région dérivée de la commune (lecture seule).' })
+  regionName!: string;
+
+  @ApiProperty()
+  countryId!: string;
+
+  @ApiProperty()
+  countryName!: string;
+}

@@ -411,6 +411,7 @@ model Municipality {
 
   @@unique([regionId, name])
   @@index([regionId])
+  @@index([postalCode])
   @@map("municipalities")
 }
 

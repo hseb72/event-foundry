@@ -51,6 +51,24 @@ describe('Reference Data — Géographie (E2E)', () => {
       .set('Authorization', `Bearer ${operatorToken}`)
       .expect(200);
     expect(regionsOfCountry.body.map((r: { id: string }) => r.id)).toContain(region.body.id);
+
+    // Localisation V3 (chantier §8.1) : résolution pays + code postal → commune(s), région dérivée.
+    const resolved = await request(app.getHttpServer())
+      .get(`/api/v1/municipalities/resolve?countryId=${country.body.id}&postalCode=00000`)
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .expect(200);
+    const match = resolved.body.find((m: { id: string }) => m.id === city.body.id);
+    expect(match).toBeDefined();
+    expect(match.regionName).toBe(region.body.name);
+    expect(match.countryId).toBe(country.body.id);
+
+    // Vue géographique d'une commune (préremplissage édition).
+    const geo = await request(app.getHttpServer())
+      .get(`/api/v1/municipalities/${city.body.id}/geo`)
+      .set('Authorization', `Bearer ${explorerToken}`)
+      .expect(200);
+    expect(geo.body.regionName).toBe(region.body.name);
+    expect(geo.body.postalCode).toBe('00000');
   });
 
   it('rejette une Region rattachée à un Country inexistant (404)', async () => {

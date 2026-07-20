@@ -6,6 +6,7 @@ import {
   CreateEventInput,
   EventDraft,
   EventEditValue,
+  MunicipalityGeo,
   ReferentialItem,
 } from '../core/models';
 
@@ -153,8 +154,8 @@ import {
       </div>
 
       <div>
-        <label>Localisation (commune)</label>
-        <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+        <label>Localisation (pays + code postal)</label>
+        <div class="row" style="grid-template-columns:1fr 1fr">
           <select class="select" [(ngModel)]="model.countryId" name="countryId"
                   (ngModelChange)="onCountryChange()">
             <option value="">Pays…</option>
@@ -162,21 +163,31 @@ import {
               <option [value]="c.id">{{ c.name }}</option>
             }
           </select>
-          <select class="select" [(ngModel)]="model.regionId" name="regionId"
-                  (ngModelChange)="onRegionChange()" [disabled]="!model.countryId">
-            <option value="">Région…</option>
-            @for (r of regions; track r.id) {
-              <option [value]="r.id">{{ r.name }}</option>
-            }
-          </select>
-          <select class="select" [(ngModel)]="model.municipalityId" name="municipalityId"
-                  [disabled]="!model.regionId">
-            <option value="">Ville…</option>
-            @for (m of municipalities; track m.id) {
-              <option [value]="m.id">{{ m.name }}</option>
-            }
-          </select>
+          <div style="display:flex;gap:0.4rem">
+            <input class="input" [(ngModel)]="postalCode" name="postalCode" placeholder="Code postal"
+                   [disabled]="!model.countryId" (keyup.enter)="searchPostal()" />
+            <button type="button" class="btn" [disabled]="!model.countryId || !postalCode.trim()"
+                    (click)="searchPostal()">Rechercher</button>
+          </div>
         </div>
+        @if (resolvedMunicipalities.length) {
+          <div class="row" style="grid-template-columns:1fr 1fr;margin-top:0.5rem">
+            <select class="select" [(ngModel)]="model.municipalityId" name="municipalityId"
+                    (ngModelChange)="onMunicipalitySelect()">
+              <option value="">Commune…</option>
+              @for (m of resolvedMunicipalities; track m.id) {
+                <option [value]="m.id">{{ m.name }}</option>
+              }
+            </select>
+            <div style="align-self:center;font-size:0.85rem" class="muted">
+              Région : <strong style="color:var(--text)">{{ selectedRegionName || '—' }}</strong> (dérivée)
+            </div>
+          </div>
+        } @else if (postalSearched) {
+          <p class="muted" style="font-size:0.8rem;margin-top:0.35rem">
+            Aucune commune trouvée pour ce code postal dans ce pays.
+          </p>
+        }
       </div>
 
       @if (tags.length) {
@@ -248,8 +259,11 @@ export class EventFormComponent implements OnInit {
   categories: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
   countries: ReferentialItem[] = [];
-  regions: ReferentialItem[] = [];
-  municipalities: ReferentialItem[] = [];
+  // Localisation V3 (chantier §8.1) : sélection par pays + code postal, région dérivée.
+  postalCode = '';
+  postalSearched = false;
+  resolvedMunicipalities: MunicipalityGeo[] = [];
+  selectedRegionName = '';
 
   error = '';
 
@@ -263,7 +277,6 @@ export class EventFormComponent implements OnInit {
     organizerId: '',
     venueId: '',
     countryId: '',
-    regionId: '',
     municipalityId: '',
     tagIds: [] as string[],
     startsAt: '',
@@ -326,41 +339,53 @@ export class EventFormComponent implements OnInit {
         this.model.eventFormatId = value.eventFormatId ?? '';
       });
     }
-    if (value.countryId) {
-      this.model.countryId = value.countryId;
-      this.referenceData.regions(value.countryId).subscribe((regions) => {
-        this.regions = regions;
-        this.model.regionId = value.regionId ?? '';
-        if (value.regionId) {
-          this.referenceData.municipalities(value.regionId).subscribe((municipalities) => {
-            this.municipalities = municipalities;
-            this.model.municipalityId = value.municipalityId ?? '';
-          });
-        }
+    // Préremplissage de la localisation (édition) : la commune connue → pays + code postal +
+    // région dérivée, via la vue géographique (chantier §8.1). La cascade n'est plus utilisée.
+    if (value.municipalityId) {
+      this.referenceData.municipalityGeo(value.municipalityId).subscribe((geo) => {
+        this.model.countryId = geo.countryId;
+        this.postalCode = geo.postalCode ?? '';
+        this.resolvedMunicipalities = [geo];
+        this.model.municipalityId = geo.id;
+        this.selectedRegionName = geo.regionName;
       });
+    } else if (value.countryId) {
+      this.model.countryId = value.countryId;
     }
   }
 
   onCountryChange(): void {
-    this.regions = [];
-    this.municipalities = [];
-    this.model.regionId = '';
+    // Changer de pays réinitialise la recherche de commune.
+    this.postalCode = '';
+    this.postalSearched = false;
+    this.resolvedMunicipalities = [];
+    this.selectedRegionName = '';
     this.model.municipalityId = '';
-    if (!this.model.countryId) {
-      return;
-    }
-    this.referenceData.regions(this.model.countryId).subscribe((items) => (this.regions = items));
   }
 
-  onRegionChange(): void {
-    this.municipalities = [];
-    this.model.municipalityId = '';
-    if (!this.model.regionId) {
+  /** Résout « pays + code postal → commune(s) » ; sélection automatique si une seule commune. */
+  searchPostal(): void {
+    const postalCode = this.postalCode.trim();
+    if (!this.model.countryId || !postalCode) {
       return;
     }
-    this.referenceData
-      .municipalities(this.model.regionId)
-      .subscribe((items) => (this.municipalities = items));
+    this.referenceData.resolveMunicipalities(this.model.countryId, postalCode).subscribe((communes) => {
+      this.resolvedMunicipalities = communes;
+      this.postalSearched = true;
+      if (communes.length === 1) {
+        this.model.municipalityId = communes[0].id;
+        this.selectedRegionName = communes[0].regionName;
+      } else {
+        this.model.municipalityId = '';
+        this.selectedRegionName = '';
+      }
+    });
+  }
+
+  /** La région est dérivée de la commune choisie (jamais saisie — RG-LOC-02). */
+  onMunicipalitySelect(): void {
+    const chosen = this.resolvedMunicipalities.find((m) => m.id === this.model.municipalityId);
+    this.selectedRegionName = chosen ? chosen.regionName : '';
   }
 
   toggleTag(id: string): void {

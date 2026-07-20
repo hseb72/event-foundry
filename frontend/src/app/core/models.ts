@@ -207,6 +207,17 @@ export interface ReferentialItem {
   name: string;
 }
 
+/** Commune résolue par pays + code postal, région dérivée (Localisation V3, chantier §8.1). */
+export interface MunicipalityGeo {
+  id: string;
+  name: string;
+  postalCode: string | null;
+  regionId: string;
+  regionName: string;
+  countryId: string;
+  countryName: string;
+}
+
 export interface EventCandidateDto {
   id: string;
   importJobId: string;
