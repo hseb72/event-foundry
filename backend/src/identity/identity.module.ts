@@ -4,6 +4,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { IdentityAdminController } from './controllers/identity-admin.controller';
 import { IdentityController } from './controllers/identity.controller';
 import { IDENTITY_SERVICE } from './interfaces/identity-service.interface';
+import { OrganizationAddressesController } from './organization-addresses/organization-addresses.controller';
+import { OrganizationAddressesService } from './organization-addresses/organization-addresses.service';
+import { OrganizationAddressRepository } from './organization-addresses/organization-address.repository';
 import { IdentityRepository } from './repositories/identity.repository';
 import { IdentityAdminService } from './services/identity-admin.service';
 import { IdentityService } from './services/identity.service';
@@ -16,12 +19,14 @@ import { TokenService } from './services/token.service';
  */
 @Module({
   imports: [ConfigModule, JwtModule.register({})],
-  controllers: [IdentityController, IdentityAdminController],
+  controllers: [IdentityController, IdentityAdminController, OrganizationAddressesController],
   providers: [
     IdentityService,
     { provide: IDENTITY_SERVICE, useExisting: IdentityService },
     IdentityAdminService,
     IdentityRepository,
+    OrganizationAddressesService,
+    OrganizationAddressRepository,
     TokenService,
   ],
   exports: [IDENTITY_SERVICE, TokenService],

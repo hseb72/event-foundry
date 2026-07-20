@@ -129,6 +129,15 @@ export class IdentityRepository {
     }));
   }
 
+  /** Vrai si l'utilisateur est membre de l'organisation (base de l'isolation multi-tenant). */
+  async isMember(userId: string, organizationId: string): Promise<boolean> {
+    const membership = await this.prisma.organizationMembership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+      select: { id: true },
+    });
+    return membership != null;
+  }
+
   /** Ajoute une appartenance (idempotente) et retourne son identifiant. */
   async ensureMembership(userId: string, organizationId: string): Promise<string> {
     const membership = await this.prisma.organizationMembership.upsert({

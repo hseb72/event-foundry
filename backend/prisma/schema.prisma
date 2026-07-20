@@ -208,10 +208,35 @@ model Organization {
   subscriptionPlan   SubscriptionPlan?        @relation(fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
   memberships        OrganizationMembership[]
   activeForUsers     User[]                   @relation("UserActiveOrganization")
+  addresses          OrganizationAddress[]
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("organizations")
+}
+
+/**
+ * Adresse d'une organisation (Localisation V3, chantier §8.2). S'appuie sur le référentiel
+ * géographique : pays + code postal + commune (région dérivée). Une seule adresse principale par
+ * organisation. Proposée comme localisation à la création manuelle d'un événement.
+ */
+model OrganizationAddress {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  countryId      String       @map("country_id") @db.Uuid
+  country        Country      @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  municipalityId String?      @map("municipality_id") @db.Uuid
+  municipality   Municipality? @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  postalCode     String       @map("postal_code")
+  streetLines    String       @map("street_lines")
+  isPrimary      Boolean      @default(false) @map("is_primary")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId])
+  @@map("organization_addresses")
 }
 
 /// Appartenance d'un utilisateur à une organisation, porteuse de ses rôles d'organisation.
@@ -377,6 +402,7 @@ model Country {
   code      String?  @unique // ISO 3166-1 alpha-2 (optionnel)
   isActive  Boolean  @default(true) @map("is_active")
   regions   Region[]
+  orgAddresses OrganizationAddress[]
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -408,6 +434,7 @@ model Municipality {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   events     Event[]
+  orgAddresses OrganizationAddress[]
 
   @@unique([regionId, name])
   @@index([regionId])
