@@ -35,7 +35,7 @@ Pipeline asynchrone : `ImportRequest → OCRResult → ClassificationResult → 
 | Dossier | Rôle |
 |---------|------|
 | `backend/` | API REST + orchestration (NestJS) |
-| `frontend/` | Angular (placeholder, EPIC 11) |
+| `frontend/` | Angular — portails Explorer / Organizer / Operator |
 | `ocr-worker/` | Worker OCR |
 | `classifier-worker/` | Worker de classification experte |
 | `shared/contracts/` | Contrats d'échange partagés (ADR.03) |
@@ -108,7 +108,12 @@ la dupliquer, préférer un runner d'**organisation**.
 
 ## État
 
-Documentation VISION/ARCHI/FSPEC/TSPEC validée (V1). **EPIC 1 finalisé** : monorepo npm
-workspaces, outillage (ESLint/Prettier/tsconfig), `shared/contracts` + `shared/libraries`,
-environnement Docker (PostgreSQL/Redis/MinIO), base Kubernetes, CI GitHub Actions et
-squelettes des composants. Prochaine étape : EPIC 2 — Authentification.
+**Développement V2 en cours.** Les EPICs **00 à 12 sont livrés** (MVP atteint, plus les
+EPICs hors MVP Recommendation, Notifications et Operator Portal) ; l'EPIC 13 (finalisation)
+couvre la qualité et la documentation. Domaines livrés : Identity/RBAC, Reference Data,
+Catalog, Publishing, Planning, Discovery, Search (plein texte PostgreSQL), Recommendation
+(moteur déterministe), Notifications (multi-canal), et les trois portails Explorer /
+Organizer / Operator (Angular).
+
+Le suivi détaillé (statut par EPIC, domaines, couverture de tests, points d'exploitation
+restants) est tenu dans [`docs/v2/05-RMAP.01-DeliveryStatus-v2.0.md`](./docs/v2/05-RMAP.01-DeliveryStatus-v2.0.md).
