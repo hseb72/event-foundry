@@ -70,6 +70,15 @@ enum PaymentStatus {
   REFUNDED
 }
 
+/// Retour utilisateur sur une recommandation (EPIC 06). ACCEPTED = intégrée à la réflexion de
+/// l'utilisateur ; IGNORED / REJECTED = écartée → exclue déterministiquement des recommandations
+/// futures (le moteur « apprend » uniquement des décisions explicitement observées — FSPEC.09).
+enum RecommendationAction {
+  ACCEPTED
+  IGNORED
+  REJECTED
+}
+
 // --- Identity V2 (EPIC 01) : Roles / Permissions / Experiences / Subscriptions / Organizations.
 // Modèle aligné sur ADR.08 (RBAC), ADR.11 (Identity/Role/Experience/Subscription) et FSPEC.10.
 // Concepts volontairement indépendants : les rôles portent les permissions ; l'expérience ne
@@ -102,6 +111,7 @@ model User {
   isActive             Boolean                  @default(true) @map("is_active")
   roles                UserRole[]
   participations       UserParticipation[]
+  recommendationFeedback RecommendationFeedback[]
   createdEvents        Event[]
   // Identity V2 : appartenances aux organisations, expérience active et contexte org actif.
   memberships          OrganizationMembership[]
@@ -540,6 +550,7 @@ model Event {
   statusEvents   EventStatusEvent[]
   candidate      EventCandidate?
   searchDocument SearchDocument?
+  recommendationFeedback RecommendationFeedback[]
   participations UserParticipation[]
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -629,6 +640,26 @@ model SearchDocument {
   @@index([startsAt])
   @@index([searchVector], type: Gin)
   @@map("search_documents")
+}
+
+/// Retour utilisateur sur une recommandation (EPIC 06 — moteur déterministe ADR.09). Le moteur
+/// calcule les recommandations à la volée ; seule la décision de l'utilisateur est persistée. Une
+/// recommandation ignorée / refusée est déterministiquement exclue des propositions ultérieures.
+/// Un seul retour par couple (user, event) ; la dernière décision fait foi.
+model RecommendationFeedback {
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  eventId   String               @map("event_id") @db.Uuid
+  action    RecommendationAction
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("recommendation_feedback")
 }
 
 /// Relation personnelle d'un utilisateur avec un Event (FSPEC.06). Trois axes indépendants.

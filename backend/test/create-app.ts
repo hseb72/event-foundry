@@ -69,6 +69,7 @@ export async function ensureIdentitySeed(app: INestApplication): Promise<void> {
     'event.archive',
     'planning.manage',
     'reservation.manage',
+    'recommendation.view',
     'import.execute',
     'validation.review',
     'reference.manage',
@@ -91,7 +92,7 @@ export async function ensureIdentitySeed(app: INestApplication): Promise<void> {
     experience: 'EXPLORER' | 'ORGANIZER' | 'OPERATOR';
     perms: string[];
   }[] = [
-    { name: 'Explorer', scope: 'PLATFORM', experience: 'EXPLORER', perms: ['catalog.read', 'planning.manage', 'reservation.manage'] },
+    { name: 'Explorer', scope: 'PLATFORM', experience: 'EXPLORER', perms: ['catalog.read', 'planning.manage', 'reservation.manage', 'recommendation.view'] },
     {
       name: 'Organizer',
       scope: 'ORGANIZATION',
