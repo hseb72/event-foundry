@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { FollowTargetType } from '@prisma/client';
-import { IsEnum, IsUUID } from 'class-validator';
+import { IsBoolean, IsEnum, IsUUID } from 'class-validator';
 
 /** Suivre un objet (Follow Domain — ADR.19 / FSPEC.06). */
 export class CreateFollowDto {
@@ -11,6 +11,13 @@ export class CreateFollowDto {
   @ApiProperty({ description: "UUID de l'objet suivi (organisateur, lieu, activité, catégorie…)." })
   @IsUUID()
   targetId!: string;
+}
+
+/** Activer / couper les notifications d'un suivi (RG-FOL-04). */
+export class UpdateFollowDto {
+  @ApiProperty({ description: 'Notifications activées pour ce suivi.' })
+  @IsBoolean()
+  notify!: boolean;
 }
 
 /** Vue d'un suivi. */

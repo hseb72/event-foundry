@@ -45,6 +45,11 @@ interface FollowGroup {
       .name {
         font-weight: 600;
       }
+      .row-actions {
+        display: flex;
+        gap: 0.4rem;
+        flex-shrink: 0;
+      }
       .empty {
         color: var(--muted);
         padding: 2rem 0;
@@ -64,7 +69,16 @@ interface FollowGroup {
           @for (item of group.items; track item.id) {
             <div class="row">
               <span class="name">{{ name(item) }}</span>
-              <button class="btn" (click)="unfollow(item)">Ne plus suivre</button>
+              <span class="row-actions">
+                <button
+                  class="btn"
+                  [title]="item.notify ? 'Couper les notifications' : 'Activer les notifications'"
+                  (click)="toggleNotify(item)"
+                >
+                  {{ item.notify ? '🔔 Notifs' : '🔕 Muet' }}
+                </button>
+                <button class="btn" (click)="unfollow(item)">Ne plus suivre</button>
+              </span>
             </div>
           }
         </section>
@@ -103,6 +117,10 @@ export class FollowsComponent implements OnInit {
 
   unfollow(follow: Follow): void {
     this.followApi.unfollow(follow.targetType, follow.targetId);
+  }
+
+  toggleNotify(follow: Follow): void {
+    this.followApi.setNotify(follow.targetType, follow.targetId, !follow.notify);
   }
 
   private mergeNames(items: { id: string; name: string }[]): void {

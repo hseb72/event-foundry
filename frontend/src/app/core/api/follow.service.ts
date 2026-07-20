@@ -64,4 +64,17 @@ export class FollowApi {
       this.follow(targetType, targetId);
     }
   }
+
+  /** Active/coupe les notifications d'un suivi (RG-FOL-04). */
+  setNotify(targetType: FollowTargetType, targetId: string, notify: boolean): void {
+    this.http
+      .patch<Follow>(`${API_BASE}/follows/${targetType}/${targetId}`, { notify })
+      .subscribe((updated) => {
+        this.follows.update((list) =>
+          list.map((f) =>
+            f.targetType === targetType && f.targetId === targetId ? { ...f, notify: updated.notify } : f,
+          ),
+        );
+      });
+  }
 }

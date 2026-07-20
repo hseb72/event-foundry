@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Follow, FollowTargetType } from '@prisma/client';
 import { FollowRepository } from './follow.repository';
 
@@ -17,6 +17,20 @@ export class FollowService {
 
   unfollow(userId: string, targetType: FollowTargetType, targetId: string): Promise<void> {
     return this.repository.softDelete(userId, targetType, targetId);
+  }
+
+  /** Active/coupe les notifications d'un suivi (RG-FOL-04). */
+  async setNotify(
+    userId: string,
+    targetType: FollowTargetType,
+    targetId: string,
+    notify: boolean,
+  ): Promise<Follow> {
+    const follow = await this.repository.setNotify(userId, targetType, targetId, notify);
+    if (!follow) {
+      throw new NotFoundException('Suivi introuvable.');
+    }
+    return follow;
   }
 
   listByUser(userId: string): Promise<Follow[]> {

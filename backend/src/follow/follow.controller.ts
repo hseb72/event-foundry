@@ -8,13 +8,14 @@ import {
   Param,
   ParseEnumPipe,
   ParseUUIDPipe,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { FollowTargetType } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
-import { CreateFollowDto, FollowDto } from './dto/follow.dto';
+import { CreateFollowDto, FollowDto, UpdateFollowDto } from './dto/follow.dto';
 import { FollowMapper } from './follow.mapper';
 import { FollowService } from './follow.service';
 
@@ -48,6 +49,20 @@ export class FollowController {
     @Param('targetId', ParseUUIDPipe) targetId: string,
   ): Promise<void> {
     await this.service.unfollow(user.userId, targetType, targetId);
+  }
+
+  @Patch('follows/:targetType/:targetId')
+  @ApiOkResponse({ type: FollowDto })
+  @ApiParam({ name: 'targetType', enum: FollowTargetType })
+  async update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('targetType', new ParseEnumPipe(FollowTargetType)) targetType: FollowTargetType,
+    @Param('targetId', ParseUUIDPipe) targetId: string,
+    @Body() dto: UpdateFollowDto,
+  ): Promise<FollowDto> {
+    return FollowMapper.toResponse(
+      await this.service.setNotify(user.userId, targetType, targetId, dto.notify),
+    );
   }
 
   @Get('me/follows')

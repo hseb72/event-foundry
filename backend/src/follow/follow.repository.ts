@@ -27,6 +27,25 @@ export class FollowRepository {
     });
   }
 
+  /** Active/coupe les notifications d'un suivi actif ; retourne le suivi mis à jour (ou null). */
+  async setNotify(
+    userId: string,
+    targetType: FollowTargetType,
+    targetId: string,
+    notify: boolean,
+  ): Promise<Follow | null> {
+    const result = await this.prisma.follow.updateMany({
+      where: { userId, targetType, targetId, deletedAt: null },
+      data: { notify },
+    });
+    if (result.count === 0) {
+      return null;
+    }
+    return this.prisma.follow.findUnique({
+      where: { userId_targetType_targetId: { userId, targetType, targetId } },
+    });
+  }
+
   /** Mes suivis actifs. */
   listActiveByUser(userId: string): Promise<Follow[]> {
     return this.prisma.follow.findMany({

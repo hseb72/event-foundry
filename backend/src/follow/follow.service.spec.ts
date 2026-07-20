@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import type { Follow } from '@prisma/client';
 import { FollowTargetType } from '@prisma/client';
 import { FollowRepository } from './follow.repository';
@@ -5,7 +6,7 @@ import { FollowService } from './follow.service';
 
 describe('FollowService (ADR.19 / FSPEC.06)', () => {
   let repository: jest.Mocked<
-    Pick<FollowRepository, 'upsertActive' | 'softDelete' | 'listActiveByUser' | 'listFollowerIds'>
+    Pick<FollowRepository, 'upsertActive' | 'softDelete' | 'listActiveByUser' | 'listFollowerIds' | 'setNotify'>
   >;
   let service: FollowService;
 
@@ -15,6 +16,7 @@ describe('FollowService (ADR.19 / FSPEC.06)', () => {
       softDelete: jest.fn(),
       listActiveByUser: jest.fn(),
       listFollowerIds: jest.fn(),
+      setNotify: jest.fn(),
     };
     service = new FollowService(repository as unknown as FollowRepository);
   });
@@ -41,5 +43,19 @@ describe('FollowService (ADR.19 / FSPEC.06)', () => {
     repository.listFollowerIds.mockResolvedValue(['user-1', 'user-2']);
     const followers = await service.listFollowerIds(FollowTargetType.ACTIVITY, 'act-1');
     expect(followers).toEqual(['user-1', 'user-2']);
+  });
+
+  it('règle notify sur un suivi actif', async () => {
+    repository.setNotify.mockResolvedValue({ id: 'f-1', notify: false } as Follow);
+    const updated = await service.setNotify('user-1', FollowTargetType.ORGANIZER, 'org-1', false);
+    expect(repository.setNotify).toHaveBeenCalledWith('user-1', FollowTargetType.ORGANIZER, 'org-1', false);
+    expect(updated.notify).toBe(false);
+  });
+
+  it('rejette le réglage notify si le suivi n’existe pas', async () => {
+    repository.setNotify.mockResolvedValue(null);
+    await expect(
+      service.setNotify('user-1', FollowTargetType.ORGANIZER, 'missing', true),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
