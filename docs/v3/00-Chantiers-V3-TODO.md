@@ -124,6 +124,28 @@
 
 ---
 
+## 7. Charte de couleurs par univers / rôle
+
+- **La charte existe** (3 univers, 3 rôles majeurs) :
+  - **Explorer** → magenta `--accent: #ec4899`
+  - **Organizer** → vert `--organizer: #16a34a`
+  - **Operator** → violet `--admin: #6d28d9`
+  - (définies dans `frontend/src/styles.css` + le mapping des expériences dans `shell.component.ts`).
+- **Mécanisme en place** : la barre latérale pose `--exp` = couleur de l'expérience active sur
+  `.layout` (`[style.--exp]="accent()"`).
+- **Problème** : la charte n'est **pas respectée**. La plupart des composants/boutons/chips/états
+  actifs utilisent `var(--accent)` (couleur **Explorer fixe**) au lieu de `var(--exp)`. Des écrans
+  ayant **changé de rôle entre la V1 et la V2** ont gardé la couleur Explorer d'origine.
+- [ ] **Auditer et remettre en cohérence** : boutons primaires, chips/facettes, onglets actifs,
+      bordures d'accent, liens actifs de navigation → adopter la couleur de l'univers concerné.
+- **[à trancher]** Portée de la couleur : suit-elle **l'expérience active de l'utilisateur**
+  (via `--exp`, le plus DRY) **ou** l'**univers d'appartenance de l'écran** (ex. l'espace Organizer
+  reste vert même consulté par un admin) ? Cas mixtes à clarifier (fiche événement, écrans partagés).
+- **Quick win possible (après décision ci-dessus)** : remplacer systématiquement `var(--accent)`
+  par `var(--exp)` dans les écrans à couleur d'univers + rendre `.btn-primary` sensible à `--exp`.
+
+---
+
 ## Notes de méthode
 
 - Une fois cette liste stabilisée : rédiger la V3 structurée (un **ADR** par décision structurante —
