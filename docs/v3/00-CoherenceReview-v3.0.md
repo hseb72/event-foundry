@@ -79,18 +79,30 @@ ADR.12–23), entre eux et vis-à-vis de la **V2 réellement implémentée**. Le
 
 ---
 
-# 3. Décisions ouvertes à trancher dans les FSPEC/TSPEC
+# 3. Décisions ouvertes — tranchées dans les FSPEC/TSPEC rédigés
 
-Points identifiés (voir `00-Chantiers-V3-TODO.md`) à arbitrer dans les specs correspondantes :
+Points identifiés (voir `00-Chantiers-V3-TODO.md`), désormais **arbitrés** dans les tranches
+correspondantes :
 
-- **Notifications** (ADR.17) : rôle du canal interne (toujours actif vs vecteur) ; récaps
-  quotidien/hebdo (planificateur vs déclencheur) ; réglage par défaut. Les **deux familles**
-  (technique / utilisateur — ARCHI.01) doivent apparaître au FSPEC.
-- **Frontière IA** (ADR.16) : « assistance, jamais de décision » — cohérente avec la règle d'or n°1.
-  1er cas (IA en remplacement de l'OCR) → alimente le **classifier déterministe**, seul juge des champs.
-- **Localisation** : sélection par **pays + code postal**, région dérivée de la ville (chantier §8).
-- **Secrets** (ADR.21) : références logiques + chiffrement au repos + jamais en clair — à décliner pour
-  les clés IA **par utilisateur** (secret par compte).
+- **Notifications** (ADR.17 → FSPEC/TSPEC.04) : canal interne **toujours actif** (historique) ; récaps
+  via **planificateur intégré** (job récurrent) ; défaut nouvel utilisateur = in-app + récap hebdo
+  email. Les **deux familles** (technique / utilisateur) sont explicitées.
+- **Frontière IA** (ADR.16 → FSPEC/TSPEC.07) : **IA = assistance, déterminisme = décision** (règle d'or
+  n°1). 1er cas (IA en remplacement de l'OCR) → alimente le **classifier déterministe**, seul juge des
+  champs. L'option « IA décide » est rejetée (exigerait un nouvel ADR).
+- **Localisation** (chantier §8 → FSPEC/TSPEC.03) : sélection **pays + code postal**, **région dérivée**
+  de la commune ; `postalCode` indexé ; `Region` conservée comme niveau (option A) mais masquée.
+- **Secrets** (ADR.21 → FSPEC/TSPEC.08) : références logiques + chiffrement au repos + jamais en clair ;
+  **portées** plateforme / organisation / **utilisateur** (clé IA par compte) ; masquage + journal.
+- **Organisation & gouvernance** (ADR.18 → FSPEC/TSPEC.02) : rôle d'organisation contextuel ; page de
+  paramètres à la main de l'organizer ; accès Operator **support-only tracé** (recommandé).
+- **Planning** (chantier §4 → FSPEC/TSPEC.12) : sections **disjointes** ; passé réservé à Mon planning.
+- **Identité visuelle** (ADR.22 → FSPEC/TSPEC/UISPEC.13) : couleur suit l'expérience active ; tokens
+  uniquement ; remise en cohérence `--accent` → `--exp`.
+
+> Les 13 tranches domaine (`02-FSPEC.01–13`, `03-TSPEC.01–13`, `04-UISPEC.01–13`) sont rédigées ; les
+> `[à trancher]` résiduels y sont signalés localement (ex. Venue ↔ adresse d'org, restriction dure vs
+> support-only, section « plus tard »), à confirmer lors de l'implémentation.
 
 ---
 

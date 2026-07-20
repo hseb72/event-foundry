@@ -182,6 +182,34 @@ sauvegardes, monitoring), documentation, optimisations, **revue de sécurité** 
 
 ---
 
+# Index des spécifications par domaine
+
+Les EPICs sont déclinés en **tranches documentaires** par domaine, nommées
+`XX-SHORTNAME.YY-Name-v3.0.md` (`YY` numéroté par domaine). Chaque tranche comprend un FSPEC, un
+TSPEC et un UISPEC.
+
+| YY | Domaine | EPIC(s) | FSPEC / TSPEC / UISPEC |
+|----|---------|---------|------------------------|
+| 01 | Import (framework, pipeline, Raw Event, canaux) | V3-02→07 | `*.01-Import` |
+| 02 | Organization | V3-08 | `*.02-Organization` |
+| 03 | Localization (pays + code postal) | V3-09 | `*.03-Localization` |
+| 04 | Notification | V3-12 | `*.04-Notification` |
+| 05 | Preferences | V3-10 | `*.05-Preferences` |
+| 06 | Follow | V3-11 | `*.06-Follow` |
+| 07 | AI (assistance) | V3-06 | `*.07-AI` |
+| 08 | Secrets | V3-01 | `*.08-Secrets` |
+| 09 | Configuration Operator | V3-14 | `*.09-Configuration` |
+| 10 | Observability | V3-13 | `*.10-Observability` |
+| 11 | Profile (menu unifié) | V3-15 | `*.11-Profile` |
+| 12 | Planning | V3-16 | `*.12-Planning` |
+| 13 | Visual Identity (charte) | V3-17 | `*.13-VisualIdentity` |
+
+> `XX` = collection : `02-FSPEC`, `03-TSPEC`, `04-UISPEC`. Les fondations transverses (V3-00 Platform
+> Foundation, V3-18 Finalisation) restent portées par les ARCHI/ADR et le présent RMAP, sans tranche
+> FSPEC/TSPEC/UISPEC dédiée.
+
+---
+
 # Jalons proposés
 
 1. **Socle plateforme** : V3-00, V3-01.
@@ -194,8 +222,8 @@ sauvegardes, monitoring), documentation, optimisations, **revue de sécurité** 
 
 # Documents liés
 
-10-STRAT.01-ProductVision-v3.0 · 01-ARCHI.01–04-v3.0 · 99-ADR.12–22 · 00-CoherenceReview-v3.0 ·
-00-Chantiers-V3-TODO · (à venir) 02-FSPEC.* / 03-TSPEC.* / 04-UISPEC.* V3.
+10-STRAT.01-ProductVision-v3.0 · 01-ARCHI.01–04-v3.0 · 99-ADR.12–23 · 00-CoherenceReview-v3.0 ·
+00-Chantiers-V3-TODO · 02-FSPEC.01–13 / 03-TSPEC.01–13 / 04-UISPEC.01–13 (V3).
 
 ---
 
