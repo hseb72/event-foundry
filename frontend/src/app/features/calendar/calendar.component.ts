@@ -3,7 +3,12 @@ import { RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
 import { EventDto, PlanningEntry } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
-import { participationColor } from '../../shared/participation-color';
+import {
+  PARTICIPATION_PALETTE,
+  ParticipationKind,
+  participationColor,
+  participationKind,
+} from '../../shared/participation-color';
 
 type CalendarView = 'day' | 'week' | 'month' | 'list';
 
@@ -56,6 +61,44 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
         min-width: 12rem;
         text-align: center;
         text-transform: capitalize;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin: 0 0 1rem;
+      }
+      .lg {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .lg.on {
+        border-color: var(--text);
+        box-shadow: 0 0 0 1px var(--text);
+      }
+      .lg.dim {
+        opacity: 0.45;
+      }
+      .lg .sw {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .lg .cnt {
+        font-weight: 800;
+        color: var(--muted);
+      }
+      .lg.clear {
+        color: var(--muted);
       }
       .empty {
         color: var(--muted);
@@ -215,6 +258,25 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
       }
     </div>
 
+    <!-- Légende + filtre par statut de participation (palette V1, FSPEC.06). -->
+    <div class="legend">
+      @for (item of palette; track item.kind) {
+        <button
+          type="button"
+          class="lg"
+          [class.on]="filterKind() === item.kind"
+          [class.dim]="filterKind() && filterKind() !== item.kind"
+          (click)="toggleFilter(item.kind)"
+        >
+          <span class="sw" [style.background]="item.color"></span>{{ item.label }}
+          <span class="cnt">{{ countOf(item.kind) }}</span>
+        </button>
+      }
+      @if (filterKind()) {
+        <button type="button" class="lg clear" (click)="filterKind.set(null)">✕ Tout afficher</button>
+      }
+    </div>
+
     @if (loading()) {
       <p class="muted">Chargement…</p>
     } @else if (view() === 'list') {
@@ -224,8 +286,11 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
         @if (conflictCount() > 0) {
           <div class="banner">⚠️ {{ conflictCount() }} conflit(s) d'horaire détecté(s).</div>
         }
+        @if (!filteredEntries().length) {
+          <p class="empty">Aucun événement pour ce filtre.</p>
+        }
         <div class="results">
-          @for (entry of entries(); track entry.event.id) {
+          @for (entry of filteredEntries(); track entry.event.id) {
             <app-event-card [event]="entry.event" />
           }
         </div>
@@ -289,6 +354,8 @@ export class CalendarComponent implements OnInit {
   readonly loading = signal(true);
   readonly view = signal<CalendarView>('week');
   readonly anchor = signal<Date>(startOfDay(new Date()));
+  /** Filtre par statut de participation (palette V1) ; null = tous. */
+  readonly filterKind = signal<ParticipationKind | null>(null);
 
   readonly viewOptions: { key: CalendarView; label: string }[] = [
     { key: 'day', label: 'Jour' },
@@ -297,9 +364,24 @@ export class CalendarComponent implements OnInit {
     { key: 'list', label: 'Liste' },
   ];
   readonly weekdayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  readonly palette = PARTICIPATION_PALETTE;
+
+  /** Événements après application du filtre de participation (source des vues calendrier). */
+  readonly filtered = computed(() => {
+    const kind = this.filterKind();
+    return kind ? this.all().filter((event) => participationKind(event.participation) === kind) : this.all();
+  });
+
+  /** Entrées de la vue liste après filtre. */
+  readonly filteredEntries = computed(() => {
+    const kind = this.filterKind();
+    return kind
+      ? this.entries().filter((entry) => participationKind(entry.event.participation) === kind)
+      : this.entries();
+  });
 
   readonly conflictCount = computed(
-    () => this.entries().filter((entry) => entry.conflictsWith.length > 0).length,
+    () => this.filteredEntries().filter((entry) => entry.conflictsWith.length > 0).length,
   );
 
   ngOnInit(): void {
@@ -316,9 +398,18 @@ export class CalendarComponent implements OnInit {
   }
 
   eventsOn(day: Date): EventDto[] {
-    return this.all()
+    return this.filtered()
       .filter((event) => isSameDay(new Date(event.startsAt), day))
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  }
+
+  toggleFilter(kind: ParticipationKind): void {
+    this.filterKind.set(this.filterKind() === kind ? null : kind);
+  }
+
+  /** Nombre d'événements du planning ayant ce statut dominant (résumé de la légende). */
+  countOf(kind: ParticipationKind): number {
+    return this.all().filter((event) => participationKind(event.participation) === kind).length;
   }
 
   weekDays(): Date[] {
