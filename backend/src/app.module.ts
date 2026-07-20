@@ -18,6 +18,7 @@ import { PlanningModule } from './planning/planning.module';
 import { RecommendationModule } from './recommendation/recommendation.module';
 import { SearchModule } from './search/search.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
+import { SecretsModule } from './secrets/secrets.module';
 import { QueueModule } from './infra/queue/queue.module';
 import { ReferenceDataModule } from './reference-data/reference-data.module';
 import { StatsModule } from './stats/stats.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     // Charge le .env racine (cwd = backend/ en dev) ; en prod, secrets injectés par K8s.
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['../.env', '.env'] }),
     PrismaModule,
+    SecretsModule,
     MinioModule,
     QueueModule,
     UsersModule,

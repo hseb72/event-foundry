@@ -93,6 +93,67 @@ enum NotificationStatus {
   READ
 }
 
+/// Secrets Management (ADR.21). Types, portées et états d'un secret (métadonnées seulement).
+enum SecretType {
+  API_KEY
+  SMTP
+  OAUTH_SECRET
+  TLS_CERT
+  AI_KEY
+  DB_CREDENTIALS
+  OTHER
+}
+
+enum SecretScope {
+  PLATFORM
+  ORGANIZATION
+  USER
+}
+
+enum SecretStatus {
+  CONFIGURED
+  TESTED
+  FAILED
+  EXPIRED
+  REVOKED
+}
+
+/**
+ * Référence logique d'un secret (ADR.21 / TSPEC.08) : **métadonnées uniquement**, jamais la valeur.
+ * `last_four` est la seule fraction affichable (masquage `••••abcd`). La valeur chiffrée vit dans le
+ * *backend* (table `secret_material` pour le bouchon de dev ; un vault externe en production).
+ */
+model SecretRef {
+  id        String       @id @default(uuid()) @db.Uuid
+  reference String       @unique
+  type      SecretType
+  scope     SecretScope
+  scopeId   String?      @map("scope_id") @db.Uuid
+  provider  String?
+  lastFour  String?      @map("last_four")
+  status    SecretStatus @default(CONFIGURED)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  rotatedAt DateTime?    @map("rotated_at") @db.Timestamptz(6)
+  expiresAt DateTime?    @map("expires_at") @db.Timestamptz(6)
+
+  @@index([scope, scopeId])
+  @@map("secret_refs")
+}
+
+/**
+ * Stockage de la valeur chiffrée par le *backend bouchon* (dev/test). Séparé des métadonnées : un
+ * gestionnaire externe (K8s Secret / Vault) remplacerait cette table sans toucher à `secret_refs`.
+ * La valeur n'apparaît jamais en clair (chiffrée au repos — RG-SEC-04).
+ */
+model SecretMaterial {
+  reference  String   @id
+  ciphertext String
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("secret_material")
+}
+
 /// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
 enum FollowTargetType {
   ORGANIZATION
