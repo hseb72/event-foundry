@@ -154,6 +154,29 @@ model SecretMaterial {
   @@map("secret_material")
 }
 
+/**
+ * Configuration IA par portée (ADR.16 / TSPEC.07). Une config par cible (plateforme / organisation
+ * / utilisateur). La **clé API n'est jamais stockée ici** : seulement une **référence** vers le
+ * secret (ADR.21). Opt-in (`enabled`) + cas d'usage activés (`useCases`). La décision métier reste
+ * déterministe : l'IA n'assiste que l'extraction/l'enrichissement.
+ */
+model AiConfig {
+  id        String      @id @default(uuid()) @db.Uuid
+  scope     SecretScope
+  scopeKey  String      @map("scope_key") // userId / organizationId / 'PLATFORM'
+  provider  String
+  model     String
+  secretRef String?     @map("secret_ref") // référence logique du secret (clé API)
+  enabled   Boolean     @default(false)
+  useCases  Json        @map("use_cases")
+  status    SecretStatus @default(CONFIGURED) // CONFIGURED / TESTED / FAILED
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([scope, scopeKey])
+  @@map("ai_configs")
+}
+
 /// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
 enum FollowTargetType {
   ORGANIZATION
