@@ -1,8 +1,8 @@
-# ADR.15 – AI Boundaries
+# ADR.16 – AI Boundaries
 
-**Document** : ADR.15
+**Document** : ADR.16
 
-**Fichier** : 99-ADR.15-AIBoundaries.md
+**Fichier** : 99-ADR.16-AIBoundaries.md
 
 **Version** : 3.0
 
@@ -273,13 +273,13 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.12 – Import Connector Framework
+ADR.13 – Import Connector Framework
 
-ADR.13 – Import Pipeline
+ADR.14 – Import Pipeline
 
-ADR.14 – Raw Event Model
+ADR.15 – Raw Event Model
 
 ---
 

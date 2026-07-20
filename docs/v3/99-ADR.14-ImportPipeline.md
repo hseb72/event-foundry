@@ -1,8 +1,8 @@
-# ADR.13 – Import Pipeline
+# ADR.14 – Import Pipeline
 
-**Document** : ADR.13
+**Document** : ADR.14
 
-**Fichier** : 99-ADR.13-ImportPipeline.md
+**Fichier** : 99-ADR.14-ImportPipeline.md
 
 **Version** : 3.0
 
@@ -12,7 +12,7 @@
 
 # Contexte
 
-L'ADR.12 introduit un framework de connecteurs permettant d'intégrer tout type de fournisseur de données.
+L'ADR.13 introduit un framework de connecteurs permettant d'intégrer tout type de fournisseur de données.
 
 Cependant, l'extraction de données ne constitue que la première étape d'un import.
 
@@ -171,7 +171,7 @@ Aucune normalisation n'est appliquée.
 
 Le Raw Event constitue le contrat entre le connecteur et le reste de la plateforme.
 
-Sa définition est décrite dans l'ADR.14.
+Sa définition est décrite dans l'ADR.15.
 
 ---
 
@@ -265,7 +265,7 @@ Le pipeline ne décide jamais :
 - comment notifier ;
 - quand notifier.
 
-Ces décisions relèvent du moteur de notifications (ADR.16).
+Ces décisions relèvent du moteur de notifications (ADR.17).
 
 ---
 
@@ -378,13 +378,13 @@ Elle est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.12 – Import Connector Framework
+ADR.13 – Import Connector Framework
 
-ADR.14 – Raw Event Model
+ADR.15 – Raw Event Model
 
-ADR.16 – Notification Strategy
+ADR.17 – Notification Strategy
 
 ---
 

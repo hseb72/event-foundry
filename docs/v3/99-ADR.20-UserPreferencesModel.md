@@ -1,8 +1,8 @@
-# ADR.19 – User Preferences Model
+# ADR.20 – User Preferences Model
 
-**Document** : ADR.19
+**Document** : ADR.20
 
-**Fichier** : 99-ADR.19-UserPreferencesModel.md
+**Fichier** : 99-ADR.20-UserPreferencesModel.md
 
 **Version** : 3.0
 
@@ -130,7 +130,7 @@ Exemples :
 - catégories ;
 - mode silencieux.
 
-Le détail du fonctionnement est défini dans l'ADR.16.
+Le détail du fonctionnement est défini dans l'ADR.17.
 
 ---
 
@@ -153,7 +153,7 @@ Exemples :
 - autorisation d'utilisation ;
 - paramètres de confidentialité.
 
-Ces préférences complètent les principes définis dans l'ADR.15.
+Ces préférences complètent les principes définis dans l'ADR.16.
 
 ---
 
@@ -277,15 +277,15 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.15 – AI Boundaries
+ADR.16 – AI Boundaries
 
-ADR.16 – Notification Framework
+ADR.17 – Notification Framework
 
-ADR.17 – Organization Domain Model
+ADR.18 – Organization Domain Model
 
-ADR.18 – Follow Domain Model
+ADR.19 – Follow Domain Model
 
-ADR.20 – Secrets Management
+ADR.21 – Secrets Management
 
 ---
 

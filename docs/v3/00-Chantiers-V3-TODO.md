@@ -138,9 +138,9 @@
   ayant **changé de rôle entre la V1 et la V2** ont gardé la couleur Explorer d'origine.
 - [ ] **Auditer et remettre en cohérence** : boutons primaires, chips/facettes, onglets actifs,
       bordures d'accent, liens actifs de navigation → adopter la couleur de l'univers concerné.
-- **[à trancher]** Portée de la couleur : suit-elle **l'expérience active de l'utilisateur**
-  (via `--exp`, le plus DRY) **ou** l'**univers d'appartenance de l'écran** (ex. l'espace Organizer
-  reste vert même consulté par un admin) ? Cas mixtes à clarifier (fiche événement, écrans partagés).
+- **[TRANCHÉ — ADR.22]** La couleur **suit l'expérience active de l'utilisateur** (via `--exp`) : une
+  page accessible à deux profils change de couleur selon le profil utilisé, pour un repère visuel clair
+  du rôle en cours. Les composants n'emploient que des **tokens** (jamais `var(--accent)` en dur).
 - **Quick win possible (après décision ci-dessus)** : remplacer systématiquement `var(--accent)`
   par `var(--exp)` dans les écrans à couleur d'univers + rendre `.btn-primary` sensible à `--exp`.
 

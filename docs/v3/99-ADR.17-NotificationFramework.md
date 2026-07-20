@@ -1,8 +1,8 @@
-# ADR.16 – Notification Framework
+# ADR.17 – Notification Framework
 
-**Document** : ADR.16
+**Document** : ADR.17
 
-**Fichier** : 99-ADR.16-NotificationFramework.md
+**Fichier** : 99-ADR.17-NotificationFramework.md
 
 **Version** : 3.0
 
@@ -341,13 +341,13 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.15 – AI Boundaries
+ADR.16 – AI Boundaries
 
-ADR.20 – User Preferences
+ADR.21 – User Preferences
 
-ADR.22 – Observability Strategy
+ADR.23 – Observability Strategy
 
 ---
 

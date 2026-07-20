@@ -1,8 +1,8 @@
-# ADR.18 – Follow Domain Model
+# ADR.19 – Follow Domain Model
 
-**Document** : ADR.18
+**Document** : ADR.19
 
-**Fichier** : 99-ADR.18-FollowDomainModel.md
+**Fichier** : 99-ADR.19-FollowDomainModel.md
 
 **Version** : 3.0
 
@@ -262,13 +262,13 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.16 – Notification Framework
+ADR.17 – Notification Framework
 
-ADR.17 – Organization Domain Model
+ADR.18 – Organization Domain Model
 
-ADR.19 – User Preferences
+ADR.20 – User Preferences
 
 ---
 

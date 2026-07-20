@@ -1,8 +1,8 @@
-# ADR.22 – Observability Strategy
+# ADR.23 – Observability Strategy
 
-**Document** : ADR.22
+**Document** : ADR.23
 
-**Fichier** : 99-ADR.22-ObservabilityStrategy.md
+**Fichier** : 99-ADR.23-ObservabilityStrategy.md
 
 **Version** : 3.0
 
@@ -321,17 +321,17 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.12 – Import Connector Framework
+ADR.13 – Import Connector Framework
 
-ADR.13 – Import Pipeline
+ADR.14 – Import Pipeline
 
-ADR.15 – AI Boundaries
+ADR.16 – AI Boundaries
 
-ADR.16 – Notification Framework
+ADR.17 – Notification Framework
 
-ADR.20 – Secrets Management
+ADR.21 – Secrets Management
 
 ---
 

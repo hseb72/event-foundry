@@ -1,8 +1,8 @@
-# ADR.20 – Secrets Management
+# ADR.21 – Secrets Management
 
-**Document** : ADR.20
+**Document** : ADR.21
 
-**Fichier** : 99-ADR.20-SecretsManagement.md
+**Fichier** : 99-ADR.21-SecretsManagement.md
 
 **Version** : 3.0
 
@@ -316,15 +316,15 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.12 – Import Connector Framework
+ADR.13 – Import Connector Framework
 
-ADR.15 – AI Boundaries
+ADR.16 – AI Boundaries
 
-ADR.17 – Organization Domain Model
+ADR.18 – Organization Domain Model
 
-ADR.22 – Observability Strategy
+ADR.23 – Observability Strategy
 
 ---
 

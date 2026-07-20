@@ -1,8 +1,8 @@
-# ADR.21 – Experience Identity Strategy
+# ADR.22 – Experience Identity Strategy
 
-**Document** : ADR.21
+**Document** : ADR.22
 
-**Fichier** : 99-ADR.21-ExperienceIdentityStrategy.md
+**Fichier** : 99-ADR.22-ExperienceIdentityStrategy.md
 
 **Version** : 3.0
 
@@ -262,11 +262,11 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.17 – Organization Domain Model
+ADR.18 – Organization Domain Model
 
-ADR.19 – User Preferences Model
+ADR.20 – User Preferences Model
 
 ---
 

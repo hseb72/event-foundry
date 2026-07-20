@@ -27,28 +27,29 @@ rendre la plateforme extensible, renforcer l'administration, l'observabilité et
 
 | EPIC | Titre | ADR / sources | Dépend de |
 |------|-------|---------------|-----------|
-| V3-00 | Platform Foundation (Event Bus, Config, base observabilité) | ADR.11, ADR.22 | — |
-| V3-01 | Secrets Management | ADR.20 | V3-00 |
-| V3-02 | Import Connector Framework + Raw Event Model | ADR.12, ADR.14 | V3-00 |
-| V3-03 | Import Pipeline | ADR.13 | V3-02 |
-| V3-04 | Connecteurs déterministes : CSV / JSON | ADR.12/13/14 | V3-03 |
-| V3-05 | Connecteurs OCR : Image / PDF (upload, drag&drop, paste) | ADR.13, ADR.15 | V3-03 |
-| V3-06 | AI Provider Framework (BYO-key par profil, opt-in par cas) | ADR.15, ADR.20 | V3-01, V3-03 |
-| V3-07 | Connecteur URL / provider (capture) | ADR.12/13, ADR.15 | V3-03, V3-06 |
-| V3-08 | Organization Domain (adresses, settings, opérations org-scoped) | ADR.17 | — |
-| V3-09 | Localisation par pays + code postal (région dérivée) | ADR.17 (adresses), chantier §8 | V3-08 |
-| V3-10 | User Preferences Model | ADR.19 | — |
-| V3-11 | Follow Domain | ADR.18 | V3-10 |
-| V3-12 | Notification Framework (canaux, fréquences, familles technique/utilisateur) | ADR.16, ADR.19 | V3-00, V3-10 |
-| V3-13 | Observabilité & supervision Operator (monitoring, journaux, stats) | ADR.22 | V3-00 |
-| V3-14 | Configuration Operator (technique, mail, IA) | ADR.11 §9, ADR.20 | V3-01, V3-06 |
-| V3-15 | Profil & identité utilisateur (menu unifié, préférences, thème) | ADR.19, ADR.21 | V3-10 |
+| V3-00 | Platform Foundation (Event Bus, Config, base observabilité) | ADR.12, ADR.23 | — |
+| V3-01 | Secrets Management | ADR.21 | V3-00 |
+| V3-02 | Import Connector Framework + Raw Event Model | ADR.13, ADR.15 | V3-00 |
+| V3-03 | Import Pipeline | ADR.14 | V3-02 |
+| V3-04 | Connecteurs déterministes : CSV / JSON | ADR.13/14/15 | V3-03 |
+| V3-05 | Connecteurs OCR : Image / PDF (upload, drag&drop, paste) | ADR.14, ADR.16 | V3-03 |
+| V3-06 | AI Provider Framework (BYO-key par profil, opt-in par cas) | ADR.16, ADR.21 | V3-01, V3-03 |
+| V3-07 | Connecteur URL / provider (capture) | ADR.13/14, ADR.16 | V3-03, V3-06 |
+| V3-08 | Organization Domain (adresses, settings, opérations org-scoped) | ADR.18 | — |
+| V3-09 | Localisation par pays + code postal (région dérivée) | ADR.18 (adresses), chantier §8 | V3-08 |
+| V3-10 | User Preferences Model | ADR.20 | — |
+| V3-11 | Follow Domain | ADR.19 | V3-10 |
+| V3-12 | Notification Framework (canaux, fréquences, familles technique/utilisateur) | ADR.17, ADR.20 | V3-00, V3-10 |
+| V3-13 | Observabilité & supervision Operator (monitoring, journaux, stats) | ADR.23 | V3-00 |
+| V3-14 | Configuration Operator (technique, mail, IA) | ADR.12 §9, ADR.21 | V3-01, V3-06 |
+| V3-15 | Profil & identité utilisateur (menu unifié, préférences, thème) | ADR.20, ADR.22 | V3-10 |
 | V3-16 | Présentation du planning (vignettes, sections, vues calendrier) | chantier §4 | — |
 | V3-17 | Charte de couleurs par univers | chantier §7 | — |
-| V3-18 | Finalisation V3 (qualité, exploitation, doc, revue sécurité) | ADR.11, ADR.22 | tous |
+| V3-18 | Finalisation V3 (qualité, exploitation, doc, revue sécurité) | ADR.12, ADR.23 | tous |
 
-> **Pré-requis identité** : V3-15 dépend de l'arbitrage ADR.21 (identité par expérience vs identité
-> unique multi-expériences — cf. revue de cohérence §2.1). À trancher avant rédaction du FSPEC Identity.
+> **Identité** : une seule identité de compte (V2), plusieurs rôles attribués entre lesquels
+> l'utilisateur bascule. ADR.22 régit l'**identité visuelle** par rôle (tokens de design ; la couleur
+> suit l'expérience active) — cf. V3-17. Aucun arbitrage bloquant.
 
 ---
 
@@ -58,18 +59,18 @@ rendre la plateforme extensible, renforcer l'administration, l'observabilité et
 
 **Objectif** : poser les mécanismes transverses de la plateforme.
 - Event Bus interne (événements métier : `ImportCompleted`, `EventPublished`, `ParticipationChanged`,
-  `NotificationRequested`…) — découplage des domaines (ADR.11 §5).
+  `NotificationRequested`…) — découplage des domaines (ADR.12 §5).
 - Couche de configuration centralisée (système / organisation / utilisateur) (ARCHI.04).
-- Base d'observabilité (logs structurés, métriques, traces) (ADR.22).
+- Base d'observabilité (logs structurés, métriques, traces) (ADR.23).
 
-**Réf.** : ADR.11, ADR.22, ARCHI.02, ARCHI.04.
+**Réf.** : ADR.12, ADR.23, ARCHI.02, ARCHI.04.
 
 ## V3-01 — Secrets Management
 
 **Objectif** : composant dédié ; le domaine ne manipule que des **références logiques** ; chiffrement
-au repos ; jamais versionné ni renvoyé en clair (ADR.20).
+au repos ; jamais versionné ni renvoyé en clair (ADR.21).
 
-**Réf.** : ADR.20.
+**Réf.** : ADR.21.
 
 ---
 
@@ -78,12 +79,12 @@ au repos ; jamais versionné ni renvoyé en clair (ADR.20).
 ## V3-02 — Import Connector Framework + Raw Event Model
 
 Framework unique de connecteurs (interface commune, sans logique métier) ; contrat **Raw Event**
-entre connecteurs et pipeline (ADR.12, ADR.14). Conserve les données brutes (rejeu, réanalyse).
+entre connecteurs et pipeline (ADR.13, ADR.15). Conserve les données brutes (rejeu, réanalyse).
 
 ## V3-03 — Import Pipeline
 
 Pipeline unique à étapes à responsabilité unique : Découverte → Lecture → Extraction → Raw Event →
-Validation → Normalisation → Imported Event → Persistance (ADR.13). Historique complet par `ImportJob`.
+Validation → Normalisation → Imported Event → Persistance (ADR.14). Historique complet par `ImportJob`.
 
 ## V3-04 — Connecteurs CSV / JSON (déterministes)
 
@@ -96,8 +97,8 @@ Acquisition upload + drag&drop + copier-coller ; OCR interne (Tesseract) → cla
 
 ## V3-06 — AI Provider Framework
 
-L'IA = fournisseur externe encapsulé (ADR.15), **par profil** (Explorer/Organizer/Operator),
-**opt-in**, activable **par cas d'usage** ; clés API = secrets par utilisateur (ADR.20). 1er cas :
+L'IA = fournisseur externe encapsulé (ADR.16), **par profil** (Explorer/Organizer/Operator),
+**opt-in**, activable **par cas d'usage** ; clés API = secrets par utilisateur (ADR.21). 1er cas :
 **remplacer l'OCR** (extraction) — la décision métier reste au classifier déterministe.
 
 ## V3-07 — Connecteur URL / provider
@@ -111,7 +112,7 @@ possible (V3-06), décision déterministe conservée.
 
 ## V3-08 — Organization Domain
 
-Organization = entité de premier niveau (ADR.17) : membres, **adresses**, settings, connecteurs
+Organization = entité de premier niveau (ADR.18) : membres, **adresses**, settings, connecteurs
 configurés. Opérations réalisées « au nom d'une organisation ». Page de paramètres gérée par
 l'organizer (`organization.manage`) ; accès admin support-only (chantier §8.3).
 
@@ -122,17 +123,17 @@ code postal. Adresses d'organisation proposées à la création manuelle d'un é
 
 ## V3-10 — User Preferences Model
 
-Modèle unique de préférences (ADR.19) : référence officielle, consultée par les autres composants
+Modèle unique de préférences (ADR.20) : référence officielle, consultée par les autres composants
 (thème, langue, notifications, IA…). Ne se substitue pas aux entités métier (Follow reste distinct).
 
 ## V3-11 — Follow Domain
 
-Follow = entité indépendante avec cycle de vie propre (ADR.18), **pas** une préférence : suivi
+Follow = entité indépendante avec cycle de vie propre (ADR.19), **pas** une préférence : suivi
 d'organisateurs / activités / lieux. Alimente Discovery et les notifications « information Explorer ».
 
 ## V3-12 — Notification Framework
 
-Framework unique (ADR.16) : le domaine publie un événement métier, le framework décide **qui / quand /
+Framework unique (ADR.17) : le domaine publie un événement métier, le framework décide **qui / quand /
 comment**. Deux familles : **techniques** (workflow → organizer/operator) et **utilisateur**
 (information Explorer, via Follow). Administration des **vecteurs** (in-app/email/push) et des
 **fréquences** (immédiate/quotidienne/hebdomadaire) ; préférences par utilisateur (chantier §1).
@@ -144,7 +145,7 @@ Questions ouvertes à trancher dans le FSPEC (canal interne, récaps, défauts).
 
 ## V3-13 — Observabilité & supervision Operator
 
-Logs / métriques / traces / statistiques (ADR.22) ; écrans Operator `OPE-006 Monitoring`,
+Logs / métriques / traces / statistiques (ADR.23) ; écrans Operator `OPE-006 Monitoring`,
 `OPE-007 Journaux` (complète le tableau de bord de supervision V2).
 
 ## V3-14 — Configuration Operator
@@ -156,7 +157,7 @@ d'envoi), **configuration IA** plateforme. S'appuie sur Secrets Management (V3-0
 
 Menu profil unifié (avatar + nickname, toujours visible) → données personnelles, rôles/permissions,
 organisations, configurations personnelles (IA), préférences (**thème** clair/obscur/système)
-(chantier §5). *Gated par l'arbitrage ADR.21.*
+(chantier §5). Identité visuelle du rôle actif portée par ADR.22.
 
 ## V3-16 — Présentation du planning
 
@@ -164,17 +165,20 @@ Vignette de couverture (1ʳᵉ image) ; Accueil « À venir » (planning) et « 
 (recommandations) en 3 sections (aujourd'hui/semaine/mois) ; Mon planning avec **vues calendrier**
 (jour/semaine/mois), accès au passé, interactions (chantier §4).
 
-## V3-17 — Charte de couleurs par univers
+## V3-17 — Charte de couleurs par univers (ADR.22)
 
-Explorer magenta / Organizer vert / Operator violet appliqués de façon cohérente (chantier §7). À
-ancrer dans un **UISPEC** (aujourd'hui uniquement dans `styles.css`).
+Explorer magenta / Organizer vert / Operator violet. **Décision tranchée** (ADR.22) : la couleur
+**suit l'expérience active** de l'utilisateur — une page accessible à deux profils change de couleur
+selon le profil utilisé. Les composants n'utilisent que des **tokens de design** (jamais de couleur
+en dur : `var(--exp)`, pas `var(--accent)`). À ancrer dans un **UISPEC** (aujourd'hui seulement dans
+`styles.css`).
 
 ---
 
 # V3-18 — Finalisation
 
 Qualité (unit / intégration / E2E / performance), exploitation (images Docker de production, K8s,
-sauvegardes, monitoring), documentation, optimisations, **revue de sécurité** (ADR.20, ADR.11 §10).
+sauvegardes, monitoring), documentation, optimisations, **revue de sécurité** (ADR.21, ADR.12 §10).
 
 ---
 
@@ -190,7 +194,7 @@ sauvegardes, monitoring), documentation, optimisations, **revue de sécurité** 
 
 # Documents liés
 
-10-STRAT.01-ProductVision-v3.0 · 01-ARCHI.01–04-v3.0 · 99-ADR.11–22 · 00-CoherenceReview-v3.0 ·
+10-STRAT.01-ProductVision-v3.0 · 01-ARCHI.01–04-v3.0 · 99-ADR.12–22 · 00-CoherenceReview-v3.0 ·
 00-Chantiers-V3-TODO · (à venir) 02-FSPEC.* / 03-TSPEC.* / 04-UISPEC.* V3.
 
 ---

@@ -1,8 +1,8 @@
-# ADR.12 – Import Connector Framework
+# ADR.13 – Import Connector Framework
 
-**Document** : ADR.12
+**Document** : ADR.13
 
-**Fichier** : 99-ADR.12-ImportConnectorFramework.md
+**Fichier** : 99-ADR.13-ImportConnectorFramework.md
 
 **Version** : 3.0
 
@@ -321,11 +321,11 @@ Cette solution est retenue.
 
 # Documents liés
 
-ADR.11 – Platform Architecture Principles
+ADR.12 – Platform Architecture Principles
 
-ADR.13 – Import Pipeline
+ADR.14 – Import Pipeline
 
-ADR.14 – Raw Event Model
+ADR.15 – Raw Event Model
 
 ---
 
