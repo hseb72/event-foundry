@@ -13,6 +13,16 @@ describe('XorSecretCipher (bouchon de dev)', () => {
     expect(encrypted).not.toBe(plaintext);
     expect(cipher.decrypt(encrypted)).toBe(plaintext);
   });
+
+  it('refuse de démarrer en production (bouchon non cryptographique)', () => {
+    const previous = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      expect(() => new XorSecretCipher()).toThrow(/jamais être utilisé en production/);
+    } finally {
+      process.env.NODE_ENV = previous;
+    }
+  });
 });
 
 describe('StubSecretsProvider (ADR.21)', () => {
