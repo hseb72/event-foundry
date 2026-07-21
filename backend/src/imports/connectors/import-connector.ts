@@ -19,11 +19,22 @@ export interface ImportConnector {
   describe(): ConnectorDescriptor;
 
   /**
-   * Produit des ébauches de Raw Event à partir d'un contenu fourni (upload / copier-coller).
-   * Déterministe pour les canaux structurés (CSV/JSON) : ni OCR ni IA. Lève une erreur de parsing
+   * Produit des ébauches de Raw Event à partir d'un contenu fourni (upload / copier-coller / page).
+   * Synchrone et déterministe pour les canaux structurés (CSV/JSON) ; asynchrone pour les canaux à
+   * I/O (extraction IA — ADR.14 : la phase Extract peut être longue). Lève une erreur de parsing
    * explicite si le contenu est illisible (le pipeline la traduit en échec d'import).
    */
-  extract(input: ConnectorExtractInput): RawEventDraft[];
+  extract(input: ConnectorExtractInput): RawEventDraft[] | Promise<RawEventDraft[]>;
+}
+
+/**
+ * Assistant IA résolu, passé au connecteur d'extraction par le Backend (le connecteur ne résout
+ * jamais les secrets — ADR.21). Absent = pas d'IA disponible pour ce canal.
+ */
+export interface ExtractionAssistant {
+  provider: string;
+  model: string;
+  apiKey: string;
 }
 
 /** Capacités et attentes de configuration d'un connecteur (guidage UI / documentation). */
@@ -41,10 +52,12 @@ export interface ConnectorDescriptor {
 
 /** Entrée d'extraction : le contenu brut fourni par l'utilisateur (paste ou fichier décodé). */
 export interface ConnectorExtractInput {
-  /** Contenu textuel de la source (CSV, JSON…). */
+  /** Contenu textuel de la source (CSV, JSON, texte libre, HTML…). */
   content: string;
   /** Type MIME d'origine, s'il est connu. */
   contentType?: string | null;
+  /** Assistant IA résolu (canaux assistés par IA uniquement — ADR.16). Absent = pas d'IA. */
+  assistant?: ExtractionAssistant;
 }
 
 /**

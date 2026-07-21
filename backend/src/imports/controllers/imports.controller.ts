@@ -21,6 +21,7 @@ import { CreateUrlImportDto } from '../dto/create-url-import.dto';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
 import { DEFAULT_MAX_UPLOAD_BYTES } from '../imports.constants';
 import { ImportMapper } from '../mappers/import.mapper';
+import { AiExtractionImportService } from '../services/ai-extraction-import.service';
 import { ImportReplayService } from '../services/import-replay.service';
 import { ImportsService } from '../services/imports.service';
 import { StructuredImportService } from '../services/structured-import.service';
@@ -41,6 +42,7 @@ export class ImportsController {
     private readonly service: ImportsService,
     private readonly structured: StructuredImportService,
     private readonly urlImport: UrlImportService,
+    private readonly aiExtraction: AiExtractionImportService,
     private readonly replay: ImportReplayService,
   ) {}
 
@@ -62,6 +64,24 @@ export class ImportsController {
   @Post('text')
   async importText(@Body() dto: CreateTextImportDto): Promise<ImportResponseDto> {
     return ImportMapper.toResponse(await this.service.importText(dto.text));
+  }
+
+  /**
+   * Extraction **assistée par IA** d'un document texte (ADR.16 §Frontière) : un seul appel IA remplit
+   * un Raw Event structuré (libellés bruts) ; le pipeline commun décide de façon déterministe. Repose
+   * sur l'IA configurée pour le cas d'usage « DOC_UNDERSTANDING ».
+   */
+  @Post('ai-extract')
+  async importAiExtract(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateTextImportDto,
+  ): Promise<ImportResponseDto> {
+    return ImportMapper.toResponse(
+      await this.aiExtraction.import(dto.text, {
+        userId: user.userId,
+        organizationId: user.activeOrganizationId,
+      }),
+    );
   }
 
   /**

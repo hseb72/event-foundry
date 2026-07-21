@@ -44,7 +44,7 @@ export class StructuredImportService {
       await this.jobs.transition(job.id, ImportJobStatus.EXTRACTING, correlationId, {
         startedAt: new Date(),
       });
-      const drafts = connector.extract({ content: trimmed, contentType });
+      const drafts = await connector.extract({ content: trimmed, contentType });
       const rawEvents = await this.pipeline.createRawEvents(
         job.id,
         correlationId,

@@ -60,8 +60,16 @@ import { ImportResponse } from '../../core/models';
           placeholder="Collez l'annonce ici…"
           [(ngModel)]="text"
         ></textarea>
+        <label style="display:flex;gap:0.45rem;align-items:center;font-size:0.85rem;margin:0.2rem 0 0.6rem">
+          <input type="checkbox" [(ngModel)]="useAi" />
+          Extraction assistée par IA <span class="muted">(si configurée)</span>
+        </label>
+        <p class="muted" style="font-size:0.76rem;margin:0 0 0.6rem">
+          Avec l'IA, un seul appel extrait les champs bruts ; le mapping vers vos référentiels reste
+          déterministe. Sans IA, le moteur de règles interne s'applique.
+        </p>
         <button class="btn btn-primary" [disabled]="!text.trim() || busy" (click)="submitText()">
-          Importer le texte
+          {{ useAi ? 'Extraire avec l\'IA' : 'Importer le texte' }}
         </button>
       </div>
 
@@ -118,6 +126,7 @@ import { ImportResponse } from '../../core/models';
 export class ImportComponent {
   file: File | null = null;
   text = '';
+  useAi = false;
   structured = '';
   url = '';
   busy = false;
@@ -179,8 +188,14 @@ export class ImportComponent {
       return;
     }
     this.busy = true;
-    this.importsApi.importText(this.text).subscribe({
-      next: (result) => this.onSuccess(result, 'Texte envoyé, classification lancée.'),
+    const request = this.useAi
+      ? this.importsApi.importAiExtract(this.text)
+      : this.importsApi.importText(this.text);
+    const message = this.useAi
+      ? 'Extraction IA lancée, candidats prêts à valider.'
+      : 'Texte envoyé, classification lancée.';
+    request.subscribe({
+      next: (result) => this.onSuccess(result, message),
       error: () => (this.busy = false),
     });
   }

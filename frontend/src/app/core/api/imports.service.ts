@@ -18,6 +18,11 @@ export class ImportsApi {
     return this.http.post<ImportResponse>(`${API_BASE}/imports/text`, { text });
   }
 
+  /** Extraction assistée par IA d'un texte (l'IA remplit un Raw Event ; la décision reste déterministe). */
+  importAiExtract(text: string): Observable<ImportResponse> {
+    return this.http.post<ImportResponse>(`${API_BASE}/imports/ai-extract`, { text });
+  }
+
   /** Import structuré déterministe (CSV/JSON — canal de référence, sans OCR ni IA). */
   importStructured(content: string, format?: 'csv' | 'json'): Observable<ImportResponse> {
     return this.http.post<ImportResponse>(`${API_BASE}/imports/structured`, { content, format });

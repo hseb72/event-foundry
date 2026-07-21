@@ -24,6 +24,6 @@ import { AssistantService } from './assistant.service';
     AiTextClient,
     AssistantService,
   ],
-  exports: [AiConfigService, AiCallLogService],
+  exports: [AiConfigService, AiCallLogService, AiTextClient],
 })
 export class AiModule {}

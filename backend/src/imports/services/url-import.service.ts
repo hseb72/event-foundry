@@ -45,7 +45,10 @@ export class UrlImportService {
       await this.jobs.transition(job.id, ImportJobStatus.EXTRACTING, correlationId, {
         startedAt: new Date(),
       });
-      const drafts = connector.extract({ content: fetched.content, contentType: fetched.contentType });
+      const drafts = await connector.extract({
+        content: fetched.content,
+        contentType: fetched.contentType,
+      });
       const rawEvents = await this.pipeline.createRawEvents(
         job.id,
         correlationId,

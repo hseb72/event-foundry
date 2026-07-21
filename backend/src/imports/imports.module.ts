@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AiModule } from '../ai/ai.module';
 import { PlatformConfigModule } from '../platform-config/platform-config.module';
 import { IMPORT_CONNECTORS } from './connectors/import-connector';
+import { AiExtractionConnector } from './connectors/ai-extraction.connector';
 import { CsvJsonConnector } from './connectors/csv-json.connector';
 import { UrlConnector } from './connectors/url.connector';
 import { OcrResultConsumer } from './consumers/ocr-result.consumer';
@@ -11,6 +12,7 @@ import { NormalizeStage } from './pipeline/normalize.stage';
 import { ValidateStage } from './pipeline/validate.stage';
 import { ImportJobRepository } from './repositories/import-job.repository';
 import { ImportPipelineRepository } from './repositories/import-pipeline.repository';
+import { AiExtractionImportService } from './services/ai-extraction-import.service';
 import { HttpFetcherService } from './services/http-fetcher.service';
 import { ImportReplayService } from './services/import-replay.service';
 import { ImportsService } from './services/imports.service';
@@ -32,6 +34,7 @@ import { UrlImportService } from './services/url-import.service';
     ImportsService,
     StructuredImportService,
     UrlImportService,
+    AiExtractionImportService,
     ImportReplayService,
     PipelineRunnerService,
     HttpFetcherService,
@@ -43,10 +46,11 @@ import { UrlImportService } from './services/url-import.service';
     DeduplicateStage,
     CsvJsonConnector,
     UrlConnector,
+    AiExtractionConnector,
     {
       provide: IMPORT_CONNECTORS,
-      useFactory: (csv: CsvJsonConnector, url: UrlConnector) => [csv, url],
-      inject: [CsvJsonConnector, UrlConnector],
+      useFactory: (csv: CsvJsonConnector, url: UrlConnector, ai: AiExtractionConnector) => [csv, url, ai],
+      inject: [CsvJsonConnector, UrlConnector, AiExtractionConnector],
     },
   ],
   exports: [ImportJobRepository],
