@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
+import { ParticipationApi } from '../../core/api/participation.service';
 import { EventDto, PlanningEntry } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 import {
@@ -136,8 +137,26 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
         min-width: 3.2rem;
         color: var(--text);
       }
+      .slot-main {
+        flex: 1;
+        min-width: 0;
+      }
       .slot .t {
         font-weight: 600;
+      }
+      .remove {
+        flex: 0 0 auto;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        border-radius: 8px;
+        width: 28px;
+        height: 28px;
+        line-height: 1;
+      }
+      .remove:hover {
+        border-color: var(--red);
+        color: var(--red);
       }
       .slot .m {
         color: var(--muted);
@@ -301,13 +320,14 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
       } @else {
         <div class="day-list">
           @for (event of eventsOn(anchor()); track event.id) {
-            <a class="slot" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
+            <div class="slot" [style.--stripe]="stripe(event)">
               <span class="time">{{ time(event.startsAt) }}</span>
-              <span>
+              <a class="slot-main" [routerLink]="['/events', event.id]">
                 <span class="t">{{ event.title }}</span>
                 <span class="m"> · {{ event.activity }}</span>
-              </span>
-            </a>
+              </a>
+              <button class="remove" title="Retirer de mon planning" (click)="removeFromPlanning(event)">✕</button>
+            </div>
           }
         </div>
       }
@@ -348,6 +368,7 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
 })
 export class CalendarComponent implements OnInit {
   private readonly eventsApi = inject(EventsApi);
+  private readonly participationApi = inject(ParticipationApi);
 
   readonly all = signal<EventDto[]>([]);
   readonly entries = signal<PlanningEntry[]>([]);
@@ -410,6 +431,19 @@ export class CalendarComponent implements OnInit {
   /** Nombre d'événements du planning ayant ce statut dominant (résumé de la légende). */
   countOf(kind: ParticipationKind): number {
     return this.all().filter((event) => participationKind(event.participation) === kind).length;
+  }
+
+  /**
+   * Retire un événement du planning (RG-PLN-06 / FSPEC.06) : remet les trois axes à neutre, ce qui
+   * supprime la participation. L'événement reste trouvable en recherche.
+   */
+  removeFromPlanning(event: EventDto): void {
+    this.participationApi
+      .update(event.id, { interested: false, reservationStatus: 'NONE', paymentStatus: 'NONE' })
+      .subscribe(() => {
+        this.all.update((list) => list.filter((e) => e.id !== event.id));
+        this.entries.update((list) => list.filter((entry) => entry.event.id !== event.id));
+      });
   }
 
   weekDays(): Date[] {
