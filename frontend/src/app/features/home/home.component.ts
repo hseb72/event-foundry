@@ -12,7 +12,7 @@ import { EventCardComponent } from '../../shared/event-card.component';
 import { formatDateTime } from '../../shared/date-format';
 import { bucketByPeriod, PeriodBuckets } from '../../shared/date-buckets';
 
-const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMonth: [] };
+const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMonth: [], later: [] };
 
 /**
  * Accueil de l'expérience Explorer (UISPEC.01 EXP-001). Point d'entrée qui agrège la recherche,
@@ -253,6 +253,7 @@ export class HomeComponent implements OnInit {
     { key: 'today', label: "Aujourd'hui" },
     { key: 'thisWeek', label: 'Cette semaine' },
     { key: 'thisMonth', label: 'Ce mois-ci' },
+    { key: 'later', label: 'Plus tard' },
   ];
 
   firstName(): string {
@@ -261,7 +262,12 @@ export class HomeComponent implements OnInit {
   }
 
   isEmpty(buckets: PeriodBuckets<EventDto>): boolean {
-    return !buckets.today.length && !buckets.thisWeek.length && !buckets.thisMonth.length;
+    return (
+      !buckets.today.length &&
+      !buckets.thisWeek.length &&
+      !buckets.thisMonth.length &&
+      !buckets.later.length
+    );
   }
 
   ngOnInit(): void {

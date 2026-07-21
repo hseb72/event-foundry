@@ -1,12 +1,13 @@
 /**
- * Répartition d'événements en trois sections temporelles **disjointes** (RG-PLN-04, FSPEC.12) :
- * aujourd'hui / le reste de cette semaine / le reste de ce mois. Les éléments au-delà du mois
- * courant sont exclus (bloc « plus tard » traité ailleurs). Calcul dans le fuseau local.
+ * Répartition d'événements en sections temporelles **disjointes** (RG-PLN-04, FSPEC.12) :
+ * aujourd'hui / le reste de cette semaine / le reste de ce mois / plus tard (au-delà du mois).
+ * Le passé est exclu (blocs « à venir »). Calcul dans le fuseau local.
  */
 export interface PeriodBuckets<T> {
   today: T[];
   thisWeek: T[];
   thisMonth: T[];
+  later: T[];
 }
 
 /** Fin de journée (23:59:59.999) locale du jour de `d`. */
@@ -39,7 +40,7 @@ export function bucketByPeriod<T>(items: T[], dateOf: (item: T) => string | Date
   const isSameDay = (a: Date, b: Date): boolean =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-  const buckets: PeriodBuckets<T> = { today: [], thisWeek: [], thisMonth: [] };
+  const buckets: PeriodBuckets<T> = { today: [], thisWeek: [], thisMonth: [], later: [] };
   for (const item of items) {
     const at = new Date(dateOf(item));
     if (isSameDay(at, now)) {
@@ -51,8 +52,9 @@ export function bucketByPeriod<T>(items: T[], dateOf: (item: T) => string | Date
       buckets.thisWeek.push(item);
     } else if (at <= monthEnd) {
       buckets.thisMonth.push(item);
+    } else {
+      buckets.later.push(item);
     }
-    // au-delà du mois : ignoré pour ces blocs.
   }
   return buckets;
 }
