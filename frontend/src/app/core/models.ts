@@ -292,6 +292,18 @@ export interface AiCallStats {
   byUseCase: { useCase: string; total: number; failures: number }[];
 }
 
+/** Limites techniques plateforme (OPE-005 §Technique). Aucune donnée secrète. */
+export interface TechnicalConfig {
+  maxUploadBytes: number;
+  maxImportsPerDay: number;
+  hardMaxUploadBytes: number;
+}
+
+export interface UpdateTechnicalConfigInput {
+  maxUploadBytes: number;
+  maxImportsPerDay: number;
+}
+
 /** Configuration mail plateforme (le mot de passe n'est jamais renvoyé). */
 export interface MailConfig {
   host: string;

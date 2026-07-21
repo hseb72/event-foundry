@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
-import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase } from '../../core/models';
+import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase, TechnicalConfig } from '../../core/models';
 
 /**
  * Configuration plateforme Operator (OPE-005 / FSPEC.09) : mail (SMTP) et IA plateforme. Les clés
@@ -243,6 +243,26 @@ import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase } from '../../core
           <p class="muted" style="font-size:0.82rem">Chargement…</p>
         }
       </section>
+
+      <section class="card">
+        <h2>Limites techniques</h2>
+        <p class="muted" style="font-size:0.78rem;margin:0 0 0.8rem">
+          Bornes appliquées à l'acquisition. La taille d'upload ne peut dépasser le plafond dur
+          ({{ techHardMax() }} Mo).
+        </p>
+        <div class="field">
+          <label class="muted">Taille maximale d'un document (Mo)</label>
+          <input class="input" type="number" min="1" [max]="techHardMax()" [(ngModel)]="techMaxUploadMb" />
+        </div>
+        <div class="field">
+          <label class="muted">Plafond quotidien d'imports (0 = illimité)</label>
+          <input class="input" type="number" min="0" [(ngModel)]="techMaxImportsPerDay" />
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" (click)="saveTechnical()">Enregistrer</button>
+          @if (techStatus()) { <span class="status">{{ techStatus() }}</span> }
+        </div>
+      </section>
     </div>
   `,
 })
@@ -253,8 +273,13 @@ export class OperatorConfigComponent implements OnInit {
   readonly useCases = AI_USE_CASES;
   readonly mailStatus = signal('');
   readonly aiStatus = signal('');
+  readonly techStatus = signal('');
   readonly stats = signal<AiCallStats | null>(null);
   providers: AiProviderInfo[] = [];
+
+  private tech: TechnicalConfig = { maxUploadBytes: 20 * 1024 * 1024, maxImportsPerDay: 0, hardMaxUploadBytes: 20 * 1024 * 1024 };
+  techMaxUploadMb = 20;
+  techMaxImportsPerDay = 0;
 
   mail = { host: '', port: 587, secure: true, from: '', username: '', passwordMasked: null as string | null };
   mailPassword = '';
@@ -290,10 +315,33 @@ export class OperatorConfigComponent implements OnInit {
       }
     });
     this.loadStats();
+    this.api.getTechnical().subscribe((config) => this.applyTechnical(config));
   }
 
   loadStats(): void {
     this.api.aiStats().subscribe((s) => this.stats.set(s));
+  }
+
+  private applyTechnical(config: TechnicalConfig): void {
+    this.tech = config;
+    this.techMaxUploadMb = Math.round((config.maxUploadBytes / (1024 * 1024)) * 10) / 10;
+    this.techMaxImportsPerDay = config.maxImportsPerDay;
+  }
+
+  techHardMax(): number {
+    return Math.floor(this.tech.hardMaxUploadBytes / (1024 * 1024));
+  }
+
+  saveTechnical(): void {
+    this.api
+      .updateTechnical({
+        maxUploadBytes: Math.round(Number(this.techMaxUploadMb) * 1024 * 1024),
+        maxImportsPerDay: Math.max(0, Math.floor(Number(this.techMaxImportsPerDay))),
+      })
+      .subscribe((config) => {
+        this.applyTechnical(config);
+        this.techStatus.set('✓ Enregistré');
+      });
   }
 
   toggleUseCase(uc: AiUseCase): void {

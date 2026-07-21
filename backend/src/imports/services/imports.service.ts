@@ -6,9 +6,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { AiConfigService } from '../../ai/ai-config.service';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
+import { TechnicalConfigService } from '../../platform-config/technical-config.service';
 import type { OcrAssistant } from '@event-foundry/contracts';
 import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
+import { FileTooLargeException } from '../exceptions/file-too-large.exception';
 import { ImportJobNotFoundException } from '../exceptions/import-job-not-found.exception';
+import { ImportQuotaExceededException } from '../exceptions/import-quota-exceeded.exception';
 import { UnsupportedFileTypeException } from '../exceptions/unsupported-file-type.exception';
 import { ALLOWED_UPLOAD_MIME_TYPES } from '../imports.constants';
 import { ImportJobRepository } from '../repositories/import-job.repository';
@@ -26,6 +29,7 @@ export class ImportsService {
     private readonly queue: QueueService,
     private readonly config: ConfigService,
     private readonly aiConfig: AiConfigService,
+    private readonly technical: TechnicalConfigService,
   ) {}
 
   list(skip: number, take: number): Promise<ImportJobWithAttachment[]> {
@@ -48,6 +52,12 @@ export class ImportsService {
     if (!ALLOWED_UPLOAD_MIME_TYPES.has(file.mimetype)) {
       throw new UnsupportedFileTypeException(file.mimetype);
     }
+    // Limites techniques configurables (OPE-005) : taille d'upload puis plafond quotidien.
+    const limits = await this.technical.getLimits();
+    if (file.size > limits.maxUploadBytes) {
+      throw new FileTooLargeException(file.size, limits.maxUploadBytes);
+    }
+    await this.enforceDailyQuota(limits.maxImportsPerDay);
     // UUID généré côté application : la clé MinIO est déterministe, ce qui permet à
     // l'OCR Worker de charger le document sans accès à PostgreSQL (TSPEC.04, ADR.07).
     const correlationId = getCorrelationId() ?? generateCorrelationId();
@@ -111,8 +121,25 @@ export class ImportsService {
       : undefined;
   }
 
+  /**
+   * Vérifie le plafond quotidien d'imports plateforme (OPE-005). `0` = illimité. Le compteur porte
+   * sur les imports créés depuis le début de la journée (UTC).
+   */
+  private async enforceDailyQuota(maxImportsPerDay: number): Promise<void> {
+    if (maxImportsPerDay <= 0) {
+      return;
+    }
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const count = await this.repository.countSince(startOfDay);
+    if (count >= maxImportsPerDay) {
+      throw new ImportQuotaExceededException(maxImportsPerDay);
+    }
+  }
+
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */
   async importText(text: string): Promise<ImportJobWithAttachment> {
+    await this.enforceDailyQuota((await this.technical.getLimits()).maxImportsPerDay);
     const correlationId = getCorrelationId() ?? generateCorrelationId();
     const attachmentId = randomUUID();
     const buffer = Buffer.from(text, 'utf-8');

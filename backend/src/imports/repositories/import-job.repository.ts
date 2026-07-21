@@ -33,6 +33,11 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     });
   }
 
+  /** Nombre d'imports créés depuis `since` (plafond quotidien plateforme — OPE-005). */
+  countSince(since: Date): Promise<number> {
+    return this.prisma.importJob.count({ where: { createdAt: { gte: since } } });
+  }
+
   list(skip: number, take: number): Promise<ImportJobWithAttachment[]> {
     return this.prisma.importJob.findMany({
       orderBy: { createdAt: 'desc' },

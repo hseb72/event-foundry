@@ -2,7 +2,11 @@ import { ConfigService } from '@nestjs/config';
 import { AiConfigService } from '../../ai/ai-config.service';
 import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
+import { TechnicalConfigService } from '../../platform-config/technical-config.service';
+import { DEFAULT_MAX_UPLOAD_BYTES } from '../imports.constants';
 import type { ImportJobWithAttachment } from '../entities/import-job.entity';
+import { FileTooLargeException } from '../exceptions/file-too-large.exception';
+import { ImportQuotaExceededException } from '../exceptions/import-quota-exceeded.exception';
 import { UnsupportedFileTypeException } from '../exceptions/unsupported-file-type.exception';
 import { ImportJobRepository } from '../repositories/import-job.repository';
 import { ImportsService } from './imports.service';
@@ -36,11 +40,15 @@ function fakeJob(overrides: Partial<ImportJobWithAttachment> = {}): ImportJobWit
 
 describe('ImportsService', () => {
   let repository: jest.Mocked<
-    Pick<ImportJobRepository, 'createWithAttachment' | 'list' | 'findByIdWithAttachment' | 'transition'>
+    Pick<
+      ImportJobRepository,
+      'createWithAttachment' | 'list' | 'findByIdWithAttachment' | 'transition' | 'countSince'
+    >
   >;
   let minio: jest.Mocked<Pick<MinioService, 'putObject' | 'bucketName'>>;
   let queue: jest.Mocked<Pick<QueueService, 'enqueueImport' | 'enqueueClassification'>>;
   let aiConfig: jest.Mocked<Pick<AiConfigService, 'resolveForUseCase'>>;
+  let technical: jest.Mocked<Pick<TechnicalConfigService, 'getLimits'>>;
   let service: ImportsService;
 
   beforeEach(() => {
@@ -49,6 +57,7 @@ describe('ImportsService', () => {
       list: jest.fn(),
       findByIdWithAttachment: jest.fn(),
       transition: jest.fn().mockResolvedValue(fakeJob()),
+      countSince: jest.fn().mockResolvedValue(0),
     };
     minio = { putObject: jest.fn().mockResolvedValue(undefined), bucketName: 'bucket' } as never;
     queue = {
@@ -57,12 +66,16 @@ describe('ImportsService', () => {
     };
     const config = { get: jest.fn().mockReturnValue('fra+eng') } as unknown as ConfigService;
     aiConfig = { resolveForUseCase: jest.fn().mockResolvedValue(null) };
+    technical = {
+      getLimits: jest.fn().mockResolvedValue({ maxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES, maxImportsPerDay: 0 }),
+    };
     service = new ImportsService(
       repository as unknown as ImportJobRepository,
       minio as unknown as MinioService,
       queue as unknown as QueueService,
       config,
       aiConfig as unknown as AiConfigService,
+      technical as unknown as TechnicalConfigService,
     );
   });
 
@@ -113,6 +126,26 @@ describe('ImportsService', () => {
       model: 'gpt-4o-mini',
       apiKey: 'sk-secret',
     });
+  });
+
+  it('rejette un fichier au-delà de la taille maximale configurée', async () => {
+    technical.getLimits.mockResolvedValue({ maxUploadBytes: 1024, maxImportsPerDay: 0 });
+    const file = { mimetype: 'image/png', buffer: Buffer.from('img'), originalname: 'a.png', size: 4096 };
+    await expect(service.importFile(file as Express.Multer.File)).rejects.toBeInstanceOf(
+      FileTooLargeException,
+    );
+    expect(minio.putObject).not.toHaveBeenCalled();
+  });
+
+  it('rejette un import quand le plafond quotidien est atteint', async () => {
+    technical.getLimits.mockResolvedValue({ maxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES, maxImportsPerDay: 5 });
+    repository.countSince.mockResolvedValue(5);
+    const file = { mimetype: 'image/png', buffer: Buffer.from('img'), originalname: 'a.png', size: 3 };
+    await expect(service.importFile(file as Express.Multer.File)).rejects.toBeInstanceOf(
+      ImportQuotaExceededException,
+    );
+    await expect(service.importText('Tournoi')).rejects.toBeInstanceOf(ImportQuotaExceededException);
+    expect(queue.enqueueImport).not.toHaveBeenCalled();
   });
 
   it('classe directement un import texte, sans OCR', async () => {

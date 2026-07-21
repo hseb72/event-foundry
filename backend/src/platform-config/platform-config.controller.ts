@@ -7,7 +7,9 @@ import { AiConfigService, PLATFORM_SCOPE_KEY } from '../ai/ai-config.service';
 import { AiCallStatsDto } from '../ai/dto/ai-call-stats.dto';
 import { AiConfigDto, UpdateAiConfigDto } from '../ai/dto/ai-config.dto';
 import { MailConfigDto, UpdateMailConfigDto } from './dto/platform-config.dto';
+import { TechnicalConfigDto, UpdateTechnicalConfigDto } from './dto/technical-config.dto';
 import { PlatformConfigService } from './platform-config.service';
+import { TechnicalConfigService } from './technical-config.service';
 
 /**
  * Configuration plateforme (FSPEC.09 / TSPEC.09), écran Operator `OPE-005`. Réservée à
@@ -23,6 +25,7 @@ export class PlatformConfigController {
     private readonly config: PlatformConfigService,
     private readonly ai: AiConfigService,
     private readonly aiCallLog: AiCallLogService,
+    private readonly technical: TechnicalConfigService,
   ) {}
 
   @Get('mail')
@@ -66,5 +69,18 @@ export class PlatformConfigController {
   @ApiOkResponse({ type: AiCallStatsDto })
   aiStats(): Promise<AiCallStatsDto> {
     return this.aiCallLog.stats();
+  }
+
+  /** Limites techniques (taille d'upload, plafond quotidien d'imports). */
+  @Get('technical')
+  @ApiOkResponse({ type: TechnicalConfigDto })
+  getTechnical(): Promise<TechnicalConfigDto> {
+    return this.technical.get();
+  }
+
+  @Put('technical')
+  @ApiOkResponse({ type: TechnicalConfigDto })
+  updateTechnical(@Body() dto: UpdateTechnicalConfigDto): Promise<TechnicalConfigDto> {
+    return this.technical.update(dto);
   }
 }
