@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
-import { AI_USE_CASES, AiProviderInfo, AiUseCase } from '../../core/models';
+import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase } from '../../core/models';
 
 /**
  * Configuration plateforme Operator (OPE-005 / FSPEC.09) : mail (SMTP) et IA plateforme. Les clés
@@ -70,6 +70,44 @@ import { AI_USE_CASES, AiProviderInfo, AiUseCase } from '../../core/models';
         gap: 0.5rem;
         align-items: center;
         margin-top: 0.5rem;
+      }
+      .full {
+        grid-column: 1 / -1;
+      }
+      .kpis {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.8rem;
+      }
+      .kpi b {
+        display: block;
+        font-size: 1.5rem;
+        line-height: 1.1;
+      }
+      .kpi span {
+        font-size: 0.76rem;
+        color: var(--muted, #888);
+      }
+      table.stats {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+      table.stats th,
+      table.stats td {
+        text-align: left;
+        padding: 0.35rem 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+      table.stats td.num,
+      table.stats th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .fail {
+        color: #d33;
+        font-weight: 600;
       }
     `,
   ],
@@ -149,6 +187,62 @@ import { AI_USE_CASES, AiProviderInfo, AiUseCase } from '../../core/models';
           @if (aiStatus()) { <span class="status">{{ statusLabel(aiStatus()) }}</span> }
         </div>
       </section>
+
+      <section class="card full">
+        <div class="row" style="justify-content:space-between;margin-top:0">
+          <h2 style="margin:0">Supervision des appels IA</h2>
+          <button class="btn" (click)="loadStats()">Rafraîchir</button>
+        </div>
+        <p class="muted" style="font-size:0.78rem;margin:0.4rem 0 0.8rem">
+          Métadonnées d'observabilité uniquement (volumes, durées, échecs). Aucun contenu ni clé.
+        </p>
+        @if (stats(); as s) {
+          <div class="kpis">
+            <div class="kpi"><b>{{ s.total }}</b><span>Appels tracés</span></div>
+            <div class="kpi"><b>{{ s.failures }}</b><span>Échecs</span></div>
+            <div class="kpi"><b>{{ (s.failureRate * 100).toFixed(1) }}%</b><span>Taux d'échec</span></div>
+          </div>
+          @if (s.total > 0) {
+            <div class="two" style="align-items:start">
+              <div>
+                <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Par fournisseur</div>
+                <table class="stats">
+                  <thead><tr><th>Fournisseur</th><th class="num">Appels</th><th class="num">Échecs</th><th class="num">Durée moy.</th></tr></thead>
+                  <tbody>
+                    @for (p of s.byProvider; track p.provider) {
+                      <tr>
+                        <td>{{ p.provider }}</td>
+                        <td class="num">{{ p.total }}</td>
+                        <td class="num" [class.fail]="p.failures > 0">{{ p.failures }}</td>
+                        <td class="num">{{ p.avgDurationMs }} ms</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Par cas d'usage</div>
+                <table class="stats">
+                  <thead><tr><th>Cas d'usage</th><th class="num">Appels</th><th class="num">Échecs</th></tr></thead>
+                  <tbody>
+                    @for (u of s.byUseCase; track u.useCase) {
+                      <tr>
+                        <td>{{ u.useCase }}</td>
+                        <td class="num">{{ u.total }}</td>
+                        <td class="num" [class.fail]="u.failures > 0">{{ u.failures }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          } @else {
+            <p class="muted" style="font-size:0.82rem">Aucun appel IA tracé pour l'instant.</p>
+          }
+        } @else {
+          <p class="muted" style="font-size:0.82rem">Chargement…</p>
+        }
+      </section>
     </div>
   `,
 })
@@ -159,6 +253,7 @@ export class OperatorConfigComponent implements OnInit {
   readonly useCases = AI_USE_CASES;
   readonly mailStatus = signal('');
   readonly aiStatus = signal('');
+  readonly stats = signal<AiCallStats | null>(null);
   providers: AiProviderInfo[] = [];
 
   mail = { host: '', port: 587, secure: true, from: '', username: '', passwordMasked: null as string | null };
@@ -194,6 +289,11 @@ export class OperatorConfigComponent implements OnInit {
         this.aiStatus.set(config.status);
       }
     });
+    this.loadStats();
+  }
+
+  loadStats(): void {
+    this.api.aiStats().subscribe((s) => this.stats.set(s));
   }
 
   toggleUseCase(uc: AiUseCase): void {

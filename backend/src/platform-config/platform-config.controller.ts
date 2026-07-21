@@ -2,7 +2,9 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Put } from '@nestjs/
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { SecretScope, SecretStatus } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { AiCallLogService } from '../ai/ai-call-log.service';
 import { AiConfigService, PLATFORM_SCOPE_KEY } from '../ai/ai-config.service';
+import { AiCallStatsDto } from '../ai/dto/ai-call-stats.dto';
 import { AiConfigDto, UpdateAiConfigDto } from '../ai/dto/ai-config.dto';
 import { MailConfigDto, UpdateMailConfigDto } from './dto/platform-config.dto';
 import { PlatformConfigService } from './platform-config.service';
@@ -20,6 +22,7 @@ export class PlatformConfigController {
   constructor(
     private readonly config: PlatformConfigService,
     private readonly ai: AiConfigService,
+    private readonly aiCallLog: AiCallLogService,
   ) {}
 
   @Get('mail')
@@ -56,5 +59,12 @@ export class PlatformConfigController {
   @HttpCode(HttpStatus.OK)
   testAi(): Promise<{ status: SecretStatus }> {
     return this.ai.test(SecretScope.PLATFORM, PLATFORM_SCOPE_KEY);
+  }
+
+  /** Supervision des appels IA (Observabilité) : volumes, taux d'échec, durée par fournisseur/cas. */
+  @Get('ai/stats')
+  @ApiOkResponse({ type: AiCallStatsDto })
+  aiStats(): Promise<AiCallStatsDto> {
+    return this.aiCallLog.stats();
   }
 }

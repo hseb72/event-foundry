@@ -283,6 +283,15 @@ export interface UpdateAiConfigInput {
   apiKey?: string;
 }
 
+/** Statistiques d'appels IA (supervision Operator — Observabilité). Aucun contenu ni secret. */
+export interface AiCallStats {
+  total: number;
+  failures: number;
+  failureRate: number;
+  byProvider: { provider: string; total: number; failures: number; avgDurationMs: number }[];
+  byUseCase: { useCase: string; total: number; failures: number }[];
+}
+
 /** Configuration mail plateforme (le mot de passe n'est jamais renvoyé). */
 export interface MailConfig {
   host: string;
