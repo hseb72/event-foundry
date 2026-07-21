@@ -244,6 +244,14 @@ export interface Follow {
 export const AI_USE_CASES = ['OCR', 'DOC_UNDERSTANDING', 'TRANSLATE', 'SUMMARIZE', 'REPHRASE', 'ENRICH'] as const;
 export type AiUseCase = (typeof AI_USE_CASES)[number];
 
+/** Résultat d'une assistance IA « texte » (traduction/résumé). assisted=false = repli déterministe. */
+export interface AssistResult {
+  useCase: string;
+  assisted: boolean;
+  text: string | null;
+  provider: string | null;
+}
+
 /** Fournisseur IA proposé (guidage : modèles suggérés, où trouver la clé). */
 export interface AiProviderInfo {
   id: string;

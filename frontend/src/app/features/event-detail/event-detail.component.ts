@@ -1,8 +1,9 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
 import { ParticipationApi } from '../../core/api/participation.service';
+import { AiConfigApi } from '../../core/api/ai-config.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { EventDto, ParticipationState, PaymentStatus, ReservationStatus } from '../../core/models';
 import { formatDateTime } from '../../shared/date-format';
@@ -124,6 +125,36 @@ import { participationColor, participationLabel } from '../../shared/participati
         gap: 0.5rem;
         flex-wrap: wrap;
       }
+      .ai-tools {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 0.5rem 0;
+      }
+      .ai-out {
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--exp);
+        border-radius: 10px;
+        padding: 0.7rem 0.9rem;
+        background: var(--surface-2);
+        margin-top: 0.4rem;
+      }
+      .ai-out-head {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-weight: 700;
+        font-size: 0.82rem;
+        margin-bottom: 0.35rem;
+      }
+      .ai-close {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
       .actions {
         display: flex;
         flex-wrap: wrap;
@@ -229,6 +260,32 @@ import { participationColor, participationLabel } from '../../shared/participati
 
         @if (event.description) {
           <p class="desc">{{ event.description }}</p>
+          @if (canTranslate() || canSummarize()) {
+            <div class="ai-tools">
+              @if (canTranslate()) {
+                <button class="btn" [disabled]="aiBusy()" (click)="assist('TRANSLATE', event.description!)">🌐 Traduire</button>
+              }
+              @if (canSummarize()) {
+                <button class="btn" [disabled]="aiBusy()" (click)="assist('SUMMARIZE', event.description!)">✂️ Résumer</button>
+              }
+              @if (aiBusy()) { <span class="muted">Assistance IA…</span> }
+            </div>
+            @if (aiResult(); as r) {
+              <div class="ai-out">
+                <div class="ai-out-head">
+                  <span>{{ r.label }}</span>
+                  @if (r.provider) { <span class="muted">· {{ r.provider }}</span> }
+                  <button class="ai-close" (click)="aiResult.set(null)" title="Fermer">✕</button>
+                </div>
+                <p class="desc" style="margin:0">{{ r.text }}</p>
+              </div>
+            }
+            @if (aiEmpty()) {
+              <p class="muted" style="font-size:0.82rem">
+                Aucune IA activée pour ce cas d'usage — configurez-la dans votre profil.
+              </p>
+            }
+          }
         }
 
         @if (event.media.length || canUpdate()) {
@@ -296,12 +353,48 @@ export class EventDetailComponent implements OnInit {
   };
 
   private readonly auth = inject(AuthService);
+  private readonly aiConfigApi = inject(AiConfigApi);
+
+  // Cas d'usage IA « texte » activés par l'utilisateur (assistance à l'affichage — ADR.16).
+  private aiEnabled: Record<string, boolean> = {};
+  readonly aiBusy = signal(false);
+  readonly aiResult = signal<{ label: string; text: string; provider: string | null } | null>(null);
+  readonly aiEmpty = signal(false);
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly eventsApi: EventsApi,
     private readonly participationApi: ParticipationApi,
   ) {}
+
+  canTranslate(): boolean {
+    return this.aiEnabled['TRANSLATE'] === true;
+  }
+
+  canSummarize(): boolean {
+    return this.aiEnabled['SUMMARIZE'] === true;
+  }
+
+  assist(useCase: 'TRANSLATE' | 'SUMMARIZE', text: string): void {
+    this.aiBusy.set(true);
+    this.aiEmpty.set(false);
+    this.aiResult.set(null);
+    this.aiConfigApi.assist({ useCase, text }).subscribe({
+      next: (result) => {
+        this.aiBusy.set(false);
+        if (result.assisted && result.text) {
+          const label = useCase === 'TRANSLATE' ? 'Traduction (IA)' : 'Résumé (IA)';
+          this.aiResult.set({ label, text: result.text, provider: result.provider });
+        } else {
+          this.aiEmpty.set(true);
+        }
+      },
+      error: () => {
+        this.aiBusy.set(false);
+        this.aiEmpty.set(true);
+      },
+    });
+  }
 
   statusLabel(): string {
     const map: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', ARCHIVED: 'Archivé' };
@@ -373,6 +466,10 @@ export class EventDetailComponent implements OnInit {
         this.loading = false;
       },
       error: () => (this.loading = false),
+    });
+    // Cas d'usage IA activés (pour n'afficher les boutons que si pertinent).
+    this.aiConfigApi.get().subscribe((config) => {
+      this.aiEnabled = config?.enabled ? { ...config.useCases } : {};
     });
   }
 

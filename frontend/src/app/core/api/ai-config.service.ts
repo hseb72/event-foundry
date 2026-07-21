@@ -2,12 +2,17 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { AiConfig, AiProviderInfo, UpdateAiConfigInput } from '../models';
+import { AiConfig, AiProviderInfo, AssistResult, UpdateAiConfigInput } from '../models';
 
 /** Client de la configuration IA personnelle (ADR.16 / TSPEC.07). La clé n'est jamais renvoyée. */
 @Injectable({ providedIn: 'root' })
 export class AiConfigApi {
   private readonly http = inject(HttpClient);
+
+  /** Assistance IA « texte » à la demande (traduction/résumé). */
+  assist(input: { useCase: string; text: string; targetLanguage?: string }): Observable<AssistResult> {
+    return this.http.post<AssistResult>(`${API_BASE}/me/ai/assist`, input);
+  }
 
   /** Catalogue des fournisseurs (guidage UI : fournisseurs, modèles suggérés, lien clé). */
   providers(): Observable<AiProviderInfo[]> {
