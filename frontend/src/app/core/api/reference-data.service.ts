@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { ActivityDto, MunicipalityGeo, ReferentialItem } from '../models';
+import { ActivityDto, MunicipalityGeo, ProvisionalEntry, ProvisionalType, ReferentialItem } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReferenceDataApi {
@@ -42,6 +42,20 @@ export class ReferenceDataApi {
 
   createVenue(name: string): Observable<ReferentialItem> {
     return this.http.post<ReferentialItem>(`${API_BASE}/venues`, { name });
+  }
+
+  // --- File de curation des référentiels provisoires (ADR.24 — reference.manage) ---
+
+  listProvisional(): Observable<ProvisionalEntry[]> {
+    return this.http.get<ProvisionalEntry[]>(`${API_BASE}/admin/reference/provisional`);
+  }
+
+  confirmProvisional(type: ProvisionalType, id: string): Observable<void> {
+    return this.http.post<void>(`${API_BASE}/admin/reference/provisional/confirm`, { type, id });
+  }
+
+  removeProvisional(type: ProvisionalType, id: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE}/admin/reference/provisional`, { body: { type, id } });
   }
 
   eventTypes(activityId: string): Observable<ReferentialItem[]> {

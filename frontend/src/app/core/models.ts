@@ -294,16 +294,33 @@ export interface AiCallStats {
   byUseCase: { useCase: string; total: number; failures: number }[];
 }
 
+/** Type de référentiel auto-provisionnable (ADR.24). */
+export type ProvisionalType = 'activity' | 'eventType' | 'eventFormat' | 'organizer' | 'venue';
+
+/** Entrée de la file de curation des référentiels provisoires (ADR.24). */
+export interface ProvisionalEntry {
+  type: ProvisionalType;
+  id: string;
+  name: string;
+  context: string | null;
+  createdAt: string;
+}
+
 /** Limites techniques plateforme (OPE-005 §Technique). Aucune donnée secrète. */
 export interface TechnicalConfig {
   maxUploadBytes: number;
   maxImportsPerDay: number;
   hardMaxUploadBytes: number;
+  /** Auto-provisioning des référentiels manquants (ADR.24). */
+  autoProvisionReferentials: boolean;
+  provisioningDefaultDomainId: string | null;
 }
 
 export interface UpdateTechnicalConfigInput {
   maxUploadBytes: number;
   maxImportsPerDay: number;
+  autoProvisionReferentials?: boolean;
+  provisioningDefaultDomainId?: string;
 }
 
 /** Configuration mail plateforme (le mot de passe n'est jamais renvoyé). */

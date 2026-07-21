@@ -2,7 +2,15 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
-import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase, TechnicalConfig } from '../../core/models';
+import { ReferenceDataApi } from '../../core/api/reference-data.service';
+import {
+  AI_USE_CASES,
+  AiCallStats,
+  AiProviderInfo,
+  AiUseCase,
+  ReferentialItem,
+  TechnicalConfig,
+} from '../../core/models';
 
 /**
  * Configuration plateforme Operator (OPE-005 / FSPEC.09) : mail (SMTP) et IA plateforme. Les clés
@@ -258,6 +266,23 @@ import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase, TechnicalConfig }
           <label class="muted">Plafond quotidien d'imports (0 = illimité)</label>
           <input class="input" type="number" min="0" [(ngModel)]="techMaxImportsPerDay" />
         </div>
+
+        <hr style="border:0;border-top:1px solid var(--border);margin:0.8rem 0" />
+        <label class="switch"><input type="checkbox" [(ngModel)]="techAutoProvision" /> Auto-création des référentiels manquants</label>
+        <p class="muted" style="font-size:0.76rem;margin:0.35rem 0 0.6rem">
+          À l'import, un libellé inconnu (activité, type, lieu…) crée automatiquement le référentiel en
+          état <em>provisoire</em>, à curer ensuite. Décoché : les libellés inconnus sont proposés à la
+          création en validation (ADR.24).
+        </p>
+        @if (techAutoProvision) {
+          <div class="field">
+            <label class="muted">Domaine par défaut (pour les activités auto-créées)</label>
+            <select class="select" [(ngModel)]="techDefaultDomainId">
+              <option value="">— aucun (les activités inconnues ne seront pas auto-créées) —</option>
+              @for (d of domains; track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+            </select>
+          </div>
+        }
         <div class="row">
           <button class="btn btn-primary" (click)="saveTechnical()">Enregistrer</button>
           @if (techStatus()) { <span class="status">{{ techStatus() }}</span> }
@@ -269,6 +294,7 @@ import { AI_USE_CASES, AiCallStats, AiProviderInfo, AiUseCase, TechnicalConfig }
 export class OperatorConfigComponent implements OnInit {
   private readonly api = inject(PlatformConfigApi);
   private readonly aiConfigApi = inject(AiConfigApi);
+  private readonly referenceData = inject(ReferenceDataApi);
 
   readonly useCases = AI_USE_CASES;
   readonly mailStatus = signal('');
@@ -277,9 +303,18 @@ export class OperatorConfigComponent implements OnInit {
   readonly stats = signal<AiCallStats | null>(null);
   providers: AiProviderInfo[] = [];
 
-  private tech: TechnicalConfig = { maxUploadBytes: 20 * 1024 * 1024, maxImportsPerDay: 0, hardMaxUploadBytes: 20 * 1024 * 1024 };
+  private tech: TechnicalConfig = {
+    maxUploadBytes: 20 * 1024 * 1024,
+    maxImportsPerDay: 0,
+    hardMaxUploadBytes: 20 * 1024 * 1024,
+    autoProvisionReferentials: false,
+    provisioningDefaultDomainId: null,
+  };
   techMaxUploadMb = 20;
   techMaxImportsPerDay = 0;
+  techAutoProvision = false;
+  techDefaultDomainId = '';
+  domains: ReferentialItem[] = [];
 
   mail = { host: '', port: 587, secure: true, from: '', username: '', passwordMasked: null as string | null };
   mailPassword = '';
@@ -315,6 +350,7 @@ export class OperatorConfigComponent implements OnInit {
       }
     });
     this.loadStats();
+    this.referenceData.domains().subscribe((items) => (this.domains = items));
     this.api.getTechnical().subscribe((config) => this.applyTechnical(config));
   }
 
@@ -326,6 +362,8 @@ export class OperatorConfigComponent implements OnInit {
     this.tech = config;
     this.techMaxUploadMb = Math.round((config.maxUploadBytes / (1024 * 1024)) * 10) / 10;
     this.techMaxImportsPerDay = config.maxImportsPerDay;
+    this.techAutoProvision = config.autoProvisionReferentials;
+    this.techDefaultDomainId = config.provisioningDefaultDomainId ?? '';
   }
 
   techHardMax(): number {
@@ -337,6 +375,8 @@ export class OperatorConfigComponent implements OnInit {
       .updateTechnical({
         maxUploadBytes: Math.round(Number(this.techMaxUploadMb) * 1024 * 1024),
         maxImportsPerDay: Math.max(0, Math.floor(Number(this.techMaxImportsPerDay))),
+        autoProvisionReferentials: this.techAutoProvision,
+        provisioningDefaultDomainId: this.techDefaultDomainId || undefined,
       })
       .subscribe((config) => {
         this.applyTechnical(config);

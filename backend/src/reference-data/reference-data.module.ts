@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ProvisionalCurationController } from './provisioning/provisional-curation.controller';
+import { ProvisionalCurationRepository } from './provisioning/provisional-curation.repository';
+import { ProvisionalCurationService } from './provisioning/provisional-curation.service';
 import { ActivitiesController } from './activities/activities.controller';
 import { ActivitiesService } from './activities/activities.service';
 import { ActivityRepository } from './activities/activity.repository';
@@ -56,6 +59,7 @@ import { VenuesService } from './venues/venues.service';
     MunicipalitiesController,
     CategoriesController,
     TagsController,
+    ProvisionalCurationController,
   ],
   providers: [
     DomainRepository,
@@ -82,6 +86,8 @@ import { VenuesService } from './venues/venues.service';
     CategoriesService,
     TagRepository,
     TagsService,
+    ProvisionalCurationRepository,
+    ProvisionalCurationService,
   ],
   exports: [
     DomainRepository,

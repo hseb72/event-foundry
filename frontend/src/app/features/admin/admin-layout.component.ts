@@ -35,6 +35,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     <nav class="subnav">
       <a routerLink="dashboard" routerLinkActive="active">Tableau de bord</a>
       <a routerLink="reference" routerLinkActive="active">Référentiels</a>
+      <a routerLink="reference/provisional" routerLinkActive="active">Provisoires</a>
       <a routerLink="users" routerLinkActive="active">Utilisateurs</a>
       <a routerLink="jobs" routerLinkActive="active">Imports</a>
     </nav>

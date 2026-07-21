@@ -5,6 +5,7 @@ import { permissionGuard } from './core/auth/permission.guard';
 import { AdminLayoutComponent } from './features/admin/admin-layout.component';
 import { AdminComponent } from './features/admin/admin.component';
 import { JobsAdminComponent } from './features/admin/jobs-admin.component';
+import { ProvisionalCurationComponent } from './features/admin/provisional-curation.component';
 import { UsersAdminComponent } from './features/admin/users-admin.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { HomeComponent } from './features/home/home.component';
@@ -82,6 +83,7 @@ export const routes: Routes = [
         children: [
           { path: 'dashboard', component: DashboardComponent },
           { path: 'reference', component: AdminComponent },
+          { path: 'reference/provisional', component: ProvisionalCurationComponent },
           { path: 'users', component: UsersAdminComponent },
           { path: 'jobs', component: JobsAdminComponent },
           { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
