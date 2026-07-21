@@ -1,7 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
-import { AI_USE_CASES, AiUseCase } from '../../core/models';
+import { AiConfigApi } from '../../core/api/ai-config.service';
+import { AI_USE_CASES, AiProviderInfo, AiUseCase } from '../../core/models';
 
 /**
  * Configuration plateforme Operator (OPE-005 / FSPEC.09) : mail (SMTP) et IA plateforme. Les clés
@@ -107,12 +108,34 @@ import { AI_USE_CASES, AiUseCase } from '../../core/models';
         </p>
         <label class="switch"><input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA plateforme</label>
         <div class="two" style="margin-top:0.6rem">
-          <div class="field"><label class="muted">Fournisseur</label><input class="input" [(ngModel)]="ai.provider" placeholder="openai, ollama…" /></div>
-          <div class="field"><label class="muted">Modèle</label><input class="input" [(ngModel)]="ai.model" placeholder="gpt-4o-mini" /></div>
+          <div class="field"><label class="muted">Fournisseur</label>
+            <select class="select" [(ngModel)]="ai.provider">
+              <option value="">Fournisseur…</option>
+              @for (p of providers; track p.id) {
+                <option [value]="p.id">{{ p.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="field"><label class="muted">Modèle</label>
+            <input class="input" [(ngModel)]="ai.model" list="ope-ai-models" placeholder="Modèle (vision)" />
+            <datalist id="ope-ai-models">
+              @for (m of modelsFor(ai.provider); track m) {
+                <option [value]="m"></option>
+              }
+            </datalist>
+          </div>
         </div>
         <div class="field"><label class="muted">Clé API</label>
           <input class="input" type="password" [(ngModel)]="aiKey"
                  [placeholder]="ai.secretMasked ? 'Enregistrée (' + ai.secretMasked + ') — vide = inchangée' : 'Clé API'" />
+          @if (providerInfo(ai.provider); as pi) {
+            <span class="muted" style="font-size:0.76rem">
+              @if (pi.requiresKey) {
+                Clé {{ pi.keyHint }}
+                @if (pi.keyUrl) { · <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a> }
+              } @else { {{ pi.keyHint }} }
+            </span>
+          }
         </div>
         <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Cas d'usage</div>
         <div class="chips">
@@ -131,17 +154,28 @@ import { AI_USE_CASES, AiUseCase } from '../../core/models';
 })
 export class OperatorConfigComponent implements OnInit {
   private readonly api = inject(PlatformConfigApi);
+  private readonly aiConfigApi = inject(AiConfigApi);
 
   readonly useCases = AI_USE_CASES;
   readonly mailStatus = signal('');
   readonly aiStatus = signal('');
+  providers: AiProviderInfo[] = [];
 
   mail = { host: '', port: 587, secure: true, from: '', username: '', passwordMasked: null as string | null };
   mailPassword = '';
   ai = { provider: '', model: '', enabled: false, useCases: {} as Record<string, boolean>, secretMasked: null as string | null };
   aiKey = '';
 
+  providerInfo(id: string): AiProviderInfo | undefined {
+    return this.providers.find((p) => p.id === id);
+  }
+
+  modelsFor(id: string): string[] {
+    return this.providerInfo(id)?.suggestedModels ?? [];
+  }
+
   ngOnInit(): void {
+    this.aiConfigApi.providers().subscribe((providers) => (this.providers = providers));
     this.api.getMail().subscribe((config) => {
       if (config) {
         this.mail = { ...config, username: config.username ?? '' };

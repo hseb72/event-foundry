@@ -244,6 +244,17 @@ export interface Follow {
 export const AI_USE_CASES = ['OCR', 'DOC_UNDERSTANDING', 'TRANSLATE', 'SUMMARIZE', 'REPHRASE', 'ENRICH'] as const;
 export type AiUseCase = (typeof AI_USE_CASES)[number];
 
+/** Fournisseur IA proposé (guidage : modèles suggérés, où trouver la clé). */
+export interface AiProviderInfo {
+  id: string;
+  label: string;
+  kind: string;
+  suggestedModels: string[];
+  requiresKey: boolean;
+  keyUrl: string | null;
+  keyHint: string | null;
+}
+
 /** Configuration IA d'une portée (la clé n'est jamais renvoyée — seulement des métadonnées masquées). */
 export interface AiConfig {
   scope: string;

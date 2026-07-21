@@ -8,6 +8,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme.service';
 import {
   AI_USE_CASES,
+  AiProviderInfo,
   AiUseCase,
   Experience,
   MunicipalityGeo,
@@ -413,11 +414,33 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             <div style="display:grid;gap:0.5rem">
               <label class="switch"><input type="checkbox" [(ngModel)]="orgAi.enabled" /> Activer l'IA de l'organisation</label>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-                <input class="input" [(ngModel)]="orgAi.provider" placeholder="Fournisseur" />
-                <input class="input" [(ngModel)]="orgAi.model" placeholder="Modèle" />
+                <select class="select" [(ngModel)]="orgAi.provider">
+                  <option value="">Fournisseur…</option>
+                  @for (p of aiProviders; track p.id) {
+                    <option [value]="p.id">{{ p.label }}</option>
+                  }
+                </select>
+                <input class="input" [(ngModel)]="orgAi.model" list="ai-models-org" placeholder="Modèle (vision)" />
+                <datalist id="ai-models-org">
+                  @for (m of modelsFor(orgAi.provider); track m) {
+                    <option [value]="m"></option>
+                  }
+                </datalist>
               </div>
               <input class="input" type="password" [(ngModel)]="orgAi.apiKey"
                      [placeholder]="orgAiSecretMasked() ? 'Clé enregistrée (' + orgAiSecretMasked() + ') — vide = inchangée' : 'Clé API'" />
+              @if (providerInfo(orgAi.provider); as pi) {
+                <p class="muted" style="font-size:0.76rem;margin:0">
+                  @if (pi.requiresKey) {
+                    Clé {{ pi.keyHint }} —
+                    @if (pi.keyUrl) {
+                      <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a>
+                    }
+                  } @else {
+                    {{ pi.keyHint }}
+                  }
+                </p>
+              }
               <div class="chips">
                 @for (uc of aiUseCases; track uc) {
                   <button type="button" class="theme-opt" [class.on]="orgAi.useCases[uc]" (click)="toggleOrgUseCase(uc)">{{ uc }}</button>
@@ -444,13 +467,33 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               <input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA
             </label>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-              <input class="input" [(ngModel)]="ai.provider" placeholder="Fournisseur (openai, anthropic, ollama…)" />
-              <input class="input" [(ngModel)]="ai.model" placeholder="Modèle (gpt-4o-mini…)" />
+              <select class="select" [(ngModel)]="ai.provider">
+                <option value="">Fournisseur…</option>
+                @for (p of aiProviders; track p.id) {
+                  <option [value]="p.id">{{ p.label }}</option>
+                }
+              </select>
+              <input class="input" [(ngModel)]="ai.model" list="ai-models-perso" placeholder="Modèle (vision)" />
+              <datalist id="ai-models-perso">
+                @for (m of modelsFor(ai.provider); track m) {
+                  <option [value]="m"></option>
+                }
+              </datalist>
             </div>
-            <div style="display:flex;gap:0.4rem;align-items:center">
-              <input class="input" type="password" [(ngModel)]="ai.apiKey"
-                     [placeholder]="aiSecretMasked() ? 'Clé enregistrée (' + aiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
-            </div>
+            <input class="input" type="password" [(ngModel)]="ai.apiKey"
+                   [placeholder]="aiSecretMasked() ? 'Clé enregistrée (' + aiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
+            @if (providerInfo(ai.provider); as pi) {
+              <p class="muted" style="font-size:0.76rem;margin:0">
+                @if (pi.requiresKey) {
+                  Clé {{ pi.keyHint }} —
+                  @if (pi.keyUrl) {
+                    <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a>
+                  }
+                } @else {
+                  {{ pi.keyHint }}
+                }
+              </p>
+            }
             <div>
               <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Cas d'usage autorisés</div>
               <div class="chips">
@@ -565,6 +608,7 @@ export class IdentityComponent implements OnInit {
 
   // Configuration IA personnelle (ADR.16 / TSPEC.07).
   readonly aiUseCases = AI_USE_CASES;
+  aiProviders: AiProviderInfo[] = [];
   private readonly aiSecret = signal<{ masked: string } | null>(null);
   private readonly aiTestStatus = signal<string>('');
   ai = {
@@ -631,7 +675,18 @@ export class IdentityComponent implements OnInit {
 
   // --- Configuration IA personnelle (ADR.16 / TSPEC.07) ---
 
+  providerInfo(id: string): AiProviderInfo | undefined {
+    return this.aiProviders.find((p) => p.id === id);
+  }
+
+  modelsFor(id: string): string[] {
+    return this.providerInfo(id)?.suggestedModels ?? [];
+  }
+
   private loadAiConfig(): void {
+    if (!this.aiProviders.length) {
+      this.aiConfigApi.providers().subscribe((providers) => (this.aiProviders = providers));
+    }
     this.aiConfigApi.get().subscribe((config) => {
       if (config) {
         this.ai.provider = config.provider;
