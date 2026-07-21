@@ -11,6 +11,13 @@ import { EventDto, PlanningEntry } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 import { formatDateTime } from '../../shared/date-format';
 import { bucketByPeriod, PeriodBuckets } from '../../shared/date-buckets';
+import {
+  PARTICIPATION_PALETTE,
+  ParticipationKind,
+  participationColor,
+  participationKind,
+  participationLabel,
+} from '../../shared/participation-color';
 
 const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMonth: [], later: [] };
 
@@ -133,6 +140,47 @@ const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMo
         color: var(--muted);
         padding: 0.5rem 0 1rem;
       }
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+      }
+      .filter {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .filter.on {
+        border-color: var(--exp);
+        background: var(--exp-weak, var(--surface-2));
+      }
+      .filter .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+      }
+      .pill {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .pill .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
     `,
   ],
   template: `
@@ -164,16 +212,32 @@ const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMo
       } @else if (isEmpty(upcomingBuckets)) {
         <p class="empty">Aucun événement qualifié à venir. Déclarez votre intérêt depuis « Découvrir ».</p>
       } @else {
-        @for (s of sections; track s.key) {
-          @if (upcomingBuckets[s.key].length) {
-            <div class="bucket">
-              <h3 class="bucket-title">{{ s.label }}</h3>
-              <div class="grid">
-                @for (event of upcomingBuckets[s.key]; track event.id) {
-                  <app-event-card [event]="event" />
-                }
+        <div class="filters">
+          <button type="button" class="filter" [class.on]="filter === 'ALL'" (click)="setFilter('ALL')">
+            Tous ({{ upcomingCount() }})
+          </button>
+          @for (p of palette; track p.kind) {
+            @if (countFor(p.kind)) {
+              <button type="button" class="filter" [class.on]="filter === p.kind" (click)="setFilter(p.kind)">
+                <span class="dot" [style.background]="p.color"></span>{{ p.label }} ({{ countFor(p.kind) }})
+              </button>
+            }
+          }
+        </div>
+        @if (isEmpty(filteredBuckets())) {
+          <p class="empty">Aucun événement pour ce filtre.</p>
+        } @else {
+          @for (s of sections; track s.key) {
+            @if (filteredBuckets()[s.key].length) {
+              <div class="bucket">
+                <h3 class="bucket-title">{{ s.label }}</h3>
+                <div class="grid">
+                  @for (event of filteredBuckets()[s.key]; track event.id) {
+                    <app-event-card [event]="event" />
+                  }
+                </div>
               </div>
-            </div>
+            }
           }
         }
       }
@@ -216,11 +280,20 @@ const EMPTY_BUCKETS: PeriodBuckets<EventDto> = { today: [], thisWeek: [], thisMo
       } @else {
         <div class="planning-list">
           @for (entry of planning; track entry.event.id) {
-            <a class="planning-row" [routerLink]="['/events', entry.event.id]">
+            <a
+              class="planning-row"
+              [routerLink]="['/events', entry.event.id]"
+              [style.--stripe]="stripe(entry.event)"
+            >
               <div>
                 <div class="title">{{ entry.event.title }}</div>
                 <div class="date">{{ date(entry.event) }} · {{ entry.event.activity }}</div>
               </div>
+              @if (statusLabel(entry.event); as sl) {
+                <span class="pill" [style.color]="stripe(entry.event)">
+                  <span class="dot" [style.background]="stripe(entry.event)"></span>{{ sl }}
+                </span>
+              }
               @if (entry.conflictsWith.length) {
                 <span class="conflict">⚠ Conflit d'horaire</span>
               }
@@ -242,12 +315,17 @@ export class HomeComponent implements OnInit {
   q = '';
   // Blocs « À venir » (qualifiés — RG-PLN-02) et « À découvrir » (recommandés non qualifiés),
   // chacun réparti en 3 sections disjointes aujourd'hui / semaine / mois (RG-PLN-04).
+  upcomingEvents: EventDto[] = [];
   upcomingBuckets: PeriodBuckets<EventDto> = EMPTY_BUCKETS;
   discoverBuckets: PeriodBuckets<EventDto> = EMPTY_BUCKETS;
   planning: PlanningEntry[] = [];
   loadingUpcoming = true;
   loadingDiscover = true;
   loadingPlanning = true;
+
+  // Filtre de participation sur « À venir » (réutilise la palette V1 — source unique FSPEC.05).
+  readonly palette = PARTICIPATION_PALETTE;
+  filter: ParticipationKind | 'ALL' = 'ALL';
 
   readonly sections: { key: keyof PeriodBuckets<EventDto>; label: string }[] = [
     { key: 'today', label: "Aujourd'hui" },
@@ -270,11 +348,44 @@ export class HomeComponent implements OnInit {
     );
   }
 
+  setFilter(kind: ParticipationKind | 'ALL'): void {
+    this.filter = kind;
+  }
+
+  upcomingCount(): number {
+    return this.upcomingEvents.length;
+  }
+
+  /** Nombre d'événements « À venir » pour un statut de participation dominant. */
+  countFor(kind: ParticipationKind): number {
+    return this.upcomingEvents.filter((e) => participationKind(e.participation) === kind).length;
+  }
+
+  /** Répartition période × filtre de participation courant. */
+  filteredBuckets(): PeriodBuckets<EventDto> {
+    if (this.filter === 'ALL') {
+      return this.upcomingBuckets;
+    }
+    const events = this.upcomingEvents.filter((e) => participationKind(e.participation) === this.filter);
+    return bucketByPeriod(events, (e) => e.startsAt);
+  }
+
+  /** Couleur de la pastille de participation (palette V1). */
+  stripe(event: EventDto): string {
+    return participationColor(event.participation);
+  }
+
+  /** Libellé de participation dominant (vide si aucun). */
+  statusLabel(event: EventDto): string {
+    return participationLabel(event.participation);
+  }
+
   ngOnInit(): void {
     // « À venir » = événements qualifiés (participation) → endpoint planning.
     this.eventsApi.planning().subscribe({
       next: (entries) => {
         const events = entries.map((entry) => entry.event);
+        this.upcomingEvents = events;
         this.upcomingBuckets = bucketByPeriod(events, (e) => e.startsAt);
         this.planning = entries.slice(0, 3);
         this.loadingUpcoming = false;
