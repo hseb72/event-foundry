@@ -1,14 +1,20 @@
 import { AiTextClient } from '../../ai/ai-text-client';
+import { AiVisionClient } from '../../ai/ai-vision-client';
 import { AiExtractionConnector } from './ai-extraction.connector';
 
 describe('AiExtractionConnector (extraction IA → Raw Event — ADR.16 §Frontière)', () => {
   let aiTextClient: jest.Mocked<Pick<AiTextClient, 'run'>>;
+  let aiVisionClient: jest.Mocked<Pick<AiVisionClient, 'run'>>;
   let connector: AiExtractionConnector;
   const assistant = { provider: 'openai', model: 'gpt-4o-mini', apiKey: 'sk' };
 
   beforeEach(() => {
     aiTextClient = { run: jest.fn() };
-    connector = new AiExtractionConnector(aiTextClient as unknown as AiTextClient);
+    aiVisionClient = { run: jest.fn() };
+    connector = new AiExtractionConnector(
+      aiTextClient as unknown as AiTextClient,
+      aiVisionClient as unknown as AiVisionClient,
+    );
   });
 
   it('sans IA (assistant absent) : aucun appel, aucun événement', async () => {
@@ -41,5 +47,22 @@ describe('AiExtractionConnector (extraction IA → Raw Event — ADR.16 §Fronti
     aiTextClient.run.mockResolvedValue('Je ne peux pas.');
     const drafts = await connector.extract({ content: 'x', assistant });
     expect(drafts).toEqual([]);
+  });
+
+  it('source image → appel IA vision (pas de client texte)', async () => {
+    aiVisionClient.run.mockResolvedValue('[{"title":"Affiche","starts_at":"2026-08-01"}]');
+    const drafts = await connector.extract({
+      content: '',
+      assistant,
+      image: { base64: 'AAAA', mediaType: 'image/png' },
+    });
+    expect(aiVisionClient.run).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(String),
+      { base64: 'AAAA', mediaType: 'image/png' },
+    );
+    expect(aiTextClient.run).not.toHaveBeenCalled();
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0].payload['title']).toBe('Affiche');
   });
 });

@@ -14,6 +14,13 @@ export class ImportsApi {
     return this.http.post<ImportResponse>(`${API_BASE}/imports`, form);
   }
 
+  /** Extraction IA vision d'une image (PNG/JPEG) : l'IA remplit un Raw Event ; décision déterministe. */
+  aiExtractFile(file: File): Observable<ImportResponse> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<ImportResponse>(`${API_BASE}/imports/ai-extract-file`, form);
+  }
+
   importText(text: string): Observable<ImportResponse> {
     return this.http.post<ImportResponse>(`${API_BASE}/imports/text`, { text });
   }

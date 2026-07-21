@@ -48,8 +48,12 @@ import { ImportResponse } from '../../core/models';
           <input type="file" accept="image/png,image/jpeg,application/pdf" (change)="onFile($event)" />
           <p>JPG, PNG ou PDF (max ~20 Mo)</p>
         </div>
+        <label style="display:flex;gap:0.45rem;align-items:center;font-size:0.85rem;margin:0.2rem 0 0.6rem">
+          <input type="checkbox" [(ngModel)]="fileUseAi" [disabled]="isPdf()" />
+          Extraction assistée par IA <span class="muted">(image PNG/JPEG, si configurée)</span>
+        </label>
         <button class="btn btn-primary" [disabled]="!file || busy" (click)="uploadFile()">
-          Importer le fichier
+          {{ fileButtonLabel() }}
         </button>
       </div>
 
@@ -69,7 +73,7 @@ import { ImportResponse } from '../../core/models';
           déterministe. Sans IA, le moteur de règles interne s'applique.
         </p>
         <button class="btn btn-primary" [disabled]="!text.trim() || busy" (click)="submitText()">
-          {{ useAi ? 'Extraire avec l\'IA' : 'Importer le texte' }}
+          {{ textButtonLabel() }}
         </button>
       </div>
 
@@ -125,6 +129,7 @@ import { ImportResponse } from '../../core/models';
 })
 export class ImportComponent {
   file: File | null = null;
+  fileUseAi = false;
   text = '';
   useAi = false;
   structured = '';
@@ -172,13 +177,31 @@ export class ImportComponent {
     });
   }
 
+  /** Vrai si le fichier sélectionné est un PDF (l'extraction IA vision ne couvre que les images). */
+  isPdf(): boolean {
+    return this.file?.type === 'application/pdf';
+  }
+
+  textButtonLabel(): string {
+    return this.useAi ? "Extraire avec l'IA" : 'Importer le texte';
+  }
+
+  fileButtonLabel(): string {
+    return this.fileUseAi && !this.isPdf() ? "Extraire l'image avec l'IA" : 'Importer le fichier';
+  }
+
   uploadFile(): void {
     if (!this.file) {
       return;
     }
     this.busy = true;
-    this.importsApi.uploadFile(this.file).subscribe({
-      next: (result) => this.onSuccess(result, 'Fichier envoyé, traitement lancé.'),
+    const useAi = this.fileUseAi && !this.isPdf();
+    const request = useAi ? this.importsApi.aiExtractFile(this.file) : this.importsApi.uploadFile(this.file);
+    const message = useAi
+      ? 'Extraction IA de l’image lancée, candidats prêts à valider.'
+      : 'Fichier envoyé, traitement lancé.';
+    request.subscribe({
+      next: (result) => this.onSuccess(result, message),
       error: () => (this.busy = false),
     });
   }
@@ -208,5 +231,6 @@ export class ImportComponent {
     this.structured = '';
     this.url = '';
     this.file = null;
+    this.fileUseAi = false;
   }
 }

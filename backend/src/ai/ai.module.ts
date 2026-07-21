@@ -6,6 +6,7 @@ import { AiConfigRepository } from './ai-config.repository';
 import { AiConfigService } from './ai-config.service';
 import { AiProviderVerifier } from './ai-provider-verifier';
 import { AiTextClient } from './ai-text-client';
+import { AiVisionClient } from './ai-vision-client';
 import { AssistantController } from './assistant.controller';
 import { AssistantService } from './assistant.service';
 
@@ -22,8 +23,9 @@ import { AssistantService } from './assistant.service';
     AiCallLogService,
     AiProviderVerifier,
     AiTextClient,
+    AiVisionClient,
     AssistantService,
   ],
-  exports: [AiConfigService, AiCallLogService, AiTextClient],
+  exports: [AiConfigService, AiCallLogService, AiTextClient, AiVisionClient],
 })
 export class AiModule {}

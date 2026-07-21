@@ -52,12 +52,14 @@ export interface ConnectorDescriptor {
 
 /** Entrée d'extraction : le contenu brut fourni par l'utilisateur (paste ou fichier décodé). */
 export interface ConnectorExtractInput {
-  /** Contenu textuel de la source (CSV, JSON, texte libre, HTML…). */
+  /** Contenu textuel de la source (CSV, JSON, texte libre, HTML…). Vide pour une source image. */
   content: string;
   /** Type MIME d'origine, s'il est connu. */
   contentType?: string | null;
   /** Assistant IA résolu (canaux assistés par IA uniquement — ADR.16). Absent = pas d'IA. */
   assistant?: ExtractionAssistant;
+  /** Image source (extraction IA vision — affiche/photo). Prioritaire sur `content` si présente. */
+  image?: { base64: string; mediaType: string };
 }
 
 /**

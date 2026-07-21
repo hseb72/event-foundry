@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ImportChannel } from '@prisma/client';
 import { AiTextClient } from '../../ai/ai-text-client';
+import { AiVisionClient } from '../../ai/ai-vision-client';
 import type {
   ConnectorDescriptor,
   ConnectorExtractInput,
@@ -27,14 +28,17 @@ export class AiExtractionConnector implements ImportConnector {
 
   private readonly MAX_INPUT = 12_000;
 
-  constructor(private readonly aiTextClient: AiTextClient) {}
+  constructor(
+    private readonly aiTextClient: AiTextClient,
+    private readonly aiVisionClient: AiVisionClient,
+  ) {}
 
   describe(): ConnectorDescriptor {
     return {
       providerId: this.providerId,
-      label: 'Extraction IA (document texte)',
+      label: 'Extraction IA (texte ou image)',
       channel: this.channel,
-      accepts: ['text/plain'],
+      accepts: ['text/plain', 'image/png', 'image/jpeg'],
       schemaSummary:
         'L’IA extrait des libellés bruts (title, starts_at, activity, event_type, venue, city, ' +
         'price, currency, description, url) — jamais de référentiel ni de décision. Repli déterministe si aucune IA.',
@@ -42,17 +46,25 @@ export class AiExtractionConnector implements ImportConnector {
     };
   }
 
-  /** `content` = texte du document ; `assistant` = IA résolue par le Backend (secrets non résolus ici). */
+  /**
+   * `assistant` = IA résolue par le Backend (secrets non résolus ici). Source **image** (`image`) →
+   * appel IA vision ; sinon `content` = texte → appel IA texte. Même schéma pivot dans les deux cas.
+   */
   async extract(input: ConnectorExtractInput): Promise<RawEventDraft[]> {
-    const content = input.content?.trim() ?? '';
-    if (!content || !input.assistant) {
+    if (!input.assistant) {
       return [];
     }
-    const prompt = this.buildPrompt(content.slice(0, this.MAX_INPUT));
-    const raw = await this.aiTextClient.run(
-      input.assistant as unknown as Parameters<AiTextClient['run']>[0],
-      prompt,
-    );
+    const assistant = input.assistant as unknown as Parameters<AiTextClient['run']>[0];
+    let raw: string;
+    if (input.image) {
+      raw = await this.aiVisionClient.run(assistant, this.buildPrompt(''), input.image);
+    } else {
+      const content = input.content?.trim() ?? '';
+      if (!content) {
+        return [];
+      }
+      raw = await this.aiTextClient.run(assistant, this.buildPrompt(content.slice(0, this.MAX_INPUT)));
+    }
     const rows = this.parseRows(raw);
     return rows.map((row) => ({
       providerKey: typeof row['url'] === 'string' && row['url'].trim() ? String(row['url']).trim() : null,
@@ -61,20 +73,22 @@ export class AiExtractionConnector implements ImportConnector {
   }
 
   private buildPrompt(content: string): string {
-    return [
-      'Tu es un extracteur. À partir du TEXTE ci-dessous, extrais les événements décrits.',
+    const source = content ? 'du TEXTE ci-dessous' : "de l'IMAGE fournie";
+    const lines = [
+      `Tu es un extracteur. À partir ${source}, extrais les événements décrits.`,
       'Réponds UNIQUEMENT par un tableau JSON (aucun texte autour, aucune balise Markdown).',
       'Chaque élément est un objet avec ces clés (toutes optionnelles sauf title et starts_at) :',
       'title, description, starts_at, ends_at, activity, event_type, event_format, organizer, venue, city, price, currency, url.',
       'Règles STRICTES :',
-      '- Recopie les valeurs telles qu’écrites dans le texte (libellés bruts). N’invente rien.',
+      '- Recopie les valeurs telles qu’écrites dans la source (libellés bruts). N’invente rien.',
       '- N’associe AUCUN libellé à un catalogue interne ; ne déduis pas de catégorie.',
       '- starts_at / ends_at : recopie la date/heure telles quelles (ISO si possible).',
       '- Si aucun événement, réponds [].',
-      '',
-      'TEXTE :',
-      content,
-    ].join('\n');
+    ];
+    if (content) {
+      lines.push('', 'TEXTE :', content);
+    }
+    return lines.join('\n');
   }
 
   /** Parse tolérant : retire d’éventuelles balises ```json, isole le tableau, valide les objets. */

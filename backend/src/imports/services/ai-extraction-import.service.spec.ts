@@ -26,7 +26,9 @@ describe('AiExtractionImportService (canal IA → pipeline déterministe — ADR
 
   beforeEach(() => {
     jobs = {
-      createWithAttachment: jest.fn().mockResolvedValue({ id: 'job-1', status: 'PENDING' }),
+      createWithAttachment: jest
+        .fn()
+        .mockResolvedValue({ id: 'job-1', status: 'PENDING', correlationId: 'corr-1' }),
       transition: jest.fn().mockResolvedValue(undefined),
     };
     pipeline = {
@@ -101,5 +103,30 @@ describe('AiExtractionImportService (canal IA → pipeline déterministe — ADR
     await expect(service.import('Annonce…', { userId: 'u1', organizationId: null })).rejects.toThrow('429');
     expect(aiCallLog.record).toHaveBeenCalledWith(expect.objectContaining({ status: 'FAILED' }));
     expect(jobs.transition).toHaveBeenCalledWith('job-1', 'FAILED', expect.any(String), expect.any(Object));
+  });
+
+  it('image : extrait par vision et crée un job de canal IMAGE', async () => {
+    aiConfig.resolveForUseCase.mockResolvedValue(assistant);
+    (connector.extract as jest.Mock).mockResolvedValue([
+      { providerKey: null, payload: { title: 'Affiche', starts_at: '2026-08-01T18:00:00Z' } },
+    ]);
+    const file = { mimetype: 'image/png', buffer: Buffer.from('img'), originalname: 'a.png' };
+
+    await service.importFile(file as Express.Multer.File, { userId: 'u1', organizationId: null });
+
+    expect((connector.extract as jest.Mock).mock.calls[0][0].image).toEqual({
+      base64: Buffer.from('img').toString('base64'),
+      mediaType: 'image/png',
+    });
+    expect(jobs.createWithAttachment).toHaveBeenCalledWith(expect.objectContaining({ channel: 'IMAGE' }));
+    expect(pipeline.persistResult.mock.calls[0][0].stats.createdCount).toBe(1);
+  });
+
+  it('image : rejette un format non supporté', async () => {
+    aiConfig.resolveForUseCase.mockResolvedValue(assistant);
+    const file = { mimetype: 'application/zip', buffer: Buffer.from('x'), originalname: 'x.zip' };
+    await expect(
+      service.importFile(file as Express.Multer.File, { userId: 'u1', organizationId: null }),
+    ).rejects.toThrow(/Format non supporté/);
   });
 });

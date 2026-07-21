@@ -85,6 +85,28 @@ export class ImportsController {
   }
 
   /**
+   * Extraction **assistée par IA d'une image** (affiche / photo — vision, ADR.16 §Frontière) : un seul
+   * appel IA vision remplit un Raw Event structuré ; le pipeline commun décide de façon déterministe.
+   */
+  @Post('ai-extract-file')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: DEFAULT_MAX_UPLOAD_BYTES } }))
+  async importAiExtractFile(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<ImportResponseDto> {
+    if (!file) {
+      throw new BadRequestException('Fichier manquant (champ « file »).');
+    }
+    return ImportMapper.toResponse(
+      await this.aiExtraction.importFile(file, {
+        userId: user.userId,
+        organizationId: user.activeOrganizationId,
+      }),
+    );
+  }
+
+  /**
    * Import structuré déterministe (CSV / JSON — ADR.13/14) par copier-coller. Aucun OCR ni IA :
    * parsing d'un schéma documenté → Raw Events → pipeline → EventCandidates (validation humaine).
    */
