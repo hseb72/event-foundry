@@ -83,8 +83,9 @@ export class EventCandidatesController {
   async validate(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateEventDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<EventResponseDto> {
-    return EventMapper.toResponse(await this.service.validate(id, dto));
+    return EventMapper.toResponse(await this.service.validate(id, dto, user.userId));
   }
 
   @Post('event-candidates/:id/reject')

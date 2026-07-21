@@ -83,12 +83,17 @@ export class EventCandidateRepository extends BaseRepository<EventCandidate> {
   createEventAndValidate(
     candidateId: string,
     eventData: Prisma.EventUncheckedCreateInput,
+    actorId: string,
   ): Promise<EventWithRefs> {
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.event.create({ data: eventData, include: EVENT_REFS_INCLUDE });
       await tx.eventCandidate.update({
         where: { id: candidateId },
         data: { status: EventCandidateStatus.VALIDATED, eventId: event.id },
+      });
+      // Entrée dans le workflow de publication : journalise la transition initiale (→ DRAFT).
+      await tx.eventStatusEvent.create({
+        data: { eventId: event.id, fromStatus: null, toStatus: event.status, actorId },
       });
       return event;
     });

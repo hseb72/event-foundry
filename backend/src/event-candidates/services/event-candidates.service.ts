@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EventCandidateStatus, EventSource, Prisma } from '@prisma/client';
+import { EventCandidateStatus, EventSource, EventStatus, Prisma } from '@prisma/client';
 import { CreateEventDto } from '../../events/dto/create-event.dto';
 import type { EventWithRefs } from '../../events/entities/event.entity';
 import { EventsService } from '../../events/services/events.service';
@@ -48,10 +48,20 @@ export class EventCandidatesService {
   }
 
   /** Validation : crée l'Event (source = IMPORT) et fige le candidate (transaction). */
-  async validate(id: string, dto: CreateEventDto): Promise<EventWithRefs> {
+  /**
+   * Valide un candidate → crée l'Event (source = IMPORT). L'événement entre dans le **workflow de
+   * publication** comme une création manuelle : statut **DRAFT** et **rattaché au valideur**
+   * (`createdById`), afin qu'il apparaisse dans l'espace Organizer et puisse y être publié.
+   */
+  async validate(id: string, dto: CreateEventDto, userId: string): Promise<EventWithRefs> {
     await this.assertMutable(id);
-    const eventData = await this.eventsService.buildValidatedEventData(dto, EventSource.IMPORT);
-    return this.repository.createEventAndValidate(id, eventData);
+    const base = await this.eventsService.buildValidatedEventData(dto, EventSource.IMPORT);
+    const eventData: Prisma.EventUncheckedCreateInput = {
+      ...base,
+      status: EventStatus.DRAFT,
+      createdById: userId,
+    };
+    return this.repository.createEventAndValidate(id, eventData, userId);
   }
 
   async reject(id: string): Promise<EventCandidate> {

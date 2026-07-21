@@ -137,9 +137,9 @@ import { ImportResponse } from '../../core/models';
               Aucun événement extrait de cette source.
             </p>
             <p class="muted">
-              Import #{{ result.id }} — 0 candidat. La page ne contient probablement pas de données
-              structurées <code>schema.org</code> lisibles sans exécuter son JavaScript (site rendu
-              côté client), ou le contenu fourni était vide.
+              Import #{{ result.id }} — 0 candidat. Causes possibles : page sans données structurées
+              <code>schema.org</code> (site rendu côté client), contenu vide, ou source
+              <strong>déjà importée</strong> (les doublons sont ignorés).
             </p>
           }
         </div>

@@ -38,9 +38,14 @@ describe('EventCandidatesService', () => {
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e1' });
 
-    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto);
+    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'user-1');
 
     expect(event.id).toBe('e1');
-    expect(repo.createEventAndValidate).toHaveBeenCalledWith('c1', expect.objectContaining({ source: 'IMPORT' }));
+    // L'Event validé entre dans le workflow (DRAFT) et est rattaché au valideur (createdById).
+    expect(repo.createEventAndValidate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ source: 'IMPORT', status: 'DRAFT', createdById: 'user-1' }),
+      'user-1',
+    );
   });
 });
