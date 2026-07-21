@@ -6,7 +6,7 @@ import { DeduplicateStage } from '../pipeline/deduplicate.stage';
 import { NormalizeStage } from '../pipeline/normalize.stage';
 import { ValidateStage } from '../pipeline/validate.stage';
 import { ImportJobRepository } from '../repositories/import-job.repository';
-import { ImportPipelineRepository } from '../repositories/import-pipeline.repository';
+import { ImportPipelineRepository, type PipelineStats } from '../repositories/import-pipeline.repository';
 import { ReferentialProvisioningService } from './referential-provisioning.service';
 
 /**
@@ -39,7 +39,7 @@ export class PipelineRunnerService {
     objectsRead: number;
     /** Rejeu : remplace les candidates en attente au lieu d'en ajouter (RG-IMP-03). */
     replaceExisting?: boolean;
-  }): Promise<void> {
+  }): Promise<PipelineStats> {
     const { importJobId, providerId, correlationId, rawEvents, objectsRead } = input;
 
     await this.jobs.transition(importJobId, ImportJobStatus.VALIDATING, correlationId);
@@ -62,20 +62,22 @@ export class PipelineRunnerService {
     }
 
     await this.jobs.transition(importJobId, ImportJobStatus.PERSISTING, correlationId);
+    const stats: PipelineStats = {
+      objectsRead,
+      rawEventCount: rawEvents.length,
+      createdCount: kept.length,
+      updatedCount: 0,
+      duplicateCount: duplicates.length,
+      rejectedCount: rejected.length,
+    };
     await this.pipeline.persistResult({
       importJobId,
       correlationId,
       candidates: kept,
       finalStatus: ImportJobStatus.READY_FOR_VALIDATION,
       replaceExisting: input.replaceExisting,
-      stats: {
-        objectsRead,
-        rawEventCount: rawEvents.length,
-        createdCount: kept.length,
-        updatedCount: 0,
-        duplicateCount: duplicates.length,
-        rejectedCount: rejected.length,
-      },
+      stats,
     });
+    return stats;
   }
 }

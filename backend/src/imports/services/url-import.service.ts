@@ -61,7 +61,7 @@ export class UrlImportService {
         })),
       );
 
-      await this.runner.run({
+      const stats = await this.runner.run({
         importJobId: job.id,
         providerId: connector.providerId,
         correlationId,
@@ -70,6 +70,7 @@ export class UrlImportService {
       });
 
       job.status = ImportJobStatus.READY_FOR_VALIDATION;
+      job._count = { candidates: stats.createdCount };
       return job;
     } catch (error) {
       await this.jobs.transition(job.id, ImportJobStatus.FAILED, correlationId, {

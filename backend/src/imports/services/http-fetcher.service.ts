@@ -34,10 +34,21 @@ export class HttpFetcherService {
       const response = await fetch(parsed.toString(), {
         signal: controller.signal,
         redirect: 'follow',
-        headers: { accept: 'text/html,application/xhtml+xml' },
+        // En-têtes proches d'un navigateur : de nombreux sites rejettent (403) une requête sans
+        // User-Agent. N'aide pas contre une protection anti-bot avancée (Cloudflare, challenge JS).
+        headers: {
+          'user-agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8',
+        },
       });
       if (!response.ok) {
-        throw new BadRequestException(`La page a répondu ${response.status}.`);
+        const hint =
+          response.status === 403 || response.status === 429
+            ? " (protection anti-bot du site : une capture navigateur/rendu JS serait nécessaire)"
+            : '';
+        throw new BadRequestException(`La page a répondu ${response.status}${hint}.`);
       }
       const buffer = Buffer.from(await response.arrayBuffer()).subarray(0, this.maxBytes);
       return {

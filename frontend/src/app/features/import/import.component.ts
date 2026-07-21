@@ -123,11 +123,25 @@ import { ImportResponse } from '../../core/models';
 
       @if (result) {
         <div class="card result">
-          <p class="ok">{{ message }}</p>
-          <p class="muted">
-            Import #{{ result.id }} — statut {{ result.status }}. Le traitement est
-            asynchrone ; retrouvez le candidat dans la validation une fois prêt.
-          </p>
+          @if (!resultSynchronous) {
+            <p class="ok">{{ message }}</p>
+            <p class="muted">
+              Import #{{ result.id }} — statut {{ result.status }}. Le traitement est
+              asynchrone ; retrouvez le candidat dans la validation une fois prêt.
+            </p>
+          } @else if (result.candidateCount > 0) {
+            <p class="ok">{{ result.candidateCount }} candidat(s) prêt(s) à valider.</p>
+            <p class="muted">Import #{{ result.id }} — retrouvez-les dans la page Validation.</p>
+          } @else {
+            <p style="color:var(--orange, #b45309);font-weight:600;margin:0">
+              Aucun événement extrait de cette source.
+            </p>
+            <p class="muted">
+              Import #{{ result.id }} — 0 candidat. La page ne contient probablement pas de données
+              structurées <code>schema.org</code> lisibles sans exécuter son JavaScript (site rendu
+              côté client), ou le contenu fourni était vide.
+            </p>
+          }
         </div>
       }
     </div>
@@ -144,6 +158,8 @@ export class ImportComponent {
   message = '';
   errorMsg = '';
   result: ImportResponse | null = null;
+  /** Canal synchrone (structuré/URL/IA) : le nombre de candidats est définitif dès la réponse. */
+  resultSynchronous = false;
 
   constructor(private readonly importsApi: ImportsApi) {}
 
@@ -174,7 +190,7 @@ export class ImportComponent {
     }
     this.busy = true;
     this.importsApi.importStructured(this.structured).subscribe({
-      next: (result) => this.onSuccess(result, 'Contenu structuré importé, candidats prêts à valider.'),
+      next: (result) => this.onSuccess(result, '', true),
       error: (err) => this.onError(err),
     });
   }
@@ -185,7 +201,7 @@ export class ImportComponent {
     }
     this.busy = true;
     this.importsApi.importUrl(this.url.trim()).subscribe({
-      next: (result) => this.onSuccess(result, 'Page capturée, candidats prêts à valider.'),
+      next: (result) => this.onSuccess(result, '', true),
       error: (err) => this.onError(err),
     });
   }
@@ -210,11 +226,8 @@ export class ImportComponent {
     this.busy = true;
     const useAi = this.fileUseAi && !this.isPdf();
     const request = useAi ? this.importsApi.aiExtractFile(this.file) : this.importsApi.uploadFile(this.file);
-    const message = useAi
-      ? 'Extraction IA de l’image lancée, candidats prêts à valider.'
-      : 'Fichier envoyé, traitement lancé.';
     request.subscribe({
-      next: (result) => this.onSuccess(result, message),
+      next: (result) => this.onSuccess(result, 'Fichier envoyé, traitement lancé.', useAi),
       error: (err) => this.onError(err),
     });
   }
@@ -227,18 +240,16 @@ export class ImportComponent {
     const request = this.useAi
       ? this.importsApi.importAiExtract(this.text)
       : this.importsApi.importText(this.text);
-    const message = this.useAi
-      ? 'Extraction IA lancée, candidats prêts à valider.'
-      : 'Texte envoyé, classification lancée.';
     request.subscribe({
-      next: (result) => this.onSuccess(result, message),
+      next: (result) => this.onSuccess(result, 'Texte envoyé, classification lancée.', this.useAi),
       error: (err) => this.onError(err),
     });
   }
 
-  private onSuccess(result: ImportResponse, message: string): void {
+  private onSuccess(result: ImportResponse, message: string, synchronous = false): void {
     this.result = result;
     this.message = message;
+    this.resultSynchronous = synchronous;
     this.errorMsg = '';
     this.busy = false;
     this.text = '';
