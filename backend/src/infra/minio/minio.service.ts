@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as Minio from 'minio';
 
@@ -34,9 +34,20 @@ export class MinioService implements OnModuleInit {
   }
 
   async putObject(key: string, buffer: Buffer, contentType: string): Promise<void> {
-    await this.client.putObject(this.bucket, key, buffer, buffer.length, {
-      'Content-Type': contentType,
-    });
+    try {
+      await this.client.putObject(this.bucket, key, buffer, buffer.length, {
+        'Content-Type': contentType,
+      });
+    } catch (error) {
+      // Stockage plein : message clair (503) plutôt qu'un 500 opaque, pour tous les canaux d'import.
+      if ((error as { code?: string }).code === 'XMinioStorageFull') {
+        throw new ServiceUnavailableException(
+          'Stockage de fichiers saturé : impossible d’enregistrer le document. ' +
+            'Libérez de l’espace (purge des objets MinIO) puis réessayez.',
+        );
+      }
+      throw error;
+    }
   }
 
   getObject(key: string): Promise<NodeJS.ReadableStream> {
