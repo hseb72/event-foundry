@@ -1,20 +1,30 @@
 import { Module } from '@nestjs/common';
 import { FollowModule } from '../follow/follow.module';
+import { PlatformConfigModule } from '../platform-config/platform-config.module';
+import { NotificationSettingsController } from './controllers/notification-settings.controller';
 import { NotificationsController } from './controllers/notifications.controller';
 import { NotificationRepository } from './repositories/notification.repository';
 import { NotificationDispatcher } from './services/notification-dispatcher.service';
+import { NotificationPreferencesService } from './services/notification-preferences.service';
+import { NotificationSettingsService } from './services/notification-settings.service';
 import { NotificationsService } from './services/notifications.service';
 
 /**
- * Domaine Notifications (TSPEC.07) : transforme des transitions métier en messages destinés aux
- * participants et les diffuse selon leurs préférences (canal interne + email/push stubs). Ne dépend
- * d'aucun domaine métier (lecture seule via son Repository) ; `NotificationsService` est exporté
- * pour que les domaines producteurs (Publishing / Catalog) émettent leurs transitions.
+ * Domaine Notifications (FSPEC.04 / ADR.17). Transforme des faits métier en messages, et les diffuse
+ * selon un **routage déterministe à double niveau** : réglages globaux (Operator) + préférences
+ * individuelles (Explorer). Le canal in-app reste toujours actif (historique). Ne dépend d'aucun
+ * domaine métier ; `NotificationsService` est exporté pour les producteurs (Publishing…).
  */
 @Module({
-  imports: [FollowModule],
-  controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationDispatcher, NotificationRepository],
+  imports: [FollowModule, PlatformConfigModule],
+  controllers: [NotificationsController, NotificationSettingsController],
+  providers: [
+    NotificationsService,
+    NotificationDispatcher,
+    NotificationRepository,
+    NotificationSettingsService,
+    NotificationPreferencesService,
+  ],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

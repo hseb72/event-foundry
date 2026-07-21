@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationChannel, NotificationStatus, type Notification } from '@prisma/client';
+import { NotificationChannel, NotificationStatus, Prisma, type Notification } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import {
+  DEFAULT_USER_PREFERENCES,
+  type FrequencyTrack,
+  type NotificationUserPreferences,
+  type VectorChoice,
+} from '../domain/notification-routing';
 
 export interface CreateNotificationInput {
   userId: string;
@@ -87,10 +93,52 @@ export class NotificationRepository {
     return event?.title ?? null;
   }
 
-  /** Préférences de notifications de l'utilisateur (JSONB `preferences.notifications`). */
-  async notificationPreferences(userId: string): Promise<{ email: boolean; push: boolean }> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { preferences: true } });
-    const prefs = (user?.preferences as { notifications?: { email?: boolean; push?: boolean } } | null)?.notifications;
-    return { email: prefs?.email === true, push: prefs?.push === true };
+  /**
+   * Préférences de notifications V3 (JSONB `preferences.notifications`) : un vecteur par piste de
+   * fréquence. Rétro-compatible avec l'ancien format `{ email, push }` (mappé sur la piste immédiate)
+   * et repli sur les valeurs par défaut (in-app + récap hebdo email).
+   */
+  async getUserPreferences(userId: string): Promise<NotificationUserPreferences> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferences: true },
+    });
+    const raw = (user?.preferences as { notifications?: unknown } | null)?.notifications;
+    return normalizeUserPreferences(raw);
   }
+
+  /** Écrit les préférences de notifications en fusionnant dans `preferences` (sans écraser le reste). */
+  async setUserPreferences(
+    userId: string,
+    preferences: NotificationUserPreferences,
+  ): Promise<NotificationUserPreferences> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { preferences: true },
+    });
+    const current = (user?.preferences as Record<string, unknown> | null) ?? {};
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferences: { ...current, notifications: preferences } as Prisma.InputJsonValue },
+    });
+    return preferences;
+  }
+}
+
+/** Normalise une valeur brute de préférences vers le modèle V3 (avec rétro-compat + défauts). */
+function normalizeUserPreferences(raw: unknown): NotificationUserPreferences {
+  if (raw && typeof raw === 'object') {
+    const value = raw as Record<string, unknown>;
+    // Ancien format { email, push } → piste immédiate.
+    if ('email' in value || 'push' in value) {
+      const immediate: VectorChoice = value['email'] === true ? 'email' : value['push'] === true ? 'push' : 'none';
+      return { ...DEFAULT_USER_PREFERENCES, immediate };
+    }
+    const track = (key: FrequencyTrack): VectorChoice => {
+      const v = value[key];
+      return v === 'email' || v === 'push' || v === 'none' ? v : DEFAULT_USER_PREFERENCES[key];
+    };
+    return { immediate: track('immediate'), daily: track('daily'), weekly: track('weekly') };
+  }
+  return { ...DEFAULT_USER_PREFERENCES };
 }

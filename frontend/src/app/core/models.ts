@@ -285,6 +285,22 @@ export interface UpdateAiConfigInput {
   apiKey?: string;
 }
 
+/** Choix de vecteur pour une piste de fréquence de notification (ou « aucun »). */
+export type NotificationVectorChoice = 'none' | 'email' | 'push';
+
+/** Préférences de notifications de l'utilisateur : un vecteur par piste de fréquence (FSPEC.04). */
+export interface NotificationPreferences {
+  immediate: NotificationVectorChoice;
+  daily: NotificationVectorChoice;
+  weekly: NotificationVectorChoice;
+}
+
+/** Réglages globaux des notifications (Operator) : vecteurs et pistes activés (in-app toujours actif). */
+export interface NotificationSettings {
+  vectors: { email: boolean; push: boolean };
+  frequencies: { immediate: boolean; daily: boolean; weekly: boolean };
+}
+
 /** Statistiques d'appels IA (supervision Operator — Observabilité). Aucun contenu ni secret. */
 export interface AiCallStats {
   total: number;

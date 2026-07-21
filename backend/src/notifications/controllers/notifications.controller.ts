@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -7,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
@@ -15,6 +17,8 @@ import { IsIn, IsOptional } from 'class-validator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { NotificationDto, UnreadCountDto } from '../dto/notification-response.dto';
+import { NotificationPreferencesDto } from '../dto/notification-settings.dto';
+import { NotificationPreferencesService } from '../services/notification-preferences.service';
 import { NotificationsService } from '../services/notifications.service';
 
 class NotificationQueryDto {
@@ -32,7 +36,26 @@ class NotificationQueryDto {
 @ApiBearerAuth()
 @Controller('me/notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly preferences: NotificationPreferencesService,
+  ) {}
+
+  /** Préférences de notifications (vecteur par piste de fréquence — FSPEC.04). */
+  @Get('preferences')
+  @ApiOkResponse({ type: NotificationPreferencesDto })
+  getPreferences(@CurrentUser() user: AuthenticatedUser): Promise<NotificationPreferencesDto> {
+    return this.preferences.get(user.userId);
+  }
+
+  @Put('preferences')
+  @ApiOkResponse({ type: NotificationPreferencesDto })
+  updatePreferences(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: NotificationPreferencesDto,
+  ): Promise<NotificationPreferencesDto> {
+    return this.preferences.update(user.userId, dto);
+  }
 
   @Get()
   @ApiOkResponse({ type: [NotificationDto] })

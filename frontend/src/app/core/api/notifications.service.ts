@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { NotificationDto } from '../models';
+import { NotificationDto, NotificationPreferences, NotificationSettings } from '../models';
 
 /**
  * Client des notifications internes (EPIC 08). Expose le nombre de non lues dans un signal partagé
@@ -43,5 +43,25 @@ export class NotificationsApi {
     return this.http
       .delete<void>(`${API_BASE}/me/notifications/${id}`)
       .pipe(tap(() => this.refreshUnread()));
+  }
+
+  // --- Préférences individuelles (Explorer) ---
+
+  getPreferences(): Observable<NotificationPreferences> {
+    return this.http.get<NotificationPreferences>(`${API_BASE}/me/notifications/preferences`);
+  }
+
+  updatePreferences(input: NotificationPreferences): Observable<NotificationPreferences> {
+    return this.http.put<NotificationPreferences>(`${API_BASE}/me/notifications/preferences`, input);
+  }
+
+  // --- Réglages globaux (Operator) ---
+
+  getSettings(): Observable<NotificationSettings> {
+    return this.http.get<NotificationSettings>(`${API_BASE}/admin/config/notifications`);
+  }
+
+  updateSettings(input: NotificationSettings): Observable<NotificationSettings> {
+    return this.http.put<NotificationSettings>(`${API_BASE}/admin/config/notifications`, input);
   }
 }

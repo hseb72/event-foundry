@@ -1,13 +1,16 @@
 import { FollowTargetType, type Notification } from '@prisma/client';
 import { FollowService } from '../../follow/follow.service';
+import { DEFAULT_GLOBAL_SETTINGS, DEFAULT_USER_PREFERENCES } from '../domain/notification-routing';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { NotificationDispatcher } from './notification-dispatcher.service';
+import { NotificationSettingsService } from './notification-settings.service';
 import { NotificationsService, type PublishedEventTargets } from './notifications.service';
 
 describe('NotificationsService — information Explorer (Follow → notification)', () => {
-  let repository: jest.Mocked<Pick<NotificationRepository, 'create' | 'notificationPreferences'>>;
+  let repository: jest.Mocked<Pick<NotificationRepository, 'create' | 'getUserPreferences'>>;
   let dispatcher: jest.Mocked<Pick<NotificationDispatcher, 'dispatch'>>;
   let follows: jest.Mocked<Pick<FollowService, 'listFollowerIds'>>;
+  let settings: jest.Mocked<Pick<NotificationSettingsService, 'get'>>;
   let service: NotificationsService;
 
   const event: PublishedEventTargets = {
@@ -22,14 +25,16 @@ describe('NotificationsService — information Explorer (Follow → notification
   beforeEach(() => {
     repository = {
       create: jest.fn().mockResolvedValue({ id: 'n-1' } as Notification),
-      notificationPreferences: jest.fn().mockResolvedValue({ email: false, push: false }),
+      getUserPreferences: jest.fn().mockResolvedValue({ ...DEFAULT_USER_PREFERENCES }),
     };
     dispatcher = { dispatch: jest.fn().mockResolvedValue(undefined) };
     follows = { listFollowerIds: jest.fn() };
+    settings = { get: jest.fn().mockResolvedValue({ ...DEFAULT_GLOBAL_SETTINGS }) };
     service = new NotificationsService(
       repository as unknown as NotificationRepository,
       dispatcher as unknown as NotificationDispatcher,
       follows as unknown as FollowService,
+      settings as unknown as NotificationSettingsService,
     );
   });
 

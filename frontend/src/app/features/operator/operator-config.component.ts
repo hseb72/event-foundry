@@ -2,12 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
+import { NotificationsApi } from '../../core/api/notifications.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
 import {
   AI_USE_CASES,
   AiCallStats,
   AiProviderInfo,
   AiUseCase,
+  NotificationSettings,
   ReferentialItem,
   TechnicalConfig,
 } from '../../core/models';
@@ -288,6 +290,28 @@ import {
           @if (techStatus()) { <span class="status">{{ techStatus() }}</span> }
         </div>
       </section>
+
+      @if (notifSettings) {
+        <section class="card">
+          <h2>Notifications</h2>
+          <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">
+            Active/désactive globalement les vecteurs et les pistes de fréquence. Le canal interne
+            (in-app) reste toujours actif (historique). Le plus restrictif l'emporte : un vecteur
+            désactivé ici n'est jamais proposé aux utilisateurs.
+          </p>
+          <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Vecteurs sortants</div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.vectors.email" /> E-mail</label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.vectors.push" /> Push</label>
+          <div class="muted" style="font-size:0.76rem;margin:0.7rem 0 0.3rem">Pistes de fréquence</div>
+          <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.immediate" /> Immédiate</label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.daily" /> Récap quotidien</label>
+          <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.weekly" /> Récap hebdomadaire</label>
+          <div class="row">
+            <button class="btn btn-primary" (click)="saveNotifSettings()">Enregistrer</button>
+            @if (notifStatus()) { <span class="status">{{ notifStatus() }}</span> }
+          </div>
+        </section>
+      }
     </div>
   `,
 })
@@ -295,13 +319,16 @@ export class OperatorConfigComponent implements OnInit {
   private readonly api = inject(PlatformConfigApi);
   private readonly aiConfigApi = inject(AiConfigApi);
   private readonly referenceData = inject(ReferenceDataApi);
+  private readonly notificationsApi = inject(NotificationsApi);
 
   readonly useCases = AI_USE_CASES;
   readonly mailStatus = signal('');
   readonly aiStatus = signal('');
   readonly techStatus = signal('');
+  readonly notifStatus = signal('');
   readonly stats = signal<AiCallStats | null>(null);
   providers: AiProviderInfo[] = [];
+  notifSettings: NotificationSettings | null = null;
 
   private tech: TechnicalConfig = {
     maxUploadBytes: 20 * 1024 * 1024,
@@ -352,6 +379,17 @@ export class OperatorConfigComponent implements OnInit {
     this.loadStats();
     this.referenceData.domains().subscribe((items) => (this.domains = items));
     this.api.getTechnical().subscribe((config) => this.applyTechnical(config));
+    this.notificationsApi.getSettings().subscribe((settings) => (this.notifSettings = settings));
+  }
+
+  saveNotifSettings(): void {
+    if (!this.notifSettings) {
+      return;
+    }
+    this.notificationsApi.updateSettings(this.notifSettings).subscribe((settings) => {
+      this.notifSettings = settings;
+      this.notifStatus.set('✓ Enregistré');
+    });
   }
 
   loadStats(): void {

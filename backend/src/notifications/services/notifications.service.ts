@@ -1,8 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FollowTargetType, NotificationStatus, type Notification } from '@prisma/client';
 import { FollowService } from '../../follow/follow.service';
+import type { ChannelPreferences } from '../domain/notification-channel';
+import { resolveOutboundVector } from '../domain/notification-routing';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { NotificationDispatcher } from './notification-dispatcher.service';
+import { NotificationSettingsService } from './notification-settings.service';
 
 /** Données minimales d'un événement publié, pour notifier les abonnés (sans coupler au domaine Events). */
 export interface PublishedEventTargets {
@@ -42,7 +45,22 @@ export class NotificationsService {
     private readonly repository: NotificationRepository,
     private readonly dispatcher: NotificationDispatcher,
     private readonly follows: FollowService,
+    private readonly settings: NotificationSettingsService,
   ) {}
+
+  /**
+   * Vecteurs sortants effectifs pour une notification **immédiate** (Channel Router — RG-NOTIF-03) :
+   * croise réglages globaux (Operator) et préférences individuelles. L'in-app est toujours conservé
+   * séparément (historique). Les récaps (quotidien/hebdo) relèveront du planificateur (04-C).
+   */
+  private async resolveOutbound(userId: string): Promise<ChannelPreferences> {
+    const [settings, preferences] = await Promise.all([
+      this.settings.get(),
+      this.repository.getUserPreferences(userId),
+    ]);
+    const vector = resolveOutboundVector('immediate', preferences, settings);
+    return { email: vector === 'email', push: vector === 'push' };
+  }
 
   /**
    * Notification « information Explorer » (ADR.17 / FSPEC.04) : à la **première publication** d'un
@@ -77,8 +95,7 @@ export class NotificationsService {
           body: `« ${event.title} » vient d'être publié.`,
           eventId: event.id,
         });
-        const preferences = await this.repository.notificationPreferences(userId);
-        await this.dispatcher.dispatch(notification, preferences);
+        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
       }
     } catch (error) {
       this.logger.error(`Notification des abonnés du nouvel événement ${event.id} échouée`, error as Error);
@@ -106,8 +123,7 @@ export class NotificationsService {
           body: template.body(title),
           eventId,
         });
-        const preferences = await this.repository.notificationPreferences(userId);
-        await this.dispatcher.dispatch(notification, preferences);
+        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
       }
     } catch (error) {
       this.logger.error(`Notification de la transition ${type} sur ${eventId} échouée`, error as Error);

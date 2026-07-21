@@ -14,6 +14,6 @@ import { TechnicalConfigService } from './technical-config.service';
   imports: [AiModule],
   controllers: [PlatformConfigController],
   providers: [PlatformConfigService, PlatformConfigRepository, TechnicalConfigService],
-  exports: [TechnicalConfigService],
+  exports: [TechnicalConfigService, PlatformConfigRepository],
 })
 export class PlatformConfigModule {}
