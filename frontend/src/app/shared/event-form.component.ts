@@ -70,6 +70,27 @@ import {
         border-color: var(--exp);
         color: #fff;
       }
+      .propose {
+        margin-top: 0.4rem;
+        padding: 0.5rem 0.6rem;
+        border: 1px dashed var(--orange, #d97706);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--orange, #d97706) 8%, transparent);
+        font-size: 0.82rem;
+        display: grid;
+        gap: 0.4rem;
+      }
+      .propose-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .propose .select,
+      .propose .btn {
+        font-size: 0.82rem;
+        padding: 0.3rem 0.55rem;
+      }
       @media (max-width: 560px) {
         .row {
           grid-template-columns: 1fr;
@@ -99,6 +120,30 @@ import {
               <option [value]="a.id">{{ a.name }}</option>
             }
           </select>
+          @if (unresolved.activity) {
+            <div class="propose">
+              <span>Activité « <strong>{{ unresolved.activity }}</strong> » non reconnue.</span>
+              @if (canManageRef) {
+                <div class="propose-actions">
+                  @if (domains.length > 1) {
+                    <select class="select" [(ngModel)]="newActivityDomainId" name="newActivityDomainId">
+                      <option value="">Domaine…</option>
+                      @for (d of domains; track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+                    </select>
+                  }
+                  <button type="button" class="btn" [disabled]="!newActivityDomainId || busy"
+                          (click)="createActivityRef()">Créer l'activité</button>
+                  <select class="select" [(ngModel)]="associateActivityId" name="associateActivityId"
+                          (ngModelChange)="associateActivityRef()">
+                    <option value="">Associer à une existante…</option>
+                    @for (a of activities; track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+                  </select>
+                </div>
+              } @else {
+                <span class="muted">Demandez à un administrateur de l'ajouter au référentiel.</span>
+              }
+            </div>
+          }
         </div>
         <div>
           <label>Type d'événement</label>
@@ -109,6 +154,20 @@ import {
               <option [value]="t.id">{{ t.name }}</option>
             }
           </select>
+          @if (unresolved.eventType) {
+            <div class="propose">
+              <span>Type « <strong>{{ unresolved.eventType }}</strong> » non reconnu.</span>
+              @if (canManageRef && model.activityId) {
+                <div class="propose-actions">
+                  <button type="button" class="btn" [disabled]="busy" (click)="createEventTypeRef()">
+                    Créer ce type
+                  </button>
+                </div>
+              } @else if (canManageRef) {
+                <span class="muted">Choisissez d'abord une activité.</span>
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -122,6 +181,20 @@ import {
               <option [value]="f.id">{{ f.name }}</option>
             }
           </select>
+          @if (unresolved.eventFormat) {
+            <div class="propose">
+              <span>Format « <strong>{{ unresolved.eventFormat }}</strong> » non reconnu.</span>
+              @if (canManageRef && model.activityId) {
+                <div class="propose-actions">
+                  <button type="button" class="btn" [disabled]="busy" (click)="createEventFormatRef()">
+                    Créer ce format
+                  </button>
+                </div>
+              } @else if (canManageRef) {
+                <span class="muted">Choisissez d'abord une activité.</span>
+              }
+            </div>
+          }
         </div>
         <div>
           <label>Organisateur</label>
@@ -131,6 +204,18 @@ import {
               <option [value]="o.id">{{ o.name }}</option>
             }
           </select>
+          @if (unresolved.organizer) {
+            <div class="propose">
+              <span>Organisateur « <strong>{{ unresolved.organizer }}</strong> » non reconnu.</span>
+              @if (canManageRef) {
+                <div class="propose-actions">
+                  <button type="button" class="btn" [disabled]="busy" (click)="createOrganizerRef()">
+                    Créer cet organisateur
+                  </button>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -143,6 +228,18 @@ import {
               <option [value]="v.id">{{ v.name }}</option>
             }
           </select>
+          @if (unresolved.venue) {
+            <div class="propose">
+              <span>Lieu « <strong>{{ unresolved.venue }}</strong> » non reconnu.</span>
+              @if (canManageRef) {
+                <div class="propose-actions">
+                  <button type="button" class="btn" [disabled]="busy" (click)="createVenueRef()">
+                    Créer ce lieu
+                  </button>
+                </div>
+              }
+            </div>
+          }
         </div>
         <div>
           <label>Catégorie</label>
@@ -241,6 +338,9 @@ import {
         </div>
       </div>
 
+      @if (refError) {
+        <p class="error">{{ refError }}</p>
+      }
       @if (error) {
         <p class="error">{{ error }}</p>
       }
@@ -282,6 +382,21 @@ export class EventFormComponent implements OnInit {
 
   error = '';
 
+  // Levier 1 : libellés extraits mais absents des référentiels (présents-mais-non-résolus).
+  unresolved: {
+    activity?: string;
+    eventType?: string;
+    eventFormat?: string;
+    organizer?: string;
+    venue?: string;
+  } = {};
+  // Levier 2 : création / association à la volée (nécessite reference.manage).
+  domains: ReferentialItem[] = [];
+  canManageRef = false;
+  newActivityDomainId = '';
+  associateActivityId = '';
+  refError = '';
+
   model = {
     title: '',
     description: '',
@@ -310,6 +425,15 @@ export class EventFormComponent implements OnInit {
 
   ngOnInit(): void {
     const me = this.identity.me();
+    this.canManageRef = !!me?.permissions.includes('reference.manage');
+    if (this.canManageRef) {
+      this.referenceData.domains().subscribe((items) => {
+        this.domains = items;
+        if (items.length === 1) {
+          this.newActivityDomainId = items[0].id;
+        }
+      });
+    }
     if (me?.activeOrganizationId && me.permissions.includes('organization.manage')) {
       this.identity
         .listOrganizationAddresses(me.activeOrganizationId)
@@ -515,6 +639,8 @@ export class EventFormComponent implements OnInit {
     if (match) {
       this.model.activityId = match.id;
       this.onActivityChange();
+    } else {
+      this.unresolved.activity = this.draft.activityName;
     }
   }
 
@@ -522,24 +648,119 @@ export class EventFormComponent implements OnInit {
     if (!this.draft?.eventTypeName) return;
     const match = byName(this.eventTypes, this.draft.eventTypeName);
     if (match) this.model.eventTypeId = match.id;
+    else this.unresolved.eventType = this.draft.eventTypeName;
   }
 
   private applyDraftEventFormat(): void {
     if (!this.draft?.eventFormatName) return;
     const match = byName(this.eventFormats, this.draft.eventFormatName);
     if (match) this.model.eventFormatId = match.id;
+    else this.unresolved.eventFormat = this.draft.eventFormatName;
   }
 
   private applyDraftOrganizer(): void {
     if (!this.draft?.organizerName) return;
     const match = byName(this.organizers, this.draft.organizerName);
     if (match) this.model.organizerId = match.id;
+    else this.unresolved.organizer = this.draft.organizerName;
   }
 
   private applyDraftVenue(): void {
     if (!this.draft?.venueName) return;
     const match = byName(this.venues, this.draft.venueName);
     if (match) this.model.venueId = match.id;
+    else this.unresolved.venue = this.draft.venueName;
+  }
+
+  // --- Levier 2 : création / association d'un référentiel manquant, sans quitter la validation ---
+
+  /** Crée l'activité manquante (sous le domaine choisi), la sélectionne et charge ses listes. */
+  createActivityRef(): void {
+    const name = this.unresolved.activity?.trim();
+    if (!name || !this.newActivityDomainId) return;
+    this.refError = '';
+    this.referenceData.createActivity(name, this.newActivityDomainId).subscribe({
+      next: (created) => {
+        this.activities = [...this.activities, created].sort((a, b) => a.name.localeCompare(b.name));
+        this.model.activityId = created.id;
+        this.unresolved.activity = undefined;
+        this.onActivityChange();
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Création de l’activité impossible.'),
+    });
+  }
+
+  /** Associe le libellé à une activité existante (crée un alias → le moteur apprend). */
+  associateActivityRef(): void {
+    const label = this.unresolved.activity?.trim();
+    if (!label || !this.associateActivityId) return;
+    const activityId = this.associateActivityId;
+    this.refError = '';
+    this.referenceData.createActivityAlias(activityId, label).subscribe({
+      next: () => {
+        this.model.activityId = activityId;
+        this.unresolved.activity = undefined;
+        this.associateActivityId = '';
+        this.onActivityChange();
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Association impossible.'),
+    });
+  }
+
+  createEventTypeRef(): void {
+    const name = this.unresolved.eventType?.trim();
+    if (!name || !this.model.activityId) return;
+    this.refError = '';
+    this.referenceData.createEventType(name, this.model.activityId).subscribe({
+      next: (created) => {
+        this.eventTypes = [...this.eventTypes, created];
+        this.model.eventTypeId = created.id;
+        this.unresolved.eventType = undefined;
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Création du type impossible.'),
+    });
+  }
+
+  createEventFormatRef(): void {
+    const name = this.unresolved.eventFormat?.trim();
+    if (!name || !this.model.activityId) return;
+    this.refError = '';
+    this.referenceData.createEventFormat(name, this.model.activityId).subscribe({
+      next: (created) => {
+        this.eventFormats = [...this.eventFormats, created];
+        this.model.eventFormatId = created.id;
+        this.unresolved.eventFormat = undefined;
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Création du format impossible.'),
+    });
+  }
+
+  createOrganizerRef(): void {
+    const name = this.unresolved.organizer?.trim();
+    if (!name) return;
+    this.refError = '';
+    this.referenceData.createOrganizer(name).subscribe({
+      next: (created) => {
+        this.organizers = [...this.organizers, created].sort((a, b) => a.name.localeCompare(b.name));
+        this.model.organizerId = created.id;
+        this.unresolved.organizer = undefined;
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Création de l’organisateur impossible.'),
+    });
+  }
+
+  createVenueRef(): void {
+    const name = this.unresolved.venue?.trim();
+    if (!name) return;
+    this.refError = '';
+    this.referenceData.createVenue(name).subscribe({
+      next: (created) => {
+        this.venues = [...this.venues, created].sort((a, b) => a.name.localeCompare(b.name));
+        this.model.venueId = created.id;
+        this.unresolved.venue = undefined;
+      },
+      error: (err) => (this.refError = err?.error?.message ?? 'Création du lieu impossible.'),
+    });
   }
 }
 

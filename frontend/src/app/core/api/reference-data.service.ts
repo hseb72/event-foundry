@@ -12,6 +12,38 @@ export class ReferenceDataApi {
     return this.http.get<ActivityDto[]>(`${API_BASE}/activities`);
   }
 
+  /** Domaines métier (pour créer une nouvelle activité — la hiérarchie Domain → Activity). */
+  domains(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/domains`);
+  }
+
+  // --- Création de référentiels à la volée (validation d'un import — reference.manage) ---
+
+  createActivity(name: string, domainId: string): Observable<ActivityDto> {
+    return this.http.post<ActivityDto>(`${API_BASE}/activities`, { name, domainId });
+  }
+
+  /** Associe un libellé à une activité existante en créant un alias (apprentissage du moteur). */
+  createActivityAlias(activityId: string, value: string): Observable<unknown> {
+    return this.http.post(`${API_BASE}/activities/${activityId}/aliases`, { value });
+  }
+
+  createEventType(name: string, activityId: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/event-types`, { name, activityId });
+  }
+
+  createEventFormat(name: string, activityId: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/event-formats`, { name, activityId });
+  }
+
+  createOrganizer(name: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/organizers`, { name });
+  }
+
+  createVenue(name: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/venues`, { name });
+  }
+
   eventTypes(activityId: string): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/event-types`, {
       params: { activityId },
