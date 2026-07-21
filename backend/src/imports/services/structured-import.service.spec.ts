@@ -9,6 +9,7 @@ import { ImportPipelineRepository } from '../repositories/import-pipeline.reposi
 import { PipelineRunnerService } from './pipeline-runner.service';
 import { TechnicalConfigService } from '../../platform-config/technical-config.service';
 import { ReferentialProvisioningService } from './referential-provisioning.service';
+import type { EventBus } from '../../platform/event-bus/event-bus';
 import { StructuredImportService } from './structured-import.service';
 
 describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)', () => {
@@ -53,6 +54,7 @@ describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)',
       new DeduplicateStage(),
       { getProvisioning: jest.fn().mockResolvedValue({ autoProvisionReferentials: false, provisioningDefaultDomainId: null }) } as unknown as TechnicalConfigService,
       { provision: jest.fn().mockResolvedValue(undefined) } as unknown as ReferentialProvisioningService,
+      { publish: jest.fn(), subscribe: jest.fn() } as unknown as EventBus,
     );
     service = new StructuredImportService(
       jobs as unknown as ImportJobRepository,

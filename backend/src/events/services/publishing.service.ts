@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { EventStatus, type EventStatusEvent } from '@prisma/client';
 import { NotificationsService } from '../../notifications/services/notifications.service';
+import { DOMAIN_EVENTS, type EventPublishedPayload } from '../../platform/event-bus/domain-event';
+import { EVENT_BUS, makeDomainEvent, type EventBus } from '../../platform/event-bus/event-bus';
 import { SearchIndexService } from '../../search/services/search-index.service';
 import type { EventWithRefs } from '../entities/event.entity';
 import {
@@ -33,6 +35,7 @@ export class PublishingService {
     private readonly repository: EventRepository,
     private readonly searchIndex: SearchIndexService,
     private readonly notifications: NotificationsService,
+    @Inject(EVENT_BUS) private readonly eventBus: EventBus,
   ) {}
 
   /** Soumet un brouillon à validation (DRAFT → SUBMITTED). */
@@ -86,6 +89,16 @@ export class PublishingService {
     await this.notifyParticipants(updated, from, actorId);
     if (isFirstPublish) {
       await this.notifyFollowers(updated, actorId);
+    }
+    // Fait métier « événement publié » (ADR.12 §5) : les abonnés (audit ; futurs canaux de
+    // notification) réagissent sans coupler la publication. Best-effort, non bloquant.
+    if (to === EventStatus.PUBLISHED) {
+      this.eventBus.publish(
+        makeDomainEvent<EventPublishedPayload>(DOMAIN_EVENTS.EVENT_PUBLISHED, {
+          eventId: updated.id,
+          actorId,
+        }),
+      );
     }
     return updated;
   }

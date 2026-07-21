@@ -1,5 +1,6 @@
 import { PaymentStatus, ReservationStatus } from '@prisma/client';
 import { EventsService } from '../../events/services/events.service';
+import type { EventBus } from '../../platform/event-bus/event-bus';
 import { UserParticipationRepository } from '../repositories/user-participation.repository';
 import { ParticipationService } from './participation.service';
 
@@ -10,6 +11,7 @@ describe('ParticipationService', () => {
     deleteByUserAndEvent: jest.Mock;
   };
   let eventsService: { getOrThrow: jest.Mock };
+  let eventBus: { publish: jest.Mock; subscribe: jest.Mock };
   let service: ParticipationService;
 
   beforeEach(() => {
@@ -19,9 +21,11 @@ describe('ParticipationService', () => {
       deleteByUserAndEvent: jest.fn().mockResolvedValue(undefined),
     };
     eventsService = { getOrThrow: jest.fn().mockResolvedValue({ id: 'e1' }) };
+    eventBus = { publish: jest.fn(), subscribe: jest.fn() };
     service = new ParticipationService(
       repo as unknown as UserParticipationRepository,
       eventsService as unknown as EventsService,
+      eventBus as unknown as EventBus,
     );
   });
 
@@ -41,6 +45,13 @@ describe('ParticipationService', () => {
       reservationStatus: ReservationStatus.NONE,
       paymentStatus: PaymentStatus.NONE,
     });
+    // Publie le fait « participation modifiée » sur le bus (ADR.12 §5).
+    expect(eventBus.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'participation.changed',
+        payload: expect.objectContaining({ userId: 'u1', eventId: 'e1', active: true }),
+      }),
+    );
   });
 
   it('supprime la participation quand tout redevient neutre', async () => {

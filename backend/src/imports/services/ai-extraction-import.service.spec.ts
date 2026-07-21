@@ -12,6 +12,7 @@ import { AiExtractionImportService } from './ai-extraction-import.service';
 import { PipelineRunnerService } from './pipeline-runner.service';
 import { TechnicalConfigService } from '../../platform-config/technical-config.service';
 import { ReferentialProvisioningService } from './referential-provisioning.service';
+import type { EventBus } from '../../platform/event-bus/event-bus';
 
 describe('AiExtractionImportService (canal IA → pipeline déterministe — ADR.16)', () => {
   let jobs: jest.Mocked<Pick<ImportJobRepository, 'createWithAttachment' | 'transition'>>;
@@ -65,6 +66,7 @@ describe('AiExtractionImportService (canal IA → pipeline déterministe — ADR
       new DeduplicateStage(),
       { getProvisioning: jest.fn().mockResolvedValue({ autoProvisionReferentials: false, provisioningDefaultDomainId: null }) } as unknown as TechnicalConfigService,
       { provision: jest.fn().mockResolvedValue(undefined) } as unknown as ReferentialProvisioningService,
+      { publish: jest.fn(), subscribe: jest.fn() } as unknown as EventBus,
     );
     service = new AiExtractionImportService(
       jobs as unknown as ImportJobRepository,

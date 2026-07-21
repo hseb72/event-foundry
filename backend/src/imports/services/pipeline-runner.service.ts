@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ImportJobStatus } from '@prisma/client';
 import type { RawEvent } from '@event-foundry/contracts';
 import { TechnicalConfigService } from '../../platform-config/technical-config.service';
+import { DOMAIN_EVENTS, type ImportCompletedPayload } from '../../platform/event-bus/domain-event';
+import { EVENT_BUS, makeDomainEvent, type EventBus } from '../../platform/event-bus/event-bus';
 import { DeduplicateStage } from '../pipeline/deduplicate.stage';
 import { NormalizeStage } from '../pipeline/normalize.stage';
 import { ValidateStage } from '../pipeline/validate.stage';
@@ -25,6 +27,7 @@ export class PipelineRunnerService {
     private readonly dedupeStage: DeduplicateStage,
     private readonly technical: TechnicalConfigService,
     private readonly provisioning: ReferentialProvisioningService,
+    @Inject(EVENT_BUS) private readonly eventBus: EventBus,
   ) {}
 
   /**
@@ -78,6 +81,23 @@ export class PipelineRunnerService {
       replaceExisting: input.replaceExisting,
       stats,
     });
+
+    // Publie le fait « import terminé » (ADR.12 §5). Best-effort : ne bloque pas la clôture. Les
+    // abonnés (audit aujourd'hui ; notifications à venir) réagissent sans coupler le pipeline.
+    this.eventBus.publish(
+      makeDomainEvent<ImportCompletedPayload>(
+        DOMAIN_EVENTS.IMPORT_COMPLETED,
+        {
+          importJobId,
+          channel: null,
+          providerId,
+          createdCount: stats.createdCount,
+          duplicateCount: stats.duplicateCount,
+          rejectedCount: stats.rejectedCount,
+        },
+        correlationId,
+      ),
+    );
     return stats;
   }
 }
