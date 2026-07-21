@@ -14,8 +14,22 @@
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Experience, PrismaClient, RoleScope } from '@prisma/client';
-import { requireEnv } from '@event-foundry/libraries';
 import * as bcrypt from 'bcrypt';
+
+/**
+ * Lit une variable d'environnement OBLIGATOIRE (aucun secret par défaut codé en dur — ADR.21).
+ * Inliné ici pour que ce script de dev reste autonome (pas de dépendance au build de shared).
+ */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (value && value.trim().length > 0) {
+    return value;
+  }
+  throw new Error(
+    `Variable d'environnement requise absente : ${name}. ` +
+      "Aucun secret par défaut n'est fourni (ADR.21) — renseignez-la dans votre .env.",
+  );
+}
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
