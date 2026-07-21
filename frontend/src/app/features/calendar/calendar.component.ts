@@ -158,6 +158,15 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
         border-color: var(--red);
         color: var(--red);
       }
+      .warn {
+        color: var(--orange);
+        font-weight: 800;
+        margin: 0 0.2rem;
+      }
+      .chip.conflict,
+      .dot.conflict {
+        outline: 1px solid var(--orange);
+      }
       .slot .m {
         color: var(--muted);
         font-size: 0.82rem;
@@ -296,15 +305,16 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
       }
     </div>
 
+    @if (conflictCount() > 0) {
+      <div class="banner">⚠️ {{ conflictCount() }} conflit(s) d'horaire dans votre planning.</div>
+    }
+
     @if (loading()) {
       <p class="muted">Chargement…</p>
     } @else if (view() === 'list') {
       @if (!entries().length) {
         <p class="empty">Aucun événement dans votre planning. Déclarez votre intérêt depuis « Découvrir ».</p>
       } @else {
-        @if (conflictCount() > 0) {
-          <div class="banner">⚠️ {{ conflictCount() }} conflit(s) d'horaire détecté(s).</div>
-        }
         @if (!filteredEntries().length) {
           <p class="empty">Aucun événement pour ce filtre.</p>
         }
@@ -324,6 +334,9 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
               <span class="time">{{ time(event.startsAt) }}</span>
               <a class="slot-main" [routerLink]="['/events', event.id]">
                 <span class="t">{{ event.title }}</span>
+                @if (hasConflict(event)) {
+                  <span class="warn" title="Conflit d'horaire">⚠</span>
+                }
                 <span class="m"> · {{ event.activity }}</span>
               </a>
               <button class="remove" title="Retirer de mon planning" (click)="removeFromPlanning(event)">✕</button>
@@ -337,8 +350,8 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
           <div class="col" [class.today]="isToday(day)">
             <h4>{{ dayHeader(day) }}</h4>
             @for (event of eventsOn(day); track event.id) {
-              <a class="chip" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
-                <span class="ct">{{ time(event.startsAt) }} {{ event.title }}</span>
+              <a class="chip" [class.conflict]="hasConflict(event)" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
+                <span class="ct">@if (hasConflict(event)) {⚠ }{{ time(event.startsAt) }} {{ event.title }}</span>
               </a>
             }
           </div>
@@ -353,8 +366,8 @@ type CalendarView = 'day' | 'week' | 'month' | 'list';
           <div class="cell" [class.out]="!inMonth(day)" [class.today]="isToday(day)">
             <div class="num">{{ day.getDate() }}</div>
             @for (event of eventsOn(day).slice(0, 3); track event.id) {
-              <a class="dot" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
-                {{ event.title }}
+              <a class="dot" [class.conflict]="hasConflict(event)" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
+                @if (hasConflict(event)) {⚠ }{{ event.title }}
               </a>
             }
             @if (eventsOn(day).length > 3) {
@@ -405,6 +418,11 @@ export class CalendarComponent implements OnInit {
     () => this.filteredEntries().filter((entry) => entry.conflictsWith.length > 0).length,
   );
 
+  /** Identifiants des événements en conflit d'horaire (source : détection du planning). */
+  readonly conflictIds = computed(
+    () => new Set(this.entries().filter((entry) => entry.conflictsWith.length > 0).map((entry) => entry.event.id)),
+  );
+
   ngOnInit(): void {
     // Tous les événements qualifiés (passé inclus) pour les vues calendrier.
     this.eventsApi.calendar({}).subscribe({
@@ -426,6 +444,10 @@ export class CalendarComponent implements OnInit {
 
   toggleFilter(kind: ParticipationKind): void {
     this.filterKind.set(this.filterKind() === kind ? null : kind);
+  }
+
+  hasConflict(event: EventDto): boolean {
+    return this.conflictIds().has(event.id);
   }
 
   /** Nombre d'événements du planning ayant ce statut dominant (résumé de la légende). */
