@@ -40,6 +40,9 @@ export class ActivityResponseDto {
   @ApiProperty()
   isActive!: boolean;
 
+  @ApiProperty({ type: [String], description: 'Alias actifs (libellés alternatifs reconnus).' })
+  aliases!: string[];
+
   @ApiProperty({ description: 'ISO 8601, UTC.' })
   createdAt!: string;
 }

@@ -4,7 +4,7 @@ import { ActivityNotFoundException, DomainNotFoundException } from '../common/ex
 import { rethrowAsConflict } from '../common/prisma-error';
 import { DomainRepository } from '../domains/domain.repository';
 import { CreateActivityDto, UpdateActivityDto } from './activity.dto';
-import { ActivityRepository } from './activity.repository';
+import { ActivityRepository, type ActivityWithAliases } from './activity.repository';
 
 @Injectable()
 export class ActivitiesService {
@@ -13,10 +13,9 @@ export class ActivitiesService {
     private readonly domainRepository: DomainRepository,
   ) {}
 
-  list(includeInactive: boolean, domainId?: string): Promise<Activity[]> {
-    return domainId
-      ? this.repository.listByDomain(domainId, includeInactive)
-      : this.repository.list(includeInactive);
+  /** Liste avec alias actifs (résolution alias-aware côté client — Levier 2). */
+  list(includeInactive: boolean, domainId?: string): Promise<ActivityWithAliases[]> {
+    return this.repository.listWithAliases(includeInactive, domainId);
   }
 
   async getOrThrow(id: string): Promise<Activity> {

@@ -200,6 +200,8 @@ export interface ActivityDto {
   name: string;
   domainId: string;
   isActive: boolean;
+  /** Alias actifs (libellés alternatifs reconnus) — résolution alias-aware. */
+  aliases?: string[];
   createdAt: string;
 }
 

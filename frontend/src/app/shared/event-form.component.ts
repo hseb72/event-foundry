@@ -635,7 +635,8 @@ export class EventFormComponent implements OnInit {
 
   private applyDraftActivity(): void {
     if (!this.draft?.activityName) return;
-    const match = byName(this.activities, this.draft.activityName);
+    // Résolution alias-aware (Levier 2) : on reconnaît le libellé par nom OU par alias appris.
+    const match = matchActivity(this.activities, this.draft.activityName);
     if (match) {
       this.model.activityId = match.id;
       this.onActivityChange();
@@ -767,6 +768,16 @@ export class EventFormComponent implements OnInit {
 function byName<T extends { name: string }>(items: T[], name: string): T | undefined {
   const needle = name.trim().toLowerCase();
   return items.find((i) => i.name.trim().toLowerCase() === needle);
+}
+
+/** Reconnaît une activité par son nom ou l'un de ses alias appris (résolution alias-aware). */
+function matchActivity(items: ActivityDto[], label: string): ActivityDto | undefined {
+  const needle = label.trim().toLowerCase();
+  return items.find(
+    (a) =>
+      a.name.trim().toLowerCase() === needle ||
+      (a.aliases ?? []).some((alias) => alias.trim().toLowerCase() === needle),
+  );
 }
 
 /** `datetime-local` (heure locale, sans zone) → ISO 8601 UTC pour l'API. */

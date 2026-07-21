@@ -5,7 +5,9 @@ import { ActivityRepository } from './activity.repository';
 import { DomainRepository } from '../domains/domain.repository';
 
 describe('ActivitiesService', () => {
-  let repository: jest.Mocked<Pick<ActivityRepository, 'create' | 'list' | 'listByDomain' | 'findById'>>;
+  let repository: jest.Mocked<
+    Pick<ActivityRepository, 'create' | 'list' | 'listByDomain' | 'listWithAliases' | 'findById'>
+  >;
   let domainRepository: jest.Mocked<Pick<DomainRepository, 'findById'>>;
   let service: ActivitiesService;
 
@@ -14,6 +16,7 @@ describe('ActivitiesService', () => {
       create: jest.fn(),
       list: jest.fn(),
       listByDomain: jest.fn(),
+      listWithAliases: jest.fn(),
       findById: jest.fn(),
     };
     domainRepository = { findById: jest.fn() };
@@ -41,10 +44,9 @@ describe('ActivitiesService', () => {
     expect(repository.create).toHaveBeenCalledWith({ name: 'Magic', domainId: 'domain-1' });
   });
 
-  it('liste par domaine lorsque domainId est fourni', async () => {
-    repository.listByDomain.mockResolvedValue([]);
+  it('liste avec alias (résolution alias-aware), en propageant le filtre domaine', async () => {
+    repository.listWithAliases.mockResolvedValue([]);
     await service.list(false, 'domain-1');
-    expect(repository.listByDomain).toHaveBeenCalledWith('domain-1', false);
-    expect(repository.list).not.toHaveBeenCalled();
+    expect(repository.listWithAliases).toHaveBeenCalledWith(false, 'domain-1');
   });
 });
