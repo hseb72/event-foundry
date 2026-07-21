@@ -27,6 +27,31 @@ enum ImportJobStatus {
   READY_FOR_VALIDATION
   COMPLETED
   FAILED
+  // Statuts du pipeline d'import unifié V3 (ADR.14 / FSPEC.01). Coexistent avec les statuts
+  // hérités du canal OCR V2 (Image/PDF), qui reste un cas particulier du framework.
+  DISCOVERING
+  FETCHING
+  EXTRACTING
+  VALIDATING
+  NORMALIZING
+  DEDUPLICATING
+  PERSISTING
+}
+
+/// Canal d'acquisition d'un import (ADR.13 / FSPEC.01). IMAGE = canal OCR hérité (V2).
+enum ImportChannel {
+  IMAGE
+  TEXT
+  CSV
+  JSON
+  URL
+}
+
+/// Niveau de confiance d'une source (RG-IMP-06) : pilote la sortie du pipeline.
+/// TRUSTED → Event publié directement ; REVIEW → EventCandidate à valider (héritage V2).
+enum SourceTrustLevel {
+  TRUSTED
+  REVIEW
 }
 
 enum EventCandidateStatus {
@@ -657,9 +682,22 @@ model ImportJob {
   ocrPageCount        Int?             @map("ocr_page_count")
   ocrProcessingTimeMs Int?             @map("ocr_processing_time_ms")
   correlationId       String           @map("correlation_id")
+  // Framework d'import unifié V3 (ADR.13/14) — nullables pour compatibilité avec les jobs OCR V2.
+  channel             ImportChannel?
+  providerId          String?          @map("provider_id")
+  importSourceId      String?          @map("import_source_id") @db.Uuid
+  // Volumétrie du pipeline (supervision — FSPEC.01 §Statistiques). Renseignée à la persistance.
+  objectsRead         Int?             @map("objects_read")
+  rawEventCount       Int?             @map("raw_event_count")
+  createdCount        Int?             @map("created_count")
+  updatedCount        Int?             @map("updated_count")
+  duplicateCount      Int?             @map("duplicate_count")
+  rejectedCount       Int?             @map("rejected_count")
   startedAt           DateTime?        @map("started_at") @db.Timestamptz(6)
   finishedAt          DateTime?        @map("finished_at") @db.Timestamptz(6)
   attachment          Attachment       @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  importSource        ImportSource?    @relation(fields: [importSourceId], references: [id], onDelete: SetNull)
+  rawEvents           RawEvent[]
   candidates          EventCandidate[]
   events              ImportJobEvent[]
   createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -667,7 +705,50 @@ model ImportJob {
 
   @@index([status])
   @@index([createdAt])
+  @@index([providerId])
   @@map("import_jobs")
+}
+
+/// Source d'acquisition configurée (ADR.13 §Configuration). Un fournisseur + sa configuration,
+/// séparés du code (modifiables sans redéploiement). Les secrets (auth) sont des références
+/// logiques résolues par le Secrets Management (ADR.21), jamais en clair. Le niveau de confiance
+/// pilote la sortie du pipeline (RG-IMP-06).
+model ImportSource {
+  id          String           @id @default(uuid()) @db.Uuid
+  providerId  String           @map("provider_id")
+  label       String
+  config      Json             @default("{}")
+  secretRef   String?          @map("secret_ref")
+  trustLevel  SourceTrustLevel @default(REVIEW) @map("trust_level")
+  isActive    Boolean          @default(true) @map("is_active")
+  jobs        ImportJob[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([providerId])
+  @@index([isActive])
+  @@map("import_sources")
+}
+
+/// Raw Event (ADR.15) : représentation fidèle et **immuable** des données source, produite par la
+/// phase d'extraction d'un connecteur. Conservé pour le rejeu, le diagnostic et l'audit (RG-IMP-02/03).
+/// Le domaine métier ne le manipule jamais : seule la normalisation le projette vers l'Event.
+model RawEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  importJobId      String    @map("import_job_id") @db.Uuid
+  providerId       String    @map("provider_id")
+  providerKey      String?   @map("provider_key")
+  connectorVersion String    @map("connector_version")
+  acquiredAt       DateTime  @map("acquired_at") @db.Timestamptz(6)
+  payload          Json
+  mediaRefs        String[]  @map("media_refs")
+  correlationId    String    @map("correlation_id")
+  importJob        ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([importJobId])
+  @@index([providerId, providerKey])
+  @@map("raw_events")
 }
 
 /// Journal des transitions d'état d'un ImportJob (une ligne par passage d'état). Le Backend

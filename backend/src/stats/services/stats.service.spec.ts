@@ -1,4 +1,5 @@
 import { ImportStatsRepository } from '../repositories/import-stats.repository';
+import { ImportJobStatus } from '@prisma/client';
 import { StatsService } from './stats.service';
 
 describe('StatsService', () => {
@@ -40,7 +41,8 @@ describe('StatsService', () => {
     // Tous les états de l'enum sont présents, les absents à 0.
     expect(stats.importsByStatus['PENDING']).toBe(0);
     expect(stats.importsByStatus['READY_FOR_VALIDATION']).toBe(2);
-    expect(Object.keys(stats.importsByStatus)).toHaveLength(7);
+    // Tous les statuts de l'enum (canaux OCR V2 + pipeline V3) sont présents.
+    expect(Object.keys(stats.importsByStatus)).toHaveLength(Object.keys(ImportJobStatus).length);
   });
 
   it('moyenne les durées OCR et totales', async () => {

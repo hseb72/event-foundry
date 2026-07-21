@@ -18,6 +18,11 @@ export class ImportsApi {
     return this.http.post<ImportResponse>(`${API_BASE}/imports/text`, { text });
   }
 
+  /** Import structuré déterministe (CSV/JSON — canal de référence, sans OCR ni IA). */
+  importStructured(content: string, format?: 'csv' | 'json'): Observable<ImportResponse> {
+    return this.http.post<ImportResponse>(`${API_BASE}/imports/structured`, { content, format });
+  }
+
   list(): Observable<ImportResponse[]> {
     return this.http.get<ImportResponse[]>(`${API_BASE}/imports`);
   }

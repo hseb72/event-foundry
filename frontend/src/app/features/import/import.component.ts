@@ -65,6 +65,27 @@ import { ImportResponse } from '../../core/models';
         </button>
       </div>
 
+      <div class="card">
+        <h3>Depuis un fichier structuré (CSV / JSON)</h3>
+        <p class="muted" style="font-size:0.82rem;margin-top:0">
+          Canal 100 % déterministe (sans OCR ni IA). Colonnes/clés :
+          <code>title, starts_at, activity, event_type, venue, city, price, url…</code> ·
+          requis : <code>title</code>, <code>starts_at</code>. Chaque ligne devient un événement à valider.
+        </p>
+        <div class="drop">
+          <input type="file" accept=".csv,.json,text/csv,application/json" (change)="onStructuredFile($event)" />
+          <p>Fichier CSV ou JSON — ou collez le contenu ci-dessous</p>
+        </div>
+        <textarea
+          class="input"
+          placeholder="key,title,starts_at&#10;t1,Tournoi Magic,2026-08-01T18:00:00Z"
+          [(ngModel)]="structured"
+        ></textarea>
+        <button class="btn btn-primary" [disabled]="!structured.trim() || busy" (click)="submitStructured()">
+          Importer le contenu structuré
+        </button>
+      </div>
+
       @if (result) {
         <div class="card result">
           <p class="ok">{{ message }}</p>
@@ -80,6 +101,7 @@ import { ImportResponse } from '../../core/models';
 export class ImportComponent {
   file: File | null = null;
   text = '';
+  structured = '';
   busy = false;
   message = '';
   result: ImportResponse | null = null;
@@ -89,6 +111,27 @@ export class ImportComponent {
   onFile(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.file = input.files && input.files.length > 0 ? input.files[0] : null;
+  }
+
+  /** Charge le contenu texte d'un fichier CSV/JSON dans la zone (canal déterministe). */
+  onStructuredFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+    void file.text().then((content) => (this.structured = content));
+  }
+
+  submitStructured(): void {
+    if (!this.structured.trim()) {
+      return;
+    }
+    this.busy = true;
+    this.importsApi.importStructured(this.structured).subscribe({
+      next: (result) => this.onSuccess(result, 'Contenu structuré importé, candidats prêts à valider.'),
+      error: () => (this.busy = false),
+    });
   }
 
   uploadFile(): void {
@@ -118,6 +161,7 @@ export class ImportComponent {
     this.message = message;
     this.busy = false;
     this.text = '';
+    this.structured = '';
     this.file = null;
   }
 }

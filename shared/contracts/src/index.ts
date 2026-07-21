@@ -10,6 +10,7 @@ export * from './enums/attachment-type.enum';
 export * from './pipeline/import-request.contract';
 export * from './pipeline/ocr-result.contract';
 export * from './pipeline/classification-result.contract';
+export * from './pipeline/raw-event.contract';
 
 // Constantes partagées : noms des files BullMQ (TSPEC.01).
 // Le Backend orchestre chaque étape (règle d'or 4) : les Workers ne se chaînent jamais

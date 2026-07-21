@@ -56,6 +56,8 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     status: ImportJobStatus;
     correlationId: string;
     ocrText?: string | null;
+    channel?: Prisma.ImportJobCreateInput['channel'];
+    providerId?: string | null;
   }): Promise<ImportJobWithAttachment> {
     return this.prisma.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({ data: input.attachment });
@@ -65,6 +67,8 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
           status: input.status,
           correlationId: input.correlationId,
           ocrText: input.ocrText ?? null,
+          channel: input.channel ?? null,
+          providerId: input.providerId ?? null,
         },
         include: { attachment: true, _count: { select: { candidates: true } } },
       });
