@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { requireEnv } from '@event-foundry/libraries';
 import type { ReferenceDataProvider } from './reference-data-provider.interface';
 import {
   EMPTY_SNAPSHOT,
@@ -43,7 +44,8 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
   private readonly logger = new Logger(HttpReferenceDataProvider.name);
   private readonly baseUrl = process.env.CLASSIFIER_BACKEND_URL ?? 'http://localhost:3000/api/v1';
   private readonly email = process.env.CLASSIFIER_SERVICE_EMAIL ?? 'admin@event-foundry.local';
-  private readonly password = process.env.CLASSIFIER_SERVICE_PASSWORD ?? 'change-me-dev-only';
+  // Mot de passe du compte de service : requis, jamais de valeur par défaut codée en dur (ADR.21).
+  private readonly password = requireEnv('CLASSIFIER_SERVICE_PASSWORD');
   private readonly ttlMs = Number(process.env.REFERENCE_TTL_MS ?? '300000');
 
   private cache: ReferenceSnapshot = EMPTY_SNAPSHOT;

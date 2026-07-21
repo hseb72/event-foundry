@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { requireEnv } from '@event-foundry/libraries';
 import type { ReferenceLexiconProvider } from './reference-lexicon-provider.interface';
 
 interface NamedDto {
@@ -34,10 +35,8 @@ export class HttpReferenceLexiconProvider implements ReferenceLexiconProvider {
     process.env.OCR_SERVICE_EMAIL ??
     process.env.CLASSIFIER_SERVICE_EMAIL ??
     'admin@event-foundry.local';
-  private readonly password =
-    process.env.OCR_SERVICE_PASSWORD ??
-    process.env.CLASSIFIER_SERVICE_PASSWORD ??
-    'change-me-dev-only';
+  // Mot de passe du compte de service : requis, jamais de valeur par défaut codée en dur (ADR.21).
+  private readonly password = requireEnv('OCR_SERVICE_PASSWORD', 'CLASSIFIER_SERVICE_PASSWORD');
   private readonly ttlMs = Number(process.env.REFERENCE_TTL_MS ?? '300000');
 
   private cache: string[] = [];

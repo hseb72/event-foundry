@@ -14,6 +14,7 @@
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Experience, PrismaClient, RoleScope } from '@prisma/client';
+import { requireEnv } from '@event-foundry/libraries';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient({
@@ -199,7 +200,9 @@ async function seedSubscriptionPlans(): Promise<void> {
 
 async function seedAdminAndDemoOrg(): Promise<void> {
   const email = process.env.DEV_ADMIN_EMAIL ?? 'admin@event-foundry.local';
-  const password = process.env.DEV_ADMIN_PASSWORD ?? 'change-me-dev-only';
+  // Mot de passe requis : jamais de valeur par défaut codée en dur (ADR.21). Évite de créer un
+  // admin au mot de passe connu si le seed est lancé sur un environnement non prévu.
+  const password = requireEnv('DEV_ADMIN_PASSWORD');
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   // Rôles plateforme de l'admin de dev : Operator (back-office) + Explorer (grand public) + ADMIN legacy.
