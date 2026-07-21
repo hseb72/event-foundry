@@ -115,6 +115,12 @@ import { ImportResponse } from '../../core/models';
         </button>
       </div>
 
+      @if (errorMsg) {
+        <div class="card" style="border-left:4px solid var(--red, #c0392b)">
+          <p style="color:var(--red, #c0392b);margin:0">{{ errorMsg }}</p>
+        </div>
+      }
+
       @if (result) {
         <div class="card result">
           <p class="ok">{{ message }}</p>
@@ -136,9 +142,16 @@ export class ImportComponent {
   url = '';
   busy = false;
   message = '';
+  errorMsg = '';
   result: ImportResponse | null = null;
 
   constructor(private readonly importsApi: ImportsApi) {}
+
+  /** Affiche le message d'erreur renvoyé par l'API (ex. cause d'un échec d'extraction IA). */
+  private onError(err: { error?: { message?: string } }): void {
+    this.busy = false;
+    this.errorMsg = err?.error?.message ?? "L'import a échoué.";
+  }
 
   onFile(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -162,7 +175,7 @@ export class ImportComponent {
     this.busy = true;
     this.importsApi.importStructured(this.structured).subscribe({
       next: (result) => this.onSuccess(result, 'Contenu structuré importé, candidats prêts à valider.'),
-      error: () => (this.busy = false),
+      error: (err) => this.onError(err),
     });
   }
 
@@ -173,7 +186,7 @@ export class ImportComponent {
     this.busy = true;
     this.importsApi.importUrl(this.url.trim()).subscribe({
       next: (result) => this.onSuccess(result, 'Page capturée, candidats prêts à valider.'),
-      error: () => (this.busy = false),
+      error: (err) => this.onError(err),
     });
   }
 
@@ -202,7 +215,7 @@ export class ImportComponent {
       : 'Fichier envoyé, traitement lancé.';
     request.subscribe({
       next: (result) => this.onSuccess(result, message),
-      error: () => (this.busy = false),
+      error: (err) => this.onError(err),
     });
   }
 
@@ -219,13 +232,14 @@ export class ImportComponent {
       : 'Texte envoyé, classification lancée.';
     request.subscribe({
       next: (result) => this.onSuccess(result, message),
-      error: () => (this.busy = false),
+      error: (err) => this.onError(err),
     });
   }
 
   private onSuccess(result: ImportResponse, message: string): void {
     this.result = result;
     this.message = message;
+    this.errorMsg = '';
     this.busy = false;
     this.text = '';
     this.structured = '';

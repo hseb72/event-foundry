@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ImportChannel, ImportJobStatus } from '@prisma/client';
 import { generateCorrelationId, getCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
@@ -23,6 +23,8 @@ const VISION_MIME_TYPES = new Set(['image/png', 'image/jpeg']);
  */
 @Injectable()
 export class AiExtractionImportService {
+  private readonly logger = new Logger(AiExtractionImportService.name);
+
   constructor(
     private readonly jobs: ImportJobRepository,
     private readonly pipeline: ImportPipelineRepository,
@@ -85,7 +87,16 @@ export class AiExtractionImportService {
         await this.logCall(assistant, Date.now() - startedAt, 'SUCCESS', correlationId);
       } catch (aiError) {
         await this.logCall(assistant, Date.now() - startedAt, 'FAILED', correlationId);
-        throw aiError;
+        // Erreur du fournisseur IA : on la journalise (cause réelle) et on la remonte en 502 lisible
+        // plutôt qu'en 500 opaque. Cause fréquente : modèle non compatible vision, ou clé invalide.
+        const reason = (aiError as Error).message;
+        this.logger.error(
+          `Extraction IA échouée (${assistant.provider}/${assistant.model}, correlationId=${correlationId}) : ${reason}`,
+        );
+        throw new BadGatewayException(
+          `L'extraction IA a échoué (${assistant.provider} / ${assistant.model}) : ${reason}. ` +
+            `Vérifiez que le modèle configuré prend en charge la vision (images) et que la clé est valide.`,
+        );
       }
 
       const rawEvents = await this.pipeline.createRawEvents(

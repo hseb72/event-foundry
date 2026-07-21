@@ -134,7 +134,10 @@ export class AiVisionClient {
       signal: o.signal,
     });
     if (!response.ok) {
-      throw new Error(`IA ${o.provider} a répondu ${response.status}`);
+      // On remonte un extrait du corps d'erreur du fournisseur (souvent explicite : modèle non
+      // compatible vision, clé invalide…) pour faciliter le diagnostic.
+      const detail = (await response.text().catch(() => '')).slice(0, 300);
+      throw new Error(`IA ${o.provider} a répondu ${response.status}${detail ? ` : ${detail}` : ''}`);
     }
     return response.json();
   }
