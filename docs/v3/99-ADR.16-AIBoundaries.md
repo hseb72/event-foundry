@@ -162,6 +162,48 @@ Ces responsabilités appartiennent exclusivement au domaine fonctionnel.
 
 ---
 
+# Frontière dans le pipeline d'import (extraction vs décision)
+
+Cette section précise **où** l'IA intervient dans le pipeline d'import (ADR.14) et **ce qu'elle
+produit**, afin de concilier trois exigences : efficacité, rejouabilité et déterminisme.
+
+## L'IA produit un Raw Event, jamais une décision
+
+Lorsqu'un canal d'acquisition utilise l'IA (extraction depuis une image / un document), l'IA réalise
+la phase **Extract** et **remplit un Raw Event** (ADR.15) contre un **schéma pivot d'extraction**.
+
+- Le Raw Event ne contient que des **valeurs brutes telles qu'écrites dans la source** : titre, dates
+  en texte, libellés d'activité / type / lieu / prix *tels que reconnus*, description. Ce sont des
+  **libellés**, jamais des identifiants de référentiels internes.
+- L'IA **ne résout jamais** un libellé vers un référentiel de la plateforme (Activity, EventType,
+  Category, Venue…), ne décide jamais d'un doublon, ne produit jamais un Event « prêt à publier ».
+
+## La décision reste déterministe, en aval du Raw Event
+
+Les étapes **Normalize → Deduplicate → Persist** sont déterministes et appartiennent au domaine :
+
+- **Normalize** résout les libellés bruts vers les référentiels (règles + référentiels du classifier),
+  harmonise formats (dates UTC, nombres). Un libellé non reconnu n'est **jamais inventé** : il part en
+  validation humaine.
+- **Deduplicate** et la sortie (EventCandidate / Event selon la confiance de la source — RG-IMP-06)
+  restent déterministes.
+
+## Conséquence sur les trois exigences
+
+- **Efficacité** : un **seul** appel IA transforme le document en Raw Event structuré (pas de texte
+  intermédiaire re-parsé ensuite). On évite le double traitement « IA→texte puis re-extraction ».
+- **Rejouabilité** : le Raw Event (sortie de l'IA) est **conservé et tracé** (version de connecteur,
+  version de prompt). Le rejeu ré-exécute Normalize→Persist **sans rappeler l'IA** (RG-IMP-03) — donc
+  sans nouveau coût ni nouvelle variabilité.
+- **Déterminisme** : l'extraction n'a jamais eu à être déterministe ; seule la **décision** l'est, et
+  elle vit entièrement en aval du Raw Event, sur des règles reproductibles.
+
+> Règle : *l'IA extrait des libellés dans le Raw Event ; le domaine décide, déterministe, à partir du
+> Raw Event.* Toute sortie d'IA contenant un identifiant de référentiel ou une décision de
+> publication constitue une violation de la règle d'or n°1.
+
+---
+
 # Intégration dans l'architecture
 
 Les services d'IA sont considérés comme des fournisseurs externes.
@@ -288,3 +330,4 @@ ADR.15 – Raw Event Model
 | Version | Description |
 |----------|-------------|
 | 3.0 | Définition des principes de gouvernance et des limites d'utilisation de l'intelligence artificielle au sein de la plateforme. |
+| 3.1 | Précision de la frontière dans le pipeline d'import : l'IA remplit un Raw Event (libellés bruts) en phase Extract ; la décision (résolution des référentiels, déduplication, sortie) reste déterministe en aval. Concilie efficacité, rejouabilité et déterminisme. |

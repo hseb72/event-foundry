@@ -108,6 +108,23 @@ Le pipeline orchestre des étapes à responsabilité unique (ADR.14). Répartiti
 - **Deduplicate** : rapprochement par `(providerId, providerKey)` puis par signature métier (titre +
   date + lieu) ; règles communes à tous les imports.
 
+## Canaux assistés par IA — l'IA remplit le Raw Event (ADR.16 §Frontière)
+
+Pour les canaux dont la phase **Extract** utilise l'IA (image/PDF, page non structurée), l'IA
+**produit directement un Raw Event structuré** contre un **schéma pivot d'extraction** (libellés
+bruts : titre, dates en texte, libellés activité/type/lieu/prix *tels qu'écrits*, description). Elle
+ne résout **jamais** un référentiel ni ne décide d'un Event.
+
+- **Efficacité** : un seul appel IA fait `document → Raw Event structuré` ; on évite le double
+  traitement « IA→texte plat, puis re-extraction déterministe ». Deux implémentations d'`Extract`
+  convergent vers le **même** pipeline commun (Validate → Normalize → Deduplicate → Persist) :
+  - connecteur **OCR déterministe** (Tesseract) : Extract = OCR → Raw Event `{ rawText, moteur }` ;
+  - connecteur **extraction IA** : Extract = appel IA (schéma pivot) → Raw Event `{ libellés bruts }`.
+- **Rejouabilité / coût** : le Raw Event (sortie IA) est conservé et tracé (version de connecteur,
+  version de prompt). Le **rejeu** ré-exécute Normalize→Persist **sans rappeler l'IA** (RG-IMP-03).
+- **Déterminisme** : la résolution libellé → référentiel (Normalize, classifier) et la déduplication
+  restent déterministes ; un libellé non reconnu part en validation humaine, jamais inventé.
+
 ---
 
 # Persistance
