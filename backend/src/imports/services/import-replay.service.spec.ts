@@ -7,6 +7,8 @@ import { ImportJobRepository } from '../repositories/import-job.repository';
 import { ImportPipelineRepository } from '../repositories/import-pipeline.repository';
 import { ImportReplayService } from './import-replay.service';
 import { PipelineRunnerService } from './pipeline-runner.service';
+import { TechnicalConfigService } from '../../platform-config/technical-config.service';
+import { ReferentialProvisioningService } from './referential-provisioning.service';
 
 describe('ImportReplayService (rejeu — RG-IMP-03)', () => {
   let jobs: jest.Mocked<Pick<ImportJobRepository, 'findByIdWithAttachment' | 'transition'>>;
@@ -43,6 +45,8 @@ describe('ImportReplayService (rejeu — RG-IMP-03)', () => {
       new ValidateStage(),
       new NormalizeStage(),
       new DeduplicateStage(),
+      { getProvisioning: jest.fn().mockResolvedValue({ autoProvisionReferentials: false, provisioningDefaultDomainId: null }) } as unknown as TechnicalConfigService,
+      { provision: jest.fn().mockResolvedValue(undefined) } as unknown as ReferentialProvisioningService,
     );
     service = new ImportReplayService(
       jobs as unknown as ImportJobRepository,

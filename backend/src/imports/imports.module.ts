@@ -12,7 +12,9 @@ import { NormalizeStage } from './pipeline/normalize.stage';
 import { ValidateStage } from './pipeline/validate.stage';
 import { ImportJobRepository } from './repositories/import-job.repository';
 import { ImportPipelineRepository } from './repositories/import-pipeline.repository';
+import { ReferentialProvisioningRepository } from './repositories/referential-provisioning.repository';
 import { AiExtractionImportService } from './services/ai-extraction-import.service';
+import { ReferentialProvisioningService } from './services/referential-provisioning.service';
 import { HttpFetcherService } from './services/http-fetcher.service';
 import { ImportReplayService } from './services/import-replay.service';
 import { ImportsService } from './services/imports.service';
@@ -38,8 +40,10 @@ import { UrlImportService } from './services/url-import.service';
     ImportReplayService,
     PipelineRunnerService,
     HttpFetcherService,
+    ReferentialProvisioningService,
     ImportJobRepository,
     ImportPipelineRepository,
+    ReferentialProvisioningRepository,
     OcrResultConsumer,
     ValidateStage,
     NormalizeStage,

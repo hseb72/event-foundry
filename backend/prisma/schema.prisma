@@ -481,6 +481,7 @@ model Activity {
   name         String
   domainId     String        @map("domain_id") @db.Uuid
   isActive     Boolean       @default(true) @map("is_active")
+  provisional  Boolean       @default(false)
   domain       Domain        @relation(fields: [domainId], references: [id], onDelete: Restrict)
   eventTypes   EventType[]
   eventFormats EventFormat[]
@@ -499,6 +500,7 @@ model EventType {
   name       String
   activityId String   @map("activity_id") @db.Uuid
   isActive   Boolean  @default(true) @map("is_active")
+  provisional Boolean  @default(false)
   activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
   events     Event[]
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -514,6 +516,7 @@ model EventFormat {
   name       String
   activityId String   @map("activity_id") @db.Uuid
   isActive   Boolean  @default(true) @map("is_active")
+  provisional Boolean  @default(false)
   activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
   events     Event[]
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -544,6 +547,7 @@ model Organizer {
   name      String
   website   String?
   isActive  Boolean  @default(true) @map("is_active")
+  provisional Boolean  @default(false)
   venues    Venue[]
   events    Event[]
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -562,6 +566,7 @@ model Venue {
   latitude    Float?
   longitude   Float?
   isActive    Boolean    @default(true) @map("is_active")
+  provisional Boolean    @default(false)
   organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: SetNull)
   events      Event[]
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)

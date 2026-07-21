@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
 import { DEFAULT_MAX_UPLOAD_BYTES } from '../../imports/imports.constants';
 
 /**
@@ -21,6 +21,21 @@ export class UpdateTechnicalConfigDto {
   @IsInt()
   @Min(0)
   maxImportsPerDay!: number;
+
+  @ApiPropertyOptional({
+    description: 'Auto-provisioning des référentiels manquants (état provisoire — ADR.24). Défaut : off.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  autoProvisionReferentials?: boolean;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Domaine par défaut pour une activité auto-créée. Requis pour auto-créer des activités.',
+  })
+  @IsOptional()
+  @IsUUID()
+  provisioningDefaultDomainId?: string;
 }
 
 /** Vue des limites techniques (aucune donnée secrète). */
@@ -33,4 +48,10 @@ export class TechnicalConfigDto {
 
   @ApiProperty({ description: 'Plafond dur (octets) au-delà duquel une limite n’est pas configurable.' })
   hardMaxUploadBytes!: number;
+
+  @ApiProperty({ description: 'Auto-provisioning des référentiels manquants activé (ADR.24).' })
+  autoProvisionReferentials!: boolean;
+
+  @ApiProperty({ nullable: true, description: 'Domaine par défaut pour les activités auto-créées.' })
+  provisioningDefaultDomainId!: string | null;
 }

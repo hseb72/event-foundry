@@ -18,7 +18,17 @@ describe('TechnicalConfigService (limites techniques — OPE-005)', () => {
       maxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES,
       maxImportsPerDay: 0,
       hardMaxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES,
+      autoProvisionReferentials: false,
+      provisioningDefaultDomainId: null,
     });
+  });
+
+  it('expose le réglage d’auto-provisioning (opt-out par défaut, valeurs stockées sinon)', async () => {
+    repository.find.mockResolvedValue({
+      value: { autoProvisionReferentials: true, provisioningDefaultDomainId: 'dom-1' },
+    } as never);
+    const prov = await service.getProvisioning();
+    expect(prov).toEqual({ autoProvisionReferentials: true, provisioningDefaultDomainId: 'dom-1' });
   });
 
   it('borne maxUploadBytes au plafond dur et interdit les valeurs négatives', async () => {

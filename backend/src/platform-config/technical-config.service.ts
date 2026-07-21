@@ -16,9 +16,17 @@ export interface TechnicalLimits {
   maxImportsPerDay: number;
 }
 
+/** Réglage d'auto-provisioning des référentiels (ADR.24). Opt-out par défaut. */
+export interface ProvisioningConfig {
+  autoProvisionReferentials: boolean;
+  provisioningDefaultDomainId: string | null;
+}
+
 interface LimitsValue {
   maxUploadBytes: number;
   maxImportsPerDay: number;
+  autoProvisionReferentials?: boolean;
+  provisioningDefaultDomainId?: string | null;
 }
 
 /**
@@ -40,16 +48,28 @@ export class TechnicalConfigService {
     };
   }
 
-  /** Vue exposée (limites + plafond dur pour guider l'UI). */
+  /** Réglage d'auto-provisioning effectif (pour le pipeline d'import — ADR.24). Jamais null. */
+  async getProvisioning(): Promise<ProvisioningConfig> {
+    const setting = await this.repository.find(TECHNICAL_SECTION, LIMITS_KEY);
+    const value = (setting?.value as unknown as LimitsValue) ?? null;
+    return {
+      autoProvisionReferentials: value?.autoProvisionReferentials ?? false,
+      provisioningDefaultDomainId: value?.provisioningDefaultDomainId ?? null,
+    };
+  }
+
+  /** Vue exposée (limites + plafond dur + réglage d'auto-provisioning). */
   async get(): Promise<TechnicalConfigDto> {
-    const limits = await this.getLimits();
-    return { ...limits, hardMaxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES };
+    const [limits, provisioning] = await Promise.all([this.getLimits(), this.getProvisioning()]);
+    return { ...limits, ...provisioning, hardMaxUploadBytes: DEFAULT_MAX_UPLOAD_BYTES };
   }
 
   async update(dto: UpdateTechnicalConfigDto): Promise<TechnicalConfigDto> {
     const value: LimitsValue = {
       maxUploadBytes: this.clampUpload(dto.maxUploadBytes),
       maxImportsPerDay: Math.max(0, dto.maxImportsPerDay),
+      autoProvisionReferentials: dto.autoProvisionReferentials ?? false,
+      provisioningDefaultDomainId: dto.provisioningDefaultDomainId?.trim() || null,
     };
     await this.repository.upsert(TECHNICAL_SECTION, LIMITS_KEY, {
       value: value as unknown as Prisma.InputJsonValue,
