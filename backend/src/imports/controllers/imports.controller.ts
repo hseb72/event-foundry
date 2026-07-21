@@ -17,11 +17,14 @@ import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CreateStructuredImportDto } from '../dto/create-structured-import.dto';
 import { CreateTextImportDto } from '../dto/create-text-import.dto';
+import { CreateUrlImportDto } from '../dto/create-url-import.dto';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
 import { DEFAULT_MAX_UPLOAD_BYTES } from '../imports.constants';
 import { ImportMapper } from '../mappers/import.mapper';
+import { ImportReplayService } from '../services/import-replay.service';
 import { ImportsService } from '../services/imports.service';
 import { StructuredImportService } from '../services/structured-import.service';
+import { UrlImportService } from '../services/url-import.service';
 
 const MAX_PAGE_SIZE = 100;
 
@@ -37,6 +40,8 @@ export class ImportsController {
   constructor(
     private readonly service: ImportsService,
     private readonly structured: StructuredImportService,
+    private readonly urlImport: UrlImportService,
+    private readonly replay: ImportReplayService,
   ) {}
 
   @Post()
@@ -67,6 +72,27 @@ export class ImportsController {
   async importStructured(@Body() dto: CreateStructuredImportDto): Promise<ImportResponseDto> {
     const contentType = dto.format === 'json' ? 'application/json' : dto.format === 'csv' ? 'text/csv' : null;
     return ImportMapper.toResponse(await this.structured.import(dto.content, contentType));
+  }
+
+  /**
+   * Import par **URL** (ADR.13 §Capture) : capture d'une page et extraction déterministe des
+   * événements balisés schema.org (JSON-LD) → pipeline → EventCandidates (validation humaine).
+   */
+  @Post('url')
+  async importUrl(@Body() dto: CreateUrlImportDto): Promise<ImportResponseDto> {
+    return ImportMapper.toResponse(await this.urlImport.import(dto.url));
+  }
+
+  /**
+   * Rejeu d'un import (RG-IMP-03) : ré-exécute Validate→Persist depuis les Raw Events conservés,
+   * sans re-solliciter le fournisseur. Réservé aux opérateurs du pipeline.
+   */
+  @Post(':id/replay')
+  @RequirePermissions('pipeline.manage')
+  replayImport(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ importJobId: string; rawEventCount: number }> {
+    return this.replay.replay(id);
   }
 
   /** Administration : liste globale des imports (réservé ADMIN, pas de scope utilisateur). */

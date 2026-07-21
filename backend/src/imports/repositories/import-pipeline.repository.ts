@@ -65,6 +65,25 @@ export class ImportPipelineRepository {
     }));
   }
 
+  /** Raw Events conservés d'un import (rejeu — RG-IMP-03 : Validate→Persist sans Fetch/Extract). */
+  async findRawEventsByJob(importJobId: string): Promise<RawEvent[]> {
+    const rows = await this.prisma.rawEvent.findMany({
+      where: { importJobId },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      importJobId: row.importJobId,
+      providerId: row.providerId,
+      providerKey: row.providerKey,
+      connectorVersion: row.connectorVersion,
+      acquiredAt: row.acquiredAt.toISOString(),
+      payload: row.payload as Record<string, unknown>,
+      mediaRefs: row.mediaRefs,
+      correlationId: row.correlationId,
+    }));
+  }
+
   /**
    * Clés déjà acquises pour un fournisseur (idempotence entre exécutions — RG-IMP : un même objet
    * source ne recrée pas de doublon). Format `providerId:providerKey` pour l'étape de déduplication.
@@ -89,8 +108,15 @@ export class ImportPipelineRepository {
     candidates: NormalizedEvent[];
     stats: PipelineStats;
     finalStatus: ImportJobStatus;
+    /** Rejeu (RG-IMP-03) : remplace les EventCandidates encore en attente au lieu d'en ajouter. */
+    replaceExisting?: boolean;
   }): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      if (input.replaceExisting) {
+        await tx.eventCandidate.deleteMany({
+          where: { importJobId: input.importJobId, status: EventCandidateStatus.PENDING },
+        });
+      }
       if (input.candidates.length > 0) {
         await tx.eventCandidate.createMany({
           data: input.candidates.map((candidate) => ({

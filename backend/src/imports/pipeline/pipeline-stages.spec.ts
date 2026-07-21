@@ -54,6 +54,26 @@ describe('NormalizeStage (projection vers le modèle commun — ADR.15)', () => 
     expect(result.confidence.title).toBe(1);
     expect(result.signature).toContain('tournoi');
   });
+
+  it('projette un événement schema.org (name/startDate/location/offers imbriqués)', () => {
+    const result = stage.normalize(
+      rawEvent({
+        '@type': 'Event',
+        name: 'Concert',
+        startDate: '2026-09-01T20:00:00Z',
+        location: { name: 'Salle A', address: { addressLocality: 'Lyon' } },
+        offers: { price: '15', priceCurrency: 'EUR' },
+        organizer: { name: 'Asso' },
+      }),
+    );
+    expect(result.fields.title).toBe('Concert');
+    expect(result.fields.startsAt).toBe('2026-09-01T20:00:00.000Z');
+    expect(result.fields.venue).toBe('Salle A');
+    expect(result.fields.city).toBe('Lyon');
+    expect(result.fields.price).toBe(15);
+    expect(result.fields.currency).toBe('EUR');
+    expect(result.fields.organizer).toBe('Asso');
+  });
 });
 
 describe('DeduplicateStage (idempotence + signature — RG-IMP)', () => {

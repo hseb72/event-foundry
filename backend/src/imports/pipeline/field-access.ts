@@ -4,11 +4,15 @@
  * l'harmonisation de format (dates, nombres).
  */
 
-/** Lit la première clé présente et non vide (chaîne), parmi une liste d'alias. */
+/**
+ * Lit la première clé présente et non vide parmi une liste d'alias, en ne considérant que les valeurs
+ * **scalaires** (chaîne, nombre, booléen). Les objets/tableaux imbriqués (ex. schema.org `location`,
+ * `organizer`) sont ignorés ici — ils relèvent de `readNested`.
+ */
 export function readField(payload: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = payload[key];
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || typeof value === 'object') {
       continue;
     }
     const str = typeof value === 'string' ? value : String(value);
@@ -17,6 +21,31 @@ export function readField(payload: Record<string, unknown>, keys: string[]): str
     }
   }
   return undefined;
+}
+
+/**
+ * Lit une valeur imbriquée (ex. schema.org `location.name`, `offers.price`). Traverse les objets ;
+ * pour un tableau, prend le premier élément. Renvoie la chaîne trouvée, ou `undefined`.
+ */
+export function readNested(payload: Record<string, unknown>, path: string[]): string | undefined {
+  let current: unknown = payload;
+  for (const key of path) {
+    if (Array.isArray(current)) {
+      current = current[0];
+    }
+    if (current === null || typeof current !== 'object') {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[key];
+  }
+  if (Array.isArray(current)) {
+    current = current[0];
+  }
+  if (current === null || current === undefined) {
+    return undefined;
+  }
+  const str = typeof current === 'string' ? current : String(current);
+  return str.trim().length > 0 ? str.trim() : undefined;
 }
 
 /** Convertit une chaîne en ISO 8601 UTC, ou `null` si non parseable. Harmonisation de format seule. */

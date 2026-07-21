@@ -8,43 +8,44 @@ import { IMPORT_CONNECTORS } from '../connectors/import-connector';
 import type { ImportJobWithAttachment } from '../entities/import-job.entity';
 import { ImportJobRepository } from '../repositories/import-job.repository';
 import { ImportPipelineRepository } from '../repositories/import-pipeline.repository';
+import { HttpFetcherService } from './http-fetcher.service';
 import { PipelineRunnerService } from './pipeline-runner.service';
 
 /**
- * Pipeline d'import unifié pour les canaux **structurés déterministes** (CSV / JSON — ADR.13/14).
- * Orchestre les étapes du framework : Extract (connecteur) → Raw Events (conservés) → Validate →
- * Normalize → Deduplicate → Persist. Aucune IA, aucune décision métier dans le connecteur ; la
- * sortie (EventCandidates) part en **validation humaine** (RG-IMP-06, sources REVIEW). Chaque
- * transition d'`ImportJob` est historisée (audit + supervision).
+ * Canal **URL** du pipeline d'import (ADR.13 §Capture). Récupère une page (Fetch), en extrait les
+ * événements balisés schema.org (Extract, déterministe — UrlConnector), conserve la page source dans
+ * MinIO, puis exécute le pipeline commun. Aucune décision métier ; sortie en EventCandidates
+ * (validation humaine — source à confiance faible, RG-IMP-06). La page source est conservée pour le
+ * rejeu (RG-IMP-03).
  */
 @Injectable()
-export class StructuredImportService {
+export class UrlImportService {
   constructor(
     private readonly jobs: ImportJobRepository,
     private readonly pipeline: ImportPipelineRepository,
     private readonly minio: MinioService,
+    private readonly fetcher: HttpFetcherService,
     private readonly runner: PipelineRunnerService,
     @Inject(IMPORT_CONNECTORS) private readonly connectors: ImportConnector[],
   ) {}
 
-  /** Import structuré à la demande (upload ou copier-coller). Rend la main après COMPLETED/FAILED. */
-  async import(content: string, contentType?: string | null): Promise<ImportJobWithAttachment> {
-    const trimmed = content?.trim() ?? '';
-    if (!trimmed) {
-      throw new BadRequestException('Contenu vide : fournissez un fichier CSV/JSON ou collez son contenu.');
+  async import(url: string): Promise<ImportJobWithAttachment> {
+    const target = url?.trim() ?? '';
+    if (!target) {
+      throw new BadRequestException('URL manquante.');
     }
-    const channel = this.detectChannel(trimmed, contentType);
-    const connector = this.resolveConnector(channel);
+    const connector = this.resolveUrlConnector();
     const correlationId = getCorrelationId() ?? generateCorrelationId();
 
-    const job = await this.createJob(trimmed, contentType, channel, connector.providerId, correlationId);
+    // Fetch (I/O) avant matérialisation du job : le job porte la page source acquise.
+    const fetched = await this.fetcher.fetch(target);
+    const job = await this.createJob(fetched.content, fetched.finalUrl, connector.providerId, correlationId);
 
     try {
-      // Extract — le connecteur ne produit que des ébauches de Raw Event (fidèles, sans décision).
       await this.jobs.transition(job.id, ImportJobStatus.EXTRACTING, correlationId, {
         startedAt: new Date(),
       });
-      const drafts = connector.extract({ content: trimmed, contentType });
+      const drafts = connector.extract({ content: fetched.content, contentType: fetched.contentType });
       const rawEvents = await this.pipeline.createRawEvents(
         job.id,
         correlationId,
@@ -57,7 +58,6 @@ export class StructuredImportService {
         })),
       );
 
-      // Validate → Normalize → Deduplicate → Persist (étapes communes du pipeline).
       await this.runner.run({
         importJobId: job.id,
         providerId: connector.providerId,
@@ -76,50 +76,33 @@ export class StructuredImportService {
     }
   }
 
-  private detectChannel(content: string, contentType?: string | null): ImportChannel {
-    if (contentType?.includes('json')) {
-      return ImportChannel.JSON;
-    }
-    if (contentType?.includes('csv')) {
-      return ImportChannel.CSV;
-    }
-    const first = content[0];
-    return first === '[' || first === '{' ? ImportChannel.JSON : ImportChannel.CSV;
-  }
-
-  private resolveConnector(channel: ImportChannel): ImportConnector {
-    // CSV et JSON sont servis par le même connecteur structuré (détection interne du format).
-    const connector = this.connectors.find(
-      (c) => c.channel === channel || (channel === ImportChannel.JSON && c.channel === ImportChannel.CSV),
-    );
+  private resolveUrlConnector(): ImportConnector {
+    const connector = this.connectors.find((c) => c.channel === ImportChannel.URL);
     if (!connector) {
-      throw new BadRequestException(`Aucun connecteur pour le canal ${channel}.`);
+      throw new BadRequestException('Aucun connecteur URL configuré.');
     }
     return connector;
   }
 
   private async createJob(
-    content: string,
-    contentType: string | null | undefined,
-    channel: ImportChannel,
+    html: string,
+    sourceUrl: string,
     providerId: string,
     correlationId: string,
   ): Promise<ImportJobWithAttachment> {
-    // Le contenu source est conservé dans MinIO (jamais en base) et référencé par un Attachment.
     const attachmentId = randomUUID();
-    const buffer = Buffer.from(content, 'utf-8');
+    const buffer = Buffer.from(html, 'utf-8');
     const checksum = createHash('sha256').update(buffer).digest('hex');
-    const storageKey = `attachments/${attachmentId}.${channel === ImportChannel.JSON ? 'json' : 'csv'}`;
-    const mime = contentType ?? (channel === ImportChannel.JSON ? 'application/json' : 'text/csv');
+    const storageKey = `attachments/${attachmentId}.html`;
 
-    await this.minio.putObject(storageKey, buffer, mime);
+    await this.minio.putObject(storageKey, buffer, 'text/html; charset=utf-8');
 
     return this.jobs.createWithAttachment({
       attachment: {
         id: attachmentId,
         type: 'TEXT',
-        originalName: null,
-        contentType: mime,
+        originalName: sourceUrl.slice(0, 255),
+        contentType: 'text/html',
         sizeBytes: buffer.length,
         checksum,
         storageBucket: this.minio.bucketName,
@@ -127,7 +110,7 @@ export class StructuredImportService {
       },
       status: ImportJobStatus.PENDING,
       correlationId,
-      channel,
+      channel: ImportChannel.URL,
       providerId,
     });
   }

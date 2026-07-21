@@ -23,6 +23,16 @@ export class ImportsApi {
     return this.http.post<ImportResponse>(`${API_BASE}/imports/structured`, { content, format });
   }
 
+  /** Import par URL (capture schema.org — canal déterministe). */
+  importUrl(url: string): Observable<ImportResponse> {
+    return this.http.post<ImportResponse>(`${API_BASE}/imports/url`, { url });
+  }
+
+  /** Rejeu d'un import depuis ses Raw Events conservés (Operator — RG-IMP-03). */
+  replay(id: string): Observable<{ importJobId: string; rawEventCount: number }> {
+    return this.http.post<{ importJobId: string; rawEventCount: number }>(`${API_BASE}/imports/${id}/replay`, {});
+  }
+
   list(): Observable<ImportResponse[]> {
     return this.http.get<ImportResponse[]>(`${API_BASE}/imports`);
   }

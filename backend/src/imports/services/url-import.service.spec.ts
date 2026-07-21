@@ -1,21 +1,30 @@
 import { ImportChannel, ImportJobStatus } from '@prisma/client';
 import { MinioService } from '../../infra/minio/minio.service';
-import { CsvJsonConnector } from '../connectors/csv-json.connector';
+import { UrlConnector } from '../connectors/url.connector';
 import { DeduplicateStage } from '../pipeline/deduplicate.stage';
 import { NormalizeStage } from '../pipeline/normalize.stage';
 import { ValidateStage } from '../pipeline/validate.stage';
 import { ImportJobRepository } from '../repositories/import-job.repository';
 import { ImportPipelineRepository } from '../repositories/import-pipeline.repository';
+import { HttpFetcherService } from './http-fetcher.service';
 import { PipelineRunnerService } from './pipeline-runner.service';
-import { StructuredImportService } from './structured-import.service';
+import { UrlImportService } from './url-import.service';
 
-describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)', () => {
+describe('UrlImportService (capture URL — ADR.13)', () => {
   let jobs: jest.Mocked<Pick<ImportJobRepository, 'createWithAttachment' | 'transition'>>;
   let pipeline: jest.Mocked<
     Pick<ImportPipelineRepository, 'createRawEvents' | 'findKnownProviderKeys' | 'persistResult'>
   >;
   let minio: jest.Mocked<Pick<MinioService, 'putObject' | 'bucketName'>>;
-  let service: StructuredImportService;
+  let fetcher: jest.Mocked<Pick<HttpFetcherService, 'fetch'>>;
+  let service: UrlImportService;
+
+  const html = `<script type="application/ld+json">${JSON.stringify({
+    '@type': 'Event',
+    name: 'Expo',
+    startDate: '2026-08-01T18:00:00Z',
+    url: 'https://ex.org/e/1',
+  })}</script>`;
 
   beforeEach(() => {
     jobs = {
@@ -23,13 +32,12 @@ describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)',
       transition: jest.fn().mockResolvedValue(undefined),
     };
     pipeline = {
-      // Renvoie des Raw Events avec un id, en écho des ébauches reçues.
-      createRawEvents: jest.fn().mockImplementation((_jobId, corr, drafts) =>
+      createRawEvents: jest.fn().mockImplementation((_j, corr, drafts) =>
         Promise.resolve(
           drafts.map((d: { payload: Record<string, unknown>; providerKey: string | null }, i: number) => ({
             id: `re-${i}`,
             importJobId: 'job-1',
-            providerId: 'structured-file',
+            providerId: 'web-url',
             providerKey: d.providerKey,
             connectorVersion: '1.0.0',
             acquiredAt: '2026-07-21T00:00:00Z',
@@ -43,6 +51,9 @@ describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)',
       persistResult: jest.fn().mockResolvedValue(undefined),
     };
     minio = { putObject: jest.fn().mockResolvedValue(undefined), bucketName: 'bucket' } as never;
+    fetcher = {
+      fetch: jest.fn().mockResolvedValue({ content: html, contentType: 'text/html', finalUrl: 'https://ex.org' }),
+    };
     const runner = new PipelineRunnerService(
       jobs as unknown as ImportJobRepository,
       pipeline as unknown as ImportPipelineRepository,
@@ -50,55 +61,31 @@ describe('StructuredImportService (pipeline déterministe CSV/JSON — ADR.14)',
       new NormalizeStage(),
       new DeduplicateStage(),
     );
-    service = new StructuredImportService(
+    service = new UrlImportService(
       jobs as unknown as ImportJobRepository,
       pipeline as unknown as ImportPipelineRepository,
       minio as unknown as MinioService,
+      fetcher as unknown as HttpFetcherService,
       runner,
-      [new CsvJsonConnector()],
+      [new UrlConnector()],
     );
   });
 
-  it('exécute le pipeline complet et produit des candidates avec volumétrie', async () => {
-    const csv = [
-      'key,title,starts_at',
-      'k1,Tournoi A,2026-08-01T18:00:00Z',
-      'k1,Doublon clé,2026-08-03T18:00:00Z',
-      'k3,Sans date,',
-    ].join('\n');
+  it('capture la page, conserve la source et produit un candidate', async () => {
+    await service.import('https://ex.org');
 
-    await service.import(csv, 'text/csv');
-
+    expect(fetcher.fetch).toHaveBeenCalledWith('https://ex.org');
     expect(minio.putObject).toHaveBeenCalledTimes(1);
     expect(jobs.createWithAttachment).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: ImportChannel.CSV, providerId: 'structured-file' }),
+      expect.objectContaining({ channel: ImportChannel.URL, providerId: 'web-url' }),
     );
-    // 3 objets lus, 3 raw events, 1 rejeté (sans date), 1 doublon (clé k1), 1 créé.
     const persistArg = pipeline.persistResult.mock.calls[0][0];
-    expect(persistArg.stats).toEqual({
-      objectsRead: 3,
-      rawEventCount: 3,
-      createdCount: 1,
-      updatedCount: 0,
-      duplicateCount: 1,
-      rejectedCount: 1,
-    });
-    expect(persistArg.candidates).toHaveLength(1);
+    expect(persistArg.stats.createdCount).toBe(1);
     expect(persistArg.finalStatus).toBe(ImportJobStatus.READY_FOR_VALIDATION);
   });
 
-  it('détecte le canal JSON et historise l’échec si le contenu est illisible', async () => {
-    await expect(service.import('[{cassé', 'application/json')).rejects.toThrow();
-    expect(jobs.transition).toHaveBeenCalledWith(
-      'job-1',
-      ImportJobStatus.FAILED,
-      expect.any(String),
-      expect.objectContaining({ finishedAt: expect.any(Date) }),
-    );
-  });
-
-  it('rejette un contenu vide sans créer de job', async () => {
-    await expect(service.import('   ')).rejects.toThrow(/vide/);
-    expect(jobs.createWithAttachment).not.toHaveBeenCalled();
+  it('rejette une URL vide sans appeler le réseau', async () => {
+    await expect(service.import('  ')).rejects.toThrow(/URL manquante/);
+    expect(fetcher.fetch).not.toHaveBeenCalled();
   });
 });

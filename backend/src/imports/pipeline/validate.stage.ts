@@ -15,8 +15,8 @@ export class ValidateStage {
     const rejected: { rawEvent: RawEvent; reason: string }[] = [];
 
     for (const rawEvent of rawEvents) {
-      const title = readField(rawEvent.payload, ['title', 'titre']);
-      const startsAt = readField(rawEvent.payload, ['starts_at', 'startsAt', 'start', 'date']);
+      const title = readField(rawEvent.payload, ['title', 'titre', 'name']);
+      const startsAt = readField(rawEvent.payload, ['starts_at', 'startsAt', 'start', 'date', 'startDate']);
       if (!title || title.trim().length === 0) {
         rejected.push({ rawEvent, reason: 'Titre manquant.' });
         continue;

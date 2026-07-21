@@ -11,6 +11,14 @@ const STATUS_LABELS: Record<string, string> = {
   READY_FOR_VALIDATION: 'Prêt à valider',
   COMPLETED: 'Terminé',
   FAILED: 'Échec',
+  // Statuts du pipeline unifié V3 (canaux structuré / URL).
+  DISCOVERING: 'Découverte',
+  FETCHING: 'Récupération',
+  EXTRACTING: 'Extraction',
+  VALIDATING: 'Validation',
+  NORMALIZING: 'Normalisation',
+  DEDUPLICATING: 'Déduplication',
+  PERSISTING: 'Enregistrement',
 };
 
 /** Administration des imports : liste globale + journal des transitions (EPIC 12, ADMIN). */
@@ -178,6 +186,17 @@ const STATUS_LABELS: Record<string, string> = {
                 <h3>Texte OCR</h3>
                 <div class="ocr">{{ selected.ocrText }}</div>
               }
+
+              <div style="margin-top:1rem;display:flex;gap:0.6rem;align-items:center">
+                <button class="btn" [disabled]="replaying" (click)="replay()">
+                  Rejouer depuis les Raw Events
+                </button>
+                @if (replayMessage) { <span class="muted" style="font-size:0.82rem">{{ replayMessage }}</span> }
+              </div>
+              <p class="muted" style="font-size:0.76rem;margin-top:0.3rem">
+                Ré-exécute Validation → Enregistrement à partir des données brutes conservées, sans
+                re-solliciter la source (canaux CSV/JSON/URL uniquement).
+              </p>
             </div>
           } @else {
             <p class="muted">Sélectionnez un import à gauche.</p>
@@ -192,8 +211,30 @@ export class JobsAdminComponent implements OnInit {
   selected: ImportDetailDto | null = null;
   loading = true;
   detailLoading = false;
+  replaying = false;
+  replayMessage = '';
 
   constructor(private readonly api: ImportsApi) {}
+
+  replay(): void {
+    if (!this.selected) {
+      return;
+    }
+    this.replaying = true;
+    this.replayMessage = '';
+    const id = this.selected.id;
+    this.api.replay(id).subscribe({
+      next: (result) => {
+        this.replaying = false;
+        this.replayMessage = `Rejoué : ${result.rawEventCount} Raw Event(s).`;
+        this.api.detail(id).subscribe((detail) => (this.selected = detail));
+      },
+      error: (err) => {
+        this.replaying = false;
+        this.replayMessage = err?.error?.message ?? 'Rejeu impossible pour cet import.';
+      },
+    });
+  }
 
   ngOnInit(): void {
     this.api.list().subscribe({
@@ -208,6 +249,7 @@ export class JobsAdminComponent implements OnInit {
   select(job: ImportResponse): void {
     this.detailLoading = true;
     this.selected = null;
+    this.replayMessage = '';
     this.api.detail(job.id).subscribe({
       next: (detail) => {
         this.selected = detail;

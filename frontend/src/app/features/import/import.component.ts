@@ -86,6 +86,23 @@ import { ImportResponse } from '../../core/models';
         </button>
       </div>
 
+      <div class="card">
+        <h3>Depuis une URL</h3>
+        <p class="muted" style="font-size:0.82rem;margin-top:0">
+          Capture déterministe des événements balisés <code>schema.org</code> (JSON-LD) d'une page.
+          Les pages sans balisage structuré ne produisent aucun événement.
+        </p>
+        <input
+          class="input"
+          type="url"
+          placeholder="https://exemple.org/evenement"
+          [(ngModel)]="url"
+        />
+        <button class="btn btn-primary" [disabled]="!url.trim() || busy" (click)="submitUrl()">
+          Capturer la page
+        </button>
+      </div>
+
       @if (result) {
         <div class="card result">
           <p class="ok">{{ message }}</p>
@@ -102,6 +119,7 @@ export class ImportComponent {
   file: File | null = null;
   text = '';
   structured = '';
+  url = '';
   busy = false;
   message = '';
   result: ImportResponse | null = null;
@@ -134,6 +152,17 @@ export class ImportComponent {
     });
   }
 
+  submitUrl(): void {
+    if (!this.url.trim()) {
+      return;
+    }
+    this.busy = true;
+    this.importsApi.importUrl(this.url.trim()).subscribe({
+      next: (result) => this.onSuccess(result, 'Page capturée, candidats prêts à valider.'),
+      error: () => (this.busy = false),
+    });
+  }
+
   uploadFile(): void {
     if (!this.file) {
       return;
@@ -162,6 +191,7 @@ export class ImportComponent {
     this.busy = false;
     this.text = '';
     this.structured = '';
+    this.url = '';
     this.file = null;
   }
 }
