@@ -7,6 +7,8 @@ import {
 } from '../secrets/ports/secrets-provider';
 import { AiConfigDto, UpdateAiConfigDto } from './dto/ai-config.dto';
 import { AiConfigRepository } from './ai-config.repository';
+import { AiProviderVerifier } from './ai-provider-verifier';
+import { findProvider } from './ai-providers';
 
 /** Portée « plateforme » (clé de scope fixe, secret sans scopeId). */
 export const PLATFORM_SCOPE_KEY = 'PLATFORM';
@@ -29,6 +31,7 @@ export class AiConfigService {
   constructor(
     private readonly repository: AiConfigRepository,
     @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
+    private readonly verifier: AiProviderVerifier,
   ) {}
 
   async get(scope: SecretScope, scopeKey: string): Promise<AiConfigDto | null> {
@@ -66,18 +69,26 @@ export class AiConfigService {
   }
 
   /**
-   * Test de connexion (BOUCHON) : vérifie que la clé est résolvable et non vide, puis marque
-   * TESTED / FAILED. En production, remplacé par un vrai ping du fournisseur.
+   * Test de connexion **réel** : résout la clé et interroge le fournisseur (appel léger de
+   * vérification d'identifiants — ADR.16), puis marque TESTED / FAILED. Les fournisseurs sans clé
+   * (ex. Ollama local) sont sondés sans authentification.
    */
   async test(scope: SecretScope, scopeKey: string): Promise<{ status: SecretStatus }> {
     const config = await this.repository.find(scope, scopeKey);
     let ok = false;
-    if (config?.secretRef) {
-      try {
-        const key = await this.secrets.resolve(config.secretRef);
-        ok = key.trim().length > 0;
-      } catch {
-        ok = false;
+    if (config) {
+      const provider = findProvider(config.provider);
+      let key = '';
+      if (config.secretRef) {
+        try {
+          key = await this.secrets.resolve(config.secretRef);
+        } catch {
+          key = '';
+        }
+      }
+      // Un fournisseur exigeant une clé ne peut être testé sans elle.
+      if (!provider?.requiresKey || key.trim().length > 0) {
+        ok = await this.verifier.verify(config.provider, key);
       }
     }
     const status = ok ? SecretStatus.TESTED : SecretStatus.FAILED;

@@ -2,10 +2,12 @@ import { SecretScope, SecretStatus, SecretType, type AiConfig } from '@prisma/cl
 import type { SecretMetadata, SecretsProvider } from '../secrets/ports/secrets-provider';
 import { AiConfigRepository } from './ai-config.repository';
 import { AiConfigService, PLATFORM_SCOPE_KEY } from './ai-config.service';
+import { AiProviderVerifier } from './ai-provider-verifier';
 
 describe('AiConfigService (ADR.16 / TSPEC.07)', () => {
   let repo: jest.Mocked<Pick<AiConfigRepository, 'find' | 'upsert' | 'setStatus'>>;
   let secrets: jest.Mocked<SecretsProvider>;
+  let verifier: jest.Mocked<Pick<AiProviderVerifier, 'verify'>>;
   let service: AiConfigService;
 
   const config = (over: Partial<AiConfig> = {}): AiConfig =>
@@ -49,7 +51,12 @@ describe('AiConfigService (ADR.16 / TSPEC.07)', () => {
       setStatus: jest.fn(),
       revoke: jest.fn(),
     };
-    service = new AiConfigService(repo as unknown as AiConfigRepository, secrets);
+    verifier = { verify: jest.fn() };
+    service = new AiConfigService(
+      repo as unknown as AiConfigRepository,
+      secrets,
+      verifier as unknown as AiProviderVerifier,
+    );
   });
 
   it('update : stocke la clé comme secret et ne la renvoie jamais', async () => {
@@ -90,13 +97,16 @@ describe('AiConfigService (ADR.16 / TSPEC.07)', () => {
     expect(repo.upsert.mock.calls[0][2].secretRef).toBe('ref-existing');
   });
 
-  it('test : TESTED si la clé se résout, sinon FAILED', async () => {
+  it('test : TESTED quand le fournisseur valide la clé, sinon FAILED', async () => {
     repo.find.mockResolvedValue(config());
     repo.setStatus.mockResolvedValue(config());
     secrets.resolve.mockResolvedValue('sk-live-secret-abcd');
-    await expect(service.test(SecretScope.USER, 'user-1')).resolves.toEqual({ status: SecretStatus.TESTED });
 
-    secrets.resolve.mockResolvedValue('');
+    verifier.verify.mockResolvedValue(true);
+    await expect(service.test(SecretScope.USER, 'user-1')).resolves.toEqual({ status: SecretStatus.TESTED });
+    expect(verifier.verify).toHaveBeenCalledWith('openai', 'sk-live-secret-abcd');
+
+    verifier.verify.mockResolvedValue(false);
     await expect(service.test(SecretScope.USER, 'user-1')).resolves.toEqual({ status: SecretStatus.FAILED });
   });
 
