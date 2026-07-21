@@ -1,4 +1,12 @@
-import { BadGatewayException, BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  HttpException,
+  Inject,
+  Injectable,
+  Logger,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ImportChannel, ImportJobStatus } from '@prisma/client';
 import { generateCorrelationId, getCorrelationId } from '@event-foundry/libraries';
 import { createHash, randomUUID } from 'node:crypto';
@@ -124,7 +132,18 @@ export class AiExtractionImportService {
       return job;
     } catch (error) {
       await this.jobs.transition(job.id, ImportJobStatus.FAILED, correlationId, { finishedAt: new Date() });
-      throw error;
+      // Les erreurs déjà typées (AI 502, validation…) sont remontées telles quelles.
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      // Toute autre erreur (persistance, provisioning, imprévu) : journalisée avec sa pile et
+      // remontée avec un message exploitable, jamais un 500 opaque.
+      const err = error as Error;
+      this.logger.error(
+        `Import IA échoué (correlationId=${correlationId}) : ${err.message}`,
+        err.stack,
+      );
+      throw new UnprocessableEntityException(`L'import IA a échoué : ${err.message}`);
     }
   }
 
