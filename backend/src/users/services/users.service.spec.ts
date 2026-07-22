@@ -2,6 +2,7 @@ import type { UserWithRoles } from '../entities/user.entity';
 import { RoleNotFoundException } from '../exceptions/role-not-found.exception';
 import { SelfAdminModificationException } from '../exceptions/self-admin-modification.exception';
 import { UserNotFoundException } from '../exceptions/user-not-found.exception';
+import { SecurityAuditService } from '../../account/services/security-audit.service';
 import { RoleRepository } from '../repositories/role.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { UsersService } from './users.service';
@@ -22,6 +23,7 @@ function fakeUser(id: string): UserWithRoles {
 describe('UsersService (administration)', () => {
   let users: jest.Mocked<Pick<UserRepository, 'findByIdWithRoles' | 'setActive' | 'replaceRoles' | 'listWithRoles'>>;
   let roles: jest.Mocked<Pick<RoleRepository, 'findByNames' | 'findByName'>>;
+  let audit: { record: jest.Mock };
   let service: UsersService;
 
   beforeEach(() => {
@@ -38,9 +40,11 @@ describe('UsersService (administration)', () => {
       ]),
       findByName: jest.fn(),
     };
+    audit = { record: jest.fn().mockResolvedValue(undefined) };
     service = new UsersService(
       users as unknown as UserRepository,
       roles as unknown as RoleRepository,
+      audit as unknown as SecurityAuditService,
     );
   });
 
@@ -54,6 +58,16 @@ describe('UsersService (administration)', () => {
   it('autorise la désactivation d’un autre compte', async () => {
     await service.setActive('u2', false, 'u1');
     expect(users.setActive).toHaveBeenCalledWith('u2', false);
+  });
+
+  it('historise la suspension (acteur = Operator courant) — IAM-009', async () => {
+    await service.setActive('u2', false, 'op-1');
+    expect(audit.record).toHaveBeenCalledWith('account.suspended', 'u2', { by: 'op-1' });
+  });
+
+  it('historise la réactivation', async () => {
+    await service.setActive('u2', true, 'op-1');
+    expect(audit.record).toHaveBeenCalledWith('account.reactivated', 'u2', { by: 'op-1' });
   });
 
   it('interdit à un admin de retirer son propre rôle ADMIN', async () => {

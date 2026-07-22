@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { SECURITY_EVENTS, SecurityAuditService } from '../../account/services/security-audit.service';
 import type { UserWithRoles } from '../entities/user.entity';
 import { SystemRole } from '../constants/role.constants';
 import { EmailAlreadyUsedException } from '../exceptions/email-already-used.exception';
@@ -14,6 +15,7 @@ export class UsersService implements IUsersService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly roleRepository: RoleRepository,
+    private readonly audit: SecurityAuditService,
   ) {}
 
   findByEmailWithRoles(email: string): Promise<UserWithRoles | null> {
@@ -55,7 +57,16 @@ export class UsersService implements IUsersService {
       throw new SelfAdminModificationException('désactivation impossible');
     }
     await this.getOrThrow(id);
-    return this.userRepository.setActive(id, isActive);
+    // IAM-006 : la suspension conserve les données (isActive=false + status=SUSPENDED). La
+    // réactivation restaure ACTIVE/REGISTERED selon la vérification d'e-mail (cf. Repository).
+    const updated = await this.userRepository.setActive(id, isActive);
+    // IAM-009 / §15 : suspension et réactivation sont historisées (acteur = Operator courant).
+    await this.audit.record(
+      isActive ? SECURITY_EVENTS.ACCOUNT_REACTIVATED : SECURITY_EVENTS.ACCOUNT_SUSPENDED,
+      id,
+      { by: currentUserId },
+    );
+    return updated;
   }
 
   /**

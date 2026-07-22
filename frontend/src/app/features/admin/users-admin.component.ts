@@ -116,16 +116,17 @@ const ROLES = ['USER', 'ADMIN'];
                 </td>
                 <td>
                   <span class="pill" [class.on]="user.isActive" [class.off]="!user.isActive">
-                    {{ user.isActive ? 'Actif' : 'Inactif' }}
+                    {{ user.isActive ? 'Actif' : 'Suspendu' }}
                   </span>
                 </td>
                 <td>
                   <button
                     class="btn"
                     [disabled]="busyId === user.id || user.id === currentId"
+                    [title]="user.isActive ? 'Bloque la connexion ; les données sont conservées' : 'Restaure l’accès au compte'"
                     (click)="toggleActive(user)"
                   >
-                    {{ user.isActive ? 'Désactiver' : 'Activer' }}
+                    {{ user.isActive ? 'Suspendre' : 'Réactiver' }}
                   </button>
                 </td>
               </tr>
