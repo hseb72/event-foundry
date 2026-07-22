@@ -1036,6 +1036,6 @@ export class IdentityComponent implements OnInit {
 
   logout(): void {
     this.auth.logout();
-    void this.router.navigate(['/login']);
+    void this.router.navigate(['/welcome']);
   }
 }
