@@ -1,5 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Prisma, SecretScope, SecretStatus, SecretType } from '@prisma/client';
+import * as nodemailer from 'nodemailer';
 import {
   SECRETS_PROVIDER,
   type SecretsProvider,
@@ -20,11 +21,13 @@ interface MailValue {
 
 /**
  * Configuration plateforme Operator (FSPEC.09 / TSPEC.09). Les valeurs non secrètes vivent en base ;
- * les identifiants SMTP sont des **secrets** (ADR.21), jamais renvoyés en clair. Le test d'envoi est
- * un **bouchon** (vérifie la présence/résolution des identifiants) ; un vrai envoi le remplacera.
+ * les identifiants SMTP sont des **secrets** (ADR.21), jamais renvoyés en clair. Le test d'envoi
+ * ouvre une vraie connexion SMTP (`verify`) pour valider hôte/port/TLS/authentification.
  */
 @Injectable()
 export class PlatformConfigService {
+  private readonly logger = new Logger(PlatformConfigService.name);
+
   constructor(
     private readonly repository: PlatformConfigRepository,
     @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
@@ -79,20 +82,33 @@ export class PlatformConfigService {
     return (await this.getMail())!;
   }
 
-  /** Test d'envoi (BOUCHON) : hôte renseigné + identifiants résolvables → TESTED, sinon FAILED. */
+  /**
+   * Test d'envoi : ouvre une **vraie connexion SMTP** (`transporter.verify`) avec les identifiants
+   * configurés. Valide l'hôte, le port, l'appariement TLS et l'authentification → TESTED ; toute
+   * erreur (DNS, port, secure, credentials) → FAILED, avec le motif journalisé pour diagnostic.
+   */
   async testMail(): Promise<{ status: SecretStatus }> {
     const setting = await this.repository.find(MAIL_SECTION, MAIL_KEY);
     let ok = false;
     if (setting) {
       const value = setting.value as unknown as MailValue;
-      ok = Boolean(value.host);
-      if (ok && setting.secretRef) {
-        try {
-          const password = await this.secrets.resolve(setting.secretRef);
-          ok = password.trim().length > 0;
-        } catch {
-          ok = false;
-        }
+      try {
+        const auth = value.username && setting.secretRef
+          ? { user: value.username, pass: await this.secrets.resolve(setting.secretRef) }
+          : undefined;
+        const transport = nodemailer.createTransport({
+          host: value.host,
+          port: value.port,
+          secure: value.secure,
+          auth,
+        });
+        await transport.verify();
+        ok = true;
+      } catch (error) {
+        ok = false;
+        this.logger.warn(
+          `Test SMTP échoué (${value.host}:${value.port}, secure=${value.secure}) : ${(error as Error).message}`,
+        );
       }
     }
     const status = ok ? SecretStatus.TESTED : SecretStatus.FAILED;

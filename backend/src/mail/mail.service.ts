@@ -59,17 +59,36 @@ export class MailService {
         secure: value.secure,
         auth,
       });
-      await transport.sendMail({
+      const info = await transport.sendMail({
         from: value.from,
         to: mail.to,
         subject: mail.subject,
         text: mail.text ?? stripHtml(mail.html),
         html: mail.html,
       });
-      this.logger.log(`E-mail envoyé à ${mail.to} : « ${mail.subject} ».`);
-      return true;
+      // `sendMail` résolu = le serveur SMTP a **accepté** le message (pas une preuve de remise finale).
+      // On journalise la réponse serveur et les destinataires acceptés/rejetés pour lever toute
+      // ambiguïté (un « accepté » sans réception relève ensuite du serveur : SPF/DKIM, spam, alias `from`).
+      const accepted = (info.accepted ?? []).map(String);
+      const rejected = (info.rejected ?? []).map(String);
+      const delivered = accepted.some((address) => address.toLowerCase() === mail.to.toLowerCase());
+      this.logger.log(
+        `SMTP ${value.host}:${value.port} (secure=${value.secure}, from=${value.from}) → ` +
+          `messageId=${info.messageId} accepted=[${accepted.join(', ')}] rejected=[${rejected.join(', ')}] ` +
+          `response="${(info.response ?? '').trim()}"`,
+      );
+      if (rejected.length > 0 || !delivered) {
+        this.logger.warn(
+          `E-mail à ${mail.to} non confirmé accepté par le SMTP (rejeté ou hors liste « accepted »). ` +
+            `Vérifiez l'expéditeur autorisé (${value.from}), l'appariement port/secure et les règles anti-spam.`,
+        );
+      }
+      return delivered;
     } catch (error) {
-      this.logger.error(`Envoi e-mail échoué (${mail.to} — « ${mail.subject} »)`, error as Error);
+      this.logger.error(
+        `Envoi e-mail échoué (${mail.to} — « ${mail.subject} » via ${value.host}:${value.port} secure=${value.secure})`,
+        error as Error,
+      );
       return false;
     }
   }

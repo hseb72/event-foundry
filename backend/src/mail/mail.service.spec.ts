@@ -19,7 +19,12 @@ describe('MailService — envoi transactionnel (best-effort, config Operator)', 
     platformConfig = { find: jest.fn() };
     secrets = { resolve: jest.fn().mockResolvedValue('smtp-secret') };
     config = { get: jest.fn().mockReturnValue('test') };
-    sendMail.mockResolvedValue(undefined);
+    sendMail.mockResolvedValue({
+      accepted: ['user@b.c'],
+      rejected: [],
+      response: '250 2.0.0 OK',
+      messageId: 'm-1',
+    });
     nodemailerMock.createTransport.mockReturnValue({ sendMail } as never);
     service = new MailService(
       platformConfig as unknown as PlatformConfigRepository,
@@ -49,6 +54,15 @@ describe('MailService — envoi transactionnel (best-effort, config Operator)', 
     const sent = sendMail.mock.calls[0][0];
     expect(sent.to).toBe('user@b.c');
     expect(sent.text).toBe('Bonjour toi'); // repli texte du HTML
+  });
+
+  it('destinataire rejeté par le SMTP → renvoie false (non confirmé accepté)', async () => {
+    platformConfig.find.mockResolvedValue({
+      value: { host: 'smtp.x', port: 587, secure: false, from: 'no-reply@x', username: 'u' },
+      secretRef: 'ref-1',
+    });
+    sendMail.mockResolvedValue({ accepted: [], rejected: ['user@b.c'], response: '550 denied' });
+    await expect(service.send(mail)).resolves.toBe(false);
   });
 
   it('panne SMTP → best-effort : renvoie false sans propager', async () => {

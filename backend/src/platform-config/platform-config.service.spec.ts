@@ -1,7 +1,12 @@
 import { SecretScope, SecretStatus, SecretType, type PlatformSetting } from '@prisma/client';
+import * as nodemailer from 'nodemailer';
 import type { SecretMetadata, SecretsProvider } from '../secrets/ports/secrets-provider';
 import { PlatformConfigRepository } from './platform-config.repository';
 import { PlatformConfigService } from './platform-config.service';
+
+jest.mock('nodemailer');
+const nodemailerMock = nodemailer as jest.Mocked<typeof nodemailer>;
+const verify = jest.fn();
 
 describe('PlatformConfigService — configuration mail (FSPEC.09)', () => {
   let repo: jest.Mocked<Pick<PlatformConfigRepository, 'find' | 'upsert' | 'setStatus'>>;
@@ -69,13 +74,17 @@ describe('PlatformConfigService — configuration mail (FSPEC.09)', () => {
     expect(JSON.stringify(dto)).not.toContain('super-secret-word');
   });
 
-  it('testMail : TESTED quand hôte + identifiants résolus, sinon FAILED', async () => {
+  it('testMail : TESTED quand la connexion SMTP se vérifie, FAILED sinon', async () => {
     repo.find.mockResolvedValue(setting());
     repo.setStatus.mockResolvedValue(setting());
     secrets.resolve.mockResolvedValue('super-secret-word');
+    nodemailerMock.createTransport.mockReturnValue({ verify } as never);
+
+    verify.mockResolvedValueOnce(true);
     await expect(service.testMail()).resolves.toEqual({ status: SecretStatus.TESTED });
 
-    secrets.resolve.mockRejectedValue(new Error('missing'));
+    // Connexion refusée (mauvais port/secure/credentials) → FAILED, sans propager.
+    verify.mockRejectedValueOnce(new Error('ECONNREFUSED'));
     await expect(service.testMail()).resolves.toEqual({ status: SecretStatus.FAILED });
   });
 });
