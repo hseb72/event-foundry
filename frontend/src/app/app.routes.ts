@@ -29,11 +29,16 @@ import { ValidationComponent } from './features/validation/validation.component'
 import { ConfirmEmailChangeComponent } from './features/account/confirm-email-change.component';
 import { ForgotPasswordComponent } from './features/account/forgot-password.component';
 import { ResetPasswordComponent } from './features/account/reset-password.component';
+import { LandingComponent } from './features/landing/landing.component';
+import { RegisterComponent } from './features/register/register.component';
 import { VerifyEmailComponent } from './features/verify-email/verify-email.component';
 import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
+  // Page de garde publique (vitrine) : point d'entrée d'un visiteur non authentifié.
+  { path: 'welcome', component: LandingComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
   // Publiques : cibles des liens de compte reçus par e-mail (FSPEC.18).
   { path: 'verify-email', component: VerifyEmailComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },

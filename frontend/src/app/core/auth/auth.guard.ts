@@ -8,5 +8,6 @@ export const authGuard: CanActivateFn = () => {
   if (auth.isAuthenticated()) {
     return true;
   }
-  return router.createUrlTree(['/login']);
+  // Visiteur non authentifié : la vitrine publique est le point d'entrée (login/inscription y mènent).
+  return router.createUrlTree(['/welcome']);
 };

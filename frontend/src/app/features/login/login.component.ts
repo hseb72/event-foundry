@@ -62,6 +62,9 @@ import { AuthService } from '../../core/auth/auth.service';
         <a routerLink="/forgot-password" style="text-align:center; font-size:0.85rem">
           Mot de passe oublié ?
         </a>
+        <p style="text-align:center; font-size:0.85rem; margin:0">
+          Pas encore de compte ? <a routerLink="/register">Créer un compte</a>
+        </p>
       </form>
     </div>
   `,

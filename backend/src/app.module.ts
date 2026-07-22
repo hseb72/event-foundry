@@ -8,6 +8,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { DiscoveryModule } from './discovery/discovery.module';
+import { PublicModule } from './public/public.module';
 import { EventsModule } from './events/events.module';
 import { IdentityModule } from './identity/identity.module';
 import { ImportsModule } from './imports/imports.module';
@@ -59,6 +60,7 @@ import { UsersModule } from './users/users.module';
     CalendarModule,
     PlanningModule,
     DiscoveryModule,
+    PublicModule,
     SearchModule,
     RecommendationModule,
     NotificationsModule,
