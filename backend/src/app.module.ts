@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AccountModule } from './account/account.module';
 import { AuthModule } from './auth/auth.module';
 import { CorrelationMiddleware } from './common/correlation/correlation.middleware';
 import { HealthModule } from './health/health.module';
@@ -49,6 +50,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     IdentityModule,
     AuthModule,
+    AccountModule,
     ReferenceDataModule,
     ImportsModule,
     EventsModule,

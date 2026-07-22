@@ -2,6 +2,8 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { AccountLifecycleService } from '../../account/services/account-lifecycle.service';
+import { SECURITY_EVENTS, SecurityAuditService } from '../../account/services/security-audit.service';
 import {
   IDENTITY_SERVICE,
   type IIdentityService,
@@ -33,6 +35,8 @@ export class AuthService {
     private readonly tokens: TokenService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly lifecycle: AccountLifecycleService,
+    private readonly audit: SecurityAuditService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokensDto> {
@@ -44,18 +48,25 @@ export class AuthService {
     });
     // Tout nouvel inscrit est un Explorer (FSPEC.10) : rôle et expérience par défaut.
     await this.identity.assignDefaultExplorerRole(user.id);
+    // Cycle de vie (FSPEC.18) : lien de vérification d'e-mail + audit. La connexion est permise
+    // avant vérification (IAM-003 — fonctionnalités limitées), l'inscription n'est jamais bloquée.
+    await this.audit.record(SECURITY_EVENTS.ACCOUNT_CREATED, user.id);
+    await this.lifecycle.issueEmailVerification(user);
     return this.issueFor(user.id);
   }
 
   async login(dto: LoginDto): Promise<AuthTokensDto> {
     const user = await this.users.findByEmailWithRoles(dto.email);
     if (!user || !user.isActive) {
+      await this.audit.record(SECURITY_EVENTS.LOGIN_FAILED, user?.id ?? null, { email: dto.email });
       throw new InvalidCredentialsException();
     }
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordMatches) {
+      await this.audit.record(SECURITY_EVENTS.LOGIN_FAILED, user.id);
       throw new InvalidCredentialsException();
     }
+    await this.audit.record(SECURITY_EVENTS.LOGIN_SUCCEEDED, user.id);
     return this.issueFor(user.id);
   }
 

@@ -26,10 +26,13 @@ import { NotificationsComponent } from './features/notifications/notifications.c
 import { RecommendationsComponent } from './features/recommendations/recommendations.component';
 import { SearchComponent } from './features/search/search.component';
 import { ValidationComponent } from './features/validation/validation.component';
+import { VerifyEmailComponent } from './features/verify-email/verify-email.component';
 import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
+  // Publique : cible du lien de vérification d'e-mail (FSPEC.18).
+  { path: 'verify-email', component: VerifyEmailComponent },
   {
     path: '',
     component: ShellComponent,

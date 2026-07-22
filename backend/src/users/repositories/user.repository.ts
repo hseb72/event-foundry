@@ -37,10 +37,19 @@ export class UserRepository extends BaseRepository<User> {
     });
   }
 
-  setActive(id: string, isActive: boolean): Promise<UserWithRoles> {
+  /**
+   * Active / suspend un compte, en gardant `status` synchronisé (FSPEC.18) : suspension → SUSPENDED ;
+   * réactivation → ACTIVE si l'e-mail est vérifié, sinon retour à REGISTERED (IAM-003).
+   */
+  async setActive(id: string, isActive: boolean): Promise<UserWithRoles> {
+    const current = await this.prisma.user.findUniqueOrThrow({
+      where: { id },
+      select: { emailVerifiedAt: true },
+    });
+    const status = !isActive ? 'SUSPENDED' : current.emailVerifiedAt ? 'ACTIVE' : 'REGISTERED';
     return this.prisma.user.update({
       where: { id },
-      data: { isActive },
+      data: { isActive, status },
       include: { roles: { include: { role: true } } },
     });
   }
@@ -70,6 +79,9 @@ export class UserRepository extends BaseRepository<User> {
         email: input.email,
         passwordHash: input.passwordHash,
         displayName: input.displayName,
+        // Nouveau compte : e-mail non encore vérifié (FSPEC.18 / IAM-003). La connexion reste
+        // possible (fonctionnalités limitées) ; la vérification fait passer à ACTIVE.
+        status: 'REGISTERED',
         roles: { create: [{ role: { connect: { id: input.roleId } } }] },
       },
       include: { roles: { include: { role: true } } },

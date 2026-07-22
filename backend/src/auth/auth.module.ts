@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { AccountModule } from '../account/account.module';
 import { IdentityModule } from '../identity/identity.module';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './controllers/auth.controller';
@@ -17,7 +18,7 @@ import { AuthService } from './services/auth.service';
  * d'IdentityModule (calcul de l'identité effective + émission des jetons).
  */
 @Module({
-  imports: [ConfigModule, JwtModule.register({}), UsersModule, IdentityModule],
+  imports: [ConfigModule, JwtModule.register({}), UsersModule, IdentityModule, AccountModule],
   controllers: [AuthController],
   providers: [
     AuthService,

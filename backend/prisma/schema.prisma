@@ -309,6 +309,12 @@ model User {
   passwordHash         String                   @map("password_hash")
   displayName          String                   @map("display_name")
   isActive             Boolean                  @default(true) @map("is_active")
+  // Cycle de vie du compte (FSPEC.18) : REGISTERED (e-mail non vérifié, fonctionnalités limitées)
+  // → ACTIVE → SUSPENDED/DELETED. `isActive` reste la vue « peut se connecter » (synchronisée).
+  status               AccountStatus            @default(ACTIVE)
+  emailVerifiedAt      DateTime?                @map("email_verified_at") @db.Timestamptz(6)
+  accountTokens        AccountToken[]
+  securityEvents       SecurityEvent[]
   roles                UserRole[]
   participations       UserParticipation[]
   recommendationFeedback RecommendationFeedback[]
@@ -326,6 +332,55 @@ model User {
   updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("users")
+}
+
+/// Cycle de vie d'un compte (FSPEC.18 §3). REGISTERED = créé mais e-mail non vérifié (IAM-003).
+enum AccountStatus {
+  REGISTERED
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+/// Familles de jetons de compte à usage unique (FSPEC.18 / IAM-005).
+enum AccountTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+  INVITATION
+}
+
+/// Jeton de compte **à usage unique et à durée limitée** (IAM-005) : vérification d'e-mail,
+/// récupération de mot de passe, changement d'e-mail, invitation. Seule l'empreinte (SHA-256)
+/// est stockée — jamais le jeton en clair. `payload` porte le contexte (ex. nouvelle adresse).
+model AccountToken {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      AccountTokenType
+  tokenHash String           @unique @map("token_hash")
+  payload   Json?            @db.JsonB
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, type])
+  @@map("account_tokens")
+}
+
+/// Journal d'audit des opérations de sécurité d'un compte (FSPEC.18 §15 / IAM-009) : création,
+/// vérification d'e-mail, connexions (succès/échec), changements de mot de passe / e-mail,
+/// suspension, réactivation, suppression. `userId` nullable : l'audit survit à la suppression.
+model SecurityEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type       String
+  metadata   Json?    @db.JsonB
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([userId, occurredAt])
+  @@map("security_events")
 }
 
 /// Rôle : responsabilité métier portant un ensemble de permissions (ADR.08). `scope` distingue
