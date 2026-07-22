@@ -59,7 +59,7 @@ export class AccountSecurityService {
       tokenHash: hashAccountToken(raw),
       expiresAt: accountTokenExpiry(PASSWORD_RESET_TTL_HOURS),
     });
-    this.mailer.deliver(user.email, 'reset-password', raw);
+    await this.mailer.deliver(user.email, 'reset-password', raw);
     await this.audit.record(SECURITY_EVENTS.PASSWORD_RESET_REQUESTED, user.id);
   }
 
@@ -100,7 +100,7 @@ export class AccountSecurityService {
       expiresAt: accountTokenExpiry(EMAIL_CHANGE_TTL_HOURS),
       payload: { newEmail },
     });
-    this.mailer.deliver(newEmail, 'confirm-email-change', raw);
+    await this.mailer.deliver(newEmail, 'confirm-email-change', raw);
     await this.audit.record(SECURITY_EVENTS.EMAIL_CHANGE_REQUESTED, userId);
   }
 

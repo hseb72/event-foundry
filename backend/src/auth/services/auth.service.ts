@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -29,6 +29,8 @@ const SALT_ROUNDS = 12;
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject(USERS_SERVICE) private readonly users: IUsersService,
     @Inject(IDENTITY_SERVICE) private readonly identity: IIdentityService,
@@ -49,9 +51,14 @@ export class AuthService {
     // Tout nouvel inscrit est un Explorer (FSPEC.10) : rôle et expérience par défaut.
     await this.identity.assignDefaultExplorerRole(user.id);
     // Cycle de vie (FSPEC.18) : lien de vérification d'e-mail + audit. La connexion est permise
-    // avant vérification (IAM-003 — fonctionnalités limitées), l'inscription n'est jamais bloquée.
+    // avant vérification (IAM-003 — fonctionnalités limitées), et **l'inscription n'est jamais
+    // bloquée** : l'envoi du lien (SMTP) est best-effort, une panne n'invalide pas le compte créé.
     await this.audit.record(SECURITY_EVENTS.ACCOUNT_CREATED, user.id);
-    await this.lifecycle.issueEmailVerification(user);
+    try {
+      await this.lifecycle.issueEmailVerification(user);
+    } catch (error) {
+      this.logger.error(`Lien de vérification non émis pour ${user.email} (compte tout de même créé)`, error as Error);
+    }
     return this.issueFor(user.id);
   }
 

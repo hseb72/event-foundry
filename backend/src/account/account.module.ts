@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MailModule } from '../mail/mail.module';
 import { AccountController } from './controllers/account.controller';
 import { AccountRepository } from './repositories/account.repository';
 import { AccountLifecycleService } from './services/account-lifecycle.service';
@@ -13,6 +14,7 @@ import { SecurityAuditService } from './services/security-audit.service';
  * de lui.
  */
 @Module({
+  imports: [MailModule],
   controllers: [AccountController],
   providers: [
     AccountLifecycleService,

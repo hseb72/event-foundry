@@ -37,7 +37,7 @@ export class AccountLifecycleService {
       tokenHash: hashAccountToken(raw),
       expiresAt: accountTokenExpiry(EMAIL_VERIFICATION_TTL_HOURS),
     });
-    this.mailer.deliver(user.email, 'verify-email', raw);
+    await this.mailer.deliver(user.email, 'verify-email', raw);
     await this.audit.record(SECURITY_EVENTS.EMAIL_VERIFICATION_SENT, user.id);
   }
 
