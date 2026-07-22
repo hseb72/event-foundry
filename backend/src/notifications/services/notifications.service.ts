@@ -130,6 +130,32 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Notification **technique** (famille workflow — FSPEC.04) : un import a produit des candidats à
+   * valider → informe les opérateurs du pipeline (`pipeline.manage`). Politique déterministe : rien à
+   * notifier si aucun candidat n'a été créé. Best-effort ; n'interrompt jamais le pipeline.
+   */
+  async notifyImportReadyForValidation(importJobId: string, createdCount: number): Promise<void> {
+    if (createdCount <= 0) {
+      return;
+    }
+    try {
+      const recipients = await this.repository.findUserIdsWithPermission('pipeline.manage');
+      for (const userId of recipients) {
+        const notification = await this.repository.create({
+          userId,
+          type: 'IMPORT_READY_FOR_VALIDATION',
+          title: 'Import prêt à valider',
+          body: `Un import a produit ${createdCount} candidat(s) à valider.`,
+          eventId: null,
+        });
+        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
+      }
+    } catch (error) {
+      this.logger.error(`Notification « import prêt à valider » (${importJobId}) échouée`, error as Error);
+    }
+  }
+
   list(userId: string, status?: NotificationStatus): Promise<Notification[]> {
     return this.repository.listForUser(userId, status);
   }

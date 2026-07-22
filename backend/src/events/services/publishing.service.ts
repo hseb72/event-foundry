@@ -87,38 +87,24 @@ export class PublishingService {
     const updated = await this.repository.applyTransition(id, from, to, actorId);
     await this.syncSearchIndex(updated);
     await this.notifyParticipants(updated, from, actorId);
-    if (isFirstPublish) {
-      await this.notifyFollowers(updated, actorId);
-    }
-    // Fait métier « événement publié » (ADR.12 §5) : les abonnés (audit ; futurs canaux de
-    // notification) réagissent sans coupler la publication. Best-effort, non bloquant.
+    // Fait métier « événement publié » (ADR.12 §5). Les abonnés (audit ; Notifications → abonnés
+    // Follow) réagissent **sans** coupler la publication : la notification des abonnés n'est plus
+    // appelée directement ici, elle est pilotée par le bus (RG-NOTIF-01). Best-effort, non bloquant.
     if (to === EventStatus.PUBLISHED) {
       this.eventBus.publish(
         makeDomainEvent<EventPublishedPayload>(DOMAIN_EVENTS.EVENT_PUBLISHED, {
           eventId: updated.id,
+          title: updated.title,
           actorId,
+          firstPublish: isFirstPublish,
+          organizerId: updated.organizerId,
+          activityId: updated.activityId,
+          categoryId: updated.categoryId,
+          venueId: updated.venueId,
         }),
       );
     }
     return updated;
-  }
-
-  /**
-   * « Information Explorer » (ADR.17 / FSPEC.04) : à la première publication, informe les abonnés
-   * (Follow — ADR.19) de l'organisateur / activité / catégorie / lieu de l'événement. Best-effort.
-   */
-  private async notifyFollowers(event: EventWithRefs, actorId: string): Promise<void> {
-    await this.notifications.notifyFollowersOfNewEvent(
-      {
-        id: event.id,
-        title: event.title,
-        organizerId: event.organizerId,
-        activityId: event.activityId,
-        categoryId: event.categoryId,
-        venueId: event.venueId,
-      },
-      actorId,
-    );
   }
 
   /**

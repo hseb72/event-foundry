@@ -66,3 +66,49 @@ describe('NotificationsService — information Explorer (Follow → notification
     await expect(service.notifyFollowersOfNewEvent(event)).resolves.toBeUndefined();
   });
 });
+
+describe('NotificationsService — notification technique « import prêt à valider » (workflow)', () => {
+  let repository: jest.Mocked<
+    Pick<NotificationRepository, 'create' | 'getUserPreferences' | 'findUserIdsWithPermission'>
+  >;
+  let dispatcher: jest.Mocked<Pick<NotificationDispatcher, 'dispatch'>>;
+  let follows: jest.Mocked<Pick<FollowService, 'listFollowerIds'>>;
+  let settings: jest.Mocked<Pick<NotificationSettingsService, 'get'>>;
+  let service: NotificationsService;
+
+  beforeEach(() => {
+    repository = {
+      create: jest.fn().mockResolvedValue({ id: 'n-1' } as Notification),
+      getUserPreferences: jest.fn().mockResolvedValue({ ...DEFAULT_USER_PREFERENCES }),
+      findUserIdsWithPermission: jest.fn().mockResolvedValue(['op-1', 'op-2']),
+    };
+    dispatcher = { dispatch: jest.fn().mockResolvedValue(undefined) };
+    follows = { listFollowerIds: jest.fn() };
+    settings = { get: jest.fn().mockResolvedValue({ ...DEFAULT_GLOBAL_SETTINGS }) };
+    service = new NotificationsService(
+      repository as unknown as NotificationRepository,
+      dispatcher as unknown as NotificationDispatcher,
+      follows as unknown as FollowService,
+      settings as unknown as NotificationSettingsService,
+    );
+  });
+
+  it('aucun candidat créé → aucune notification (politique déterministe)', async () => {
+    await service.notifyImportReadyForValidation('job-1', 0);
+    expect(repository.findUserIdsWithPermission).not.toHaveBeenCalled();
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('candidats créés → notifie chaque opérateur `pipeline.manage`', async () => {
+    await service.notifyImportReadyForValidation('job-1', 4);
+    expect(repository.findUserIdsWithPermission).toHaveBeenCalledWith('pipeline.manage');
+    const recipients = repository.create.mock.calls.map((call) => call[0].userId).sort();
+    expect(recipients).toEqual(['op-1', 'op-2']);
+    expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
+  });
+
+  it('best-effort : une erreur de ciblage ne remonte pas', async () => {
+    repository.findUserIdsWithPermission.mockRejectedValue(new Error('db down'));
+    await expect(service.notifyImportReadyForValidation('job-1', 2)).resolves.toBeUndefined();
+  });
+});

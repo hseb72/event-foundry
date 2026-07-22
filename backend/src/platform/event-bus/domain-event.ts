@@ -42,10 +42,17 @@ export type ImportFailedPayload = {
   reason: string;
 };
 
-/** Un Event est passé au statut PUBLISHED. */
+/** Un Event est passé au statut PUBLISHED. Porte les cibles de suivi (pour notifier les abonnés). */
 export type EventPublishedPayload = {
   eventId: string;
+  title: string;
   actorId: string | null;
+  /** Première publication (≠ re-publication) : seule à informer les abonnés Follow. */
+  firstPublish: boolean;
+  organizerId: string | null;
+  activityId: string;
+  categoryId: string | null;
+  venueId: string | null;
 };
 
 /** La participation d'un utilisateur à un Event a changé (axes ou activation). */

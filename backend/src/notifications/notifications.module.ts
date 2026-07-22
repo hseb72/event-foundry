@@ -5,6 +5,7 @@ import { NotificationSettingsController } from './controllers/notification-setti
 import { NotificationsController } from './controllers/notifications.controller';
 import { NotificationRepository } from './repositories/notification.repository';
 import { NotificationDispatcher } from './services/notification-dispatcher.service';
+import { NotificationEventSubscriber } from './services/notification-event.subscriber';
 import { NotificationPreferencesService } from './services/notification-preferences.service';
 import { NotificationSettingsService } from './services/notification-settings.service';
 import { NotificationsService } from './services/notifications.service';
@@ -24,6 +25,7 @@ import { NotificationsService } from './services/notifications.service';
     NotificationRepository,
     NotificationSettingsService,
     NotificationPreferencesService,
+    NotificationEventSubscriber,
   ],
   exports: [NotificationsService],
 })

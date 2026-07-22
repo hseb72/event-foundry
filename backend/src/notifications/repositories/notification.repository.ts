@@ -94,6 +94,21 @@ export class NotificationRepository {
   }
 
   /**
+   * Identifiants des utilisateurs actifs disposant d'une permission (via leurs rôles plateforme).
+   * Sert à cibler les notifications **techniques** (workflow → Operator, ex. import à valider).
+   */
+  async findUserIdsWithPermission(permissionKey: string): Promise<string[]> {
+    const users = await this.prisma.user.findMany({
+      where: {
+        isActive: true,
+        roles: { some: { role: { permissions: { some: { permission: { key: permissionKey } } } } } },
+      },
+      select: { id: true },
+    });
+    return users.map((user) => user.id);
+  }
+
+  /**
    * Préférences de notifications V3 (JSONB `preferences.notifications`) : un vecteur par piste de
    * fréquence. Rétro-compatible avec l'ancien format `{ email, push }` (mappé sur la piste immédiate)
    * et repli sur les valeurs par défaut (in-app + récap hebdo email).
