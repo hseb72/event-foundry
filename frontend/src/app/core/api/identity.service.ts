@@ -51,6 +51,16 @@ export class IdentityService {
       );
   }
 
+  /** Se déclarer (ou non) organisateur autonome. Réémet les jetons (permissions + expériences). */
+  setOrganizerMode(enabled: boolean): Observable<IdentityMe> {
+    return this.http
+      .patch<AuthTokens>(`${API_BASE}/identity/me/organizer-mode`, { enabled })
+      .pipe(
+        tap((tokens) => this.auth.applyTokens(tokens)),
+        switchMap(() => this.loadMe()),
+      );
+  }
+
   updateProfile(input: { displayName?: string; preferences?: Record<string, unknown> }): Observable<IdentityMe> {
     return this.http
       .patch<IdentityMe>(`${API_BASE}/identity/me/profile`, input)

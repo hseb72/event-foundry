@@ -57,6 +57,7 @@ describe('AuthService', () => {
       changeActiveOrganization: jest.fn(),
       updateProfile: jest.fn(),
       assignDefaultExplorerRole: jest.fn().mockResolvedValue(undefined),
+      setAutonomousOrganizer: jest.fn().mockResolvedValue(undefined),
     };
     tokens = { issueTokens: jest.fn().mockResolvedValue(TOKENS) };
     jwtService = {

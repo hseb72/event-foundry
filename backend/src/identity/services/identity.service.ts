@@ -11,6 +11,28 @@ import { availableExperiences, computeEffectiveIdentity } from './effective-iden
 const DEFAULT_ROLE = 'Explorer';
 
 /**
+ * Rôle plateforme « organisateur autonome » (mode individuel — STRAT / CLAUDE.md §11) : un Explorer
+ * peut se déclarer organisateur sans appartenir à une organisation. Portée PLATEFORME (permissions
+ * actives sans organisation active) ; débloque l'expérience Organizer. Les événements créés sont
+ * rattachés à l'utilisateur (`createdById`), l'organisateur (référentiel) restant optionnel.
+ */
+const AUTONOMOUS_ORGANIZER_ROLE = 'Organisateur autonome';
+const AUTONOMOUS_ORGANIZER_DESCRIPTION =
+  'Organisateur individuel (mode autonome, sans organisation) : crée et publie ses propres événements.';
+const AUTONOMOUS_ORGANIZER_PERMISSIONS = [
+  'catalog.read',
+  'event.read',
+  'event.create',
+  'event.update',
+  'event.publish',
+  'event.archive',
+  'import.create',
+  'import.execute',
+  'dashboard.view',
+  'statistics.view',
+];
+
+/**
  * Domaine Identity (TSPEC.06) : calcul de l'identité effective et gestion du contexte actif.
  * Orchestre le Repository (Prisma confiné) et la logique pure de `effective-identity.util`.
  * Journalise les opérations sensibles (changement d'expérience/d'organisation) — TSPEC.06.
@@ -69,6 +91,37 @@ export class IdentityService implements IIdentityService {
 
   async updateProfile(userId: string, update: ProfileUpdate): Promise<EffectiveIdentity> {
     await this.repository.updateProfile(userId, update);
+    return this.getEffectiveIdentity(userId);
+  }
+
+  /**
+   * Active/désactive le mode **organisateur autonome** (self-service). À l'activation, l'utilisateur
+   * reçoit le rôle plateforme correspondant (débloque l'expérience Organizer + son interface). À la
+   * désactivation, le rôle est retiré et l'expérience active repli sur Explorer si besoin. Le rôle
+   * est garanti à la volée (aucun re-seed requis). Renvoie l'identité effective réémise ensuite.
+   */
+  async setAutonomousOrganizer(userId: string, enabled: boolean): Promise<EffectiveIdentity> {
+    const roleId = await this.repository.ensurePlatformRole(
+      AUTONOMOUS_ORGANIZER_ROLE,
+      AUTONOMOUS_ORGANIZER_DESCRIPTION,
+      Experience.ORGANIZER,
+      AUTONOMOUS_ORGANIZER_PERMISSIONS,
+    );
+    if (enabled) {
+      await this.repository.addPlatformRole(userId, roleId);
+      this.logger.log(`AutonomousOrganizerEnabled user=${userId}`);
+    } else {
+      await this.repository.removePlatformRole(userId, roleId);
+      // Si l'expérience active était Organizer et n'est plus disponible, revenir à Explorer.
+      const graph = await this.repository.loadGraphOrThrow(userId);
+      if (
+        graph.activeExperience === Experience.ORGANIZER &&
+        !availableExperiences(graph).includes(Experience.ORGANIZER)
+      ) {
+        await this.repository.setActiveExperience(userId, Experience.EXPLORER);
+      }
+      this.logger.log(`AutonomousOrganizerDisabled user=${userId}`);
+    }
     return this.getEffectiveIdentity(userId);
   }
 

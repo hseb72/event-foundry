@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Experience, Prisma, RoleScope } from '@prisma/client';
+import { RoleScope } from '@prisma/client';
+import type { Experience, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { identityInclude, type IdentityGraph } from '../entities/identity-graph.entity';
 
@@ -61,6 +62,36 @@ export class IdentityRepository {
 
   findRoleByName(name: string): Promise<RoleSummary | null> {
     return this.prisma.role.findUnique({ where: { name }, select: { id: true, scope: true } });
+  }
+
+  /**
+   * Garantit l'existence d'un rôle PLATEFORME et de ses permissions (idempotent, aligné sur le seed).
+   * Permet à une capacité self-service (ex. organisateur autonome) de fonctionner sans dépendre d'un
+   * re-seed manuel : le rôle est créé/resynchronisé à la volée à partir des clés de permission.
+   */
+  async ensurePlatformRole(
+    name: string,
+    description: string,
+    experience: Experience,
+    permissionKeys: string[],
+  ): Promise<string> {
+    const role = await this.prisma.role.upsert({
+      where: { name },
+      update: { description, scope: RoleScope.PLATFORM, experience },
+      create: { name, description, scope: RoleScope.PLATFORM, experience },
+    });
+    const permissions = await this.prisma.permission.findMany({
+      where: { key: { in: permissionKeys } },
+      select: { id: true },
+    });
+    await this.prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+    if (permissions.length > 0) {
+      await this.prisma.rolePermission.createMany({
+        data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+        skipDuplicates: true,
+      });
+    }
+    return role.id;
   }
 
   userExists(userId: string): Promise<boolean> {

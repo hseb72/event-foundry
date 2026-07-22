@@ -313,6 +313,27 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         </section>
 
         <section class="card">
+          <h2>Devenir organisateur</h2>
+          <p class="muted" style="margin:0 0 0.75rem;font-size:0.85rem">
+            Activez le mode organisateur pour créer et publier vos propres événements, en toute
+            autonomie (sans organisation). L'expérience Organizer devient alors accessible depuis la
+            barre latérale.
+          </p>
+          <label class="switch">
+            <input
+              type="checkbox"
+              [checked]="isOrganizer()"
+              [disabled]="organizerBusy()"
+              (change)="toggleOrganizer($event)"
+            />
+            {{ isOrganizer() ? 'Mode organisateur activé' : 'Je suis organisateur' }}
+          </label>
+          @if (organizerMsg()) {
+            <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ organizerMsg() }}</p>
+          }
+        </section>
+
+        <section class="card">
           <h2>Rôles</h2>
           <div class="chips">
             @for (role of m.roles; track role) {
@@ -963,6 +984,32 @@ export class IdentityComponent implements OnInit {
       },
       error: (err) =>
         this.securityMsg.set(err?.error?.message ?? "Échec de la demande de changement d'adresse."),
+    });
+  }
+
+  // --- Mode organisateur autonome (self-service) ---
+  readonly organizerBusy = signal(false);
+  readonly organizerMsg = signal('');
+  /** L'utilisateur a-t-il le rôle organisateur autonome ? (indépendant d'une appartenance à une org). */
+  readonly isOrganizer = computed(() => (this.me()?.roles ?? []).includes('Organisateur autonome'));
+
+  toggleOrganizer(event: Event): void {
+    const enabled = (event.target as HTMLInputElement).checked;
+    this.organizerBusy.set(true);
+    this.organizerMsg.set('');
+    this.identity.setOrganizerMode(enabled).subscribe({
+      next: () => {
+        this.organizerBusy.set(false);
+        this.organizerMsg.set(
+          enabled
+            ? '✅ Mode organisateur activé — l\'expérience Organizer est disponible dans la barre latérale.'
+            : 'Mode organisateur désactivé.',
+        );
+      },
+      error: (err) => {
+        this.organizerBusy.set(false);
+        this.organizerMsg.set(err?.error?.message ?? 'Action impossible pour le moment.');
+      },
     });
   }
 

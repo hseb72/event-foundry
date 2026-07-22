@@ -22,6 +22,8 @@ export interface IIdentityService {
   changeActiveOrganization(userId: string, organizationId: string | null): Promise<EffectiveIdentity>;
   /** Met à jour le profil (nom affiché, préférences) de l'utilisateur courant. */
   updateProfile(userId: string, update: ProfileUpdate): Promise<EffectiveIdentity>;
+  /** Active/désactive le mode organisateur autonome (self-service — débloque l'expérience Organizer). */
+  setAutonomousOrganizer(userId: string, enabled: boolean): Promise<EffectiveIdentity>;
   /** Pose le rôle Explorer par défaut (inscription) et l'expérience EXPLORER. Idempotent. */
   assignDefaultExplorerRole(userId: string): Promise<void>;
 }

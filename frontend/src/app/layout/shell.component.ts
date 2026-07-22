@@ -263,19 +263,20 @@ const NAV: NavItem[] = [
       <aside class="sidebar">
         <div class="brand">EventFoundry</div>
 
-        <div class="switcher" role="tablist" aria-label="Expérience active">
-          @for (exp of experiences; track exp.key) {
-            <button
-              type="button"
-              [class.on]="activeExperience() === exp.key"
-              [disabled]="!isAvailable(exp.key)"
-              [style.--exp]="exp.color"
-              (click)="switchExperience(exp.key)"
-            >
-              {{ exp.label }}
-            </button>
-          }
-        </div>
+        @if (visibleExperiences().length > 1) {
+          <div class="switcher" role="tablist" aria-label="Expérience active">
+            @for (exp of visibleExperiences(); track exp.key) {
+              <button
+                type="button"
+                [class.on]="activeExperience() === exp.key"
+                [style.--exp]="exp.color"
+                (click)="switchExperience(exp.key)"
+              >
+                {{ exp.label }}
+              </button>
+            }
+          </div>
+        }
 
         @if (activeExperience() === 'ORGANIZER' && organizations().length) {
           <div class="ctx">
@@ -335,6 +336,11 @@ export class ShellComponent implements OnInit {
   readonly unreadNotifications = this.notificationsApi.unread;
 
   readonly activeExperience = computed<Experience | null>(() => this.me()?.activeExperience ?? null);
+  // Le switcher n'affiche que les expériences réellement débloquées : masqué pour un Explorer pur
+  // (une seule expérience), Explorer/Organizer pour un organisateur, les trois pour un Operator.
+  readonly visibleExperiences = computed(() =>
+    EXPERIENCES.filter((exp) => this.isAvailable(exp.key)),
+  );
   readonly organizations = computed(() => this.me()?.organizations ?? []);
   readonly initials = computed(() => toInitials(this.me()?.displayName || this.me()?.email || ''));
 

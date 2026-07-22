@@ -5,6 +5,7 @@ import { AuthTokensDto } from '../../auth/dto/auth-tokens.dto';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { ChangeExperienceDto } from '../dto/change-experience.dto';
 import { IdentityMeDto } from '../dto/identity-me.dto';
+import { OrganizerModeDto } from '../dto/organizer-mode.dto';
 import { SwitchOrganizationDto } from '../dto/switch-organization.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 import {
@@ -56,6 +57,18 @@ export class IdentityController {
     @Body() dto: ChangeExperienceDto,
   ): Promise<AuthTokensDto> {
     const effective = await this.identity.changeActiveExperience(user.userId, dto.experience);
+    return this.tokens.issueTokens(effective);
+  }
+
+  @Patch('organizer-mode')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: AuthTokensDto })
+  async setOrganizerMode(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: OrganizerModeDto,
+  ): Promise<AuthTokensDto> {
+    // Réémet des jetons : le nouveau rôle change permissions et expériences disponibles.
+    const effective = await this.identity.setAutonomousOrganizer(user.userId, dto.enabled);
     return this.tokens.issueTokens(effective);
   }
 

@@ -108,6 +108,25 @@ const ROLES: RoleSeed[] = [
     ],
   },
   {
+    name: 'Organisateur autonome',
+    description:
+      'Organisateur individuel (mode autonome, sans organisation) : crée et publie ses propres événements.',
+    scope: RoleScope.PLATFORM,
+    experience: Experience.ORGANIZER,
+    permissions: [
+      'catalog.read',
+      'event.read',
+      'event.create',
+      'event.update',
+      'event.publish',
+      'event.archive',
+      'import.create',
+      'import.execute',
+      'dashboard.view',
+      'statistics.view',
+    ],
+  },
+  {
     name: 'Platform Operator',
     description: 'Supervise le pipeline documentaire, les référentiels et les traitements.',
     scope: RoleScope.PLATFORM,
