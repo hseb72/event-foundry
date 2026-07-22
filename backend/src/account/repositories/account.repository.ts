@@ -71,6 +71,30 @@ export class AccountRepository {
     });
   }
 
+  /** Remplace le mot de passe (déjà haché). */
+  updatePassword(userId: string, passwordHash: string): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+  }
+
+  /**
+   * Remplace l'adresse e-mail après confirmation (IAM-004) : la nouvelle adresse arrive vérifiée
+   * (le lien a été reçu dessus). L'ancienne adresse cesse d'être valide à cet instant précis.
+   */
+  replaceEmail(userId: string, email: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { email, emailVerifiedAt: new Date() },
+    });
+  }
+
+  /** Un compte (actif ou non) utilise-t-il déjà cette adresse ? (IAM-002, hors compte donné). */
+  async emailInUse(email: string, excludeUserId?: string): Promise<boolean> {
+    const count = await this.prisma.user.count({
+      where: { email, ...(excludeUserId ? { id: { not: excludeUserId } } : {}) },
+    });
+    return count > 0;
+  }
+
   /** Journal d'audit sécurité (IAM-009). L'audit survit à la suppression du compte (SetNull). */
   async recordSecurityEvent(
     type: string,

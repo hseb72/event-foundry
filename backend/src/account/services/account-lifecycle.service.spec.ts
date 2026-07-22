@@ -1,8 +1,8 @@
-import type { ConfigService } from '@nestjs/config';
 import { AccountTokenType, type AccountToken, type User } from '@prisma/client';
 import { InvalidAccountTokenException } from '../exceptions/invalid-account-token.exception';
 import type { AccountRepository } from '../repositories/account.repository';
 import { AccountLifecycleService } from './account-lifecycle.service';
+import type { AccountLinkMailer } from './account-link-mailer.service';
 import type { SecurityAuditService } from './security-audit.service';
 
 describe('AccountLifecycleService — vérification d’e-mail (FSPEC.18 / IAM-003..005)', () => {
@@ -15,7 +15,7 @@ describe('AccountLifecycleService — vérification d’e-mail (FSPEC.18 / IAM-0
     markEmailVerified: jest.Mock;
   };
   let audit: { record: jest.Mock };
-  let config: { get: jest.Mock };
+  let mailer: { deliver: jest.Mock };
   let service: AccountLifecycleService;
 
   beforeEach(() => {
@@ -28,11 +28,11 @@ describe('AccountLifecycleService — vérification d’e-mail (FSPEC.18 / IAM-0
       markEmailVerified: jest.fn().mockResolvedValue({} as User),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
-    config = { get: jest.fn().mockReturnValue('http://localhost:4200') };
+    mailer = { deliver: jest.fn() };
     service = new AccountLifecycleService(
       repository as unknown as AccountRepository,
       audit as unknown as SecurityAuditService,
-      config as unknown as ConfigService,
+      mailer as unknown as AccountLinkMailer,
     );
   });
 

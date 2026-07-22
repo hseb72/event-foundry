@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AccountApi } from '../../core/api/account.service';
 import { IdentityService } from '../../core/api/identity.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
@@ -252,10 +253,42 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           } @else {
             <p style="margin:0 0 0.3rem"><strong>{{ m.displayName }}</strong></p>
             <p class="muted" style="margin:0 0 0.6rem;font-size:0.85rem">
-              {{ m.email }} <span class="muted">· e-mail de connexion (non modifiable)</span>
+              {{ m.email }} <span class="muted">· e-mail de connexion</span>
             </p>
             <button class="btn" (click)="startEdit(m.displayName)">Modifier le nom affiché</button>
           }
+        </section>
+
+        <section class="card">
+          <h2>Sécurité</h2>
+          <div style="display:grid;gap:1rem;max-width:320px">
+            <div style="display:grid;gap:0.4rem">
+              <h3 style="font-size:0.85rem;margin:0">Changer le mot de passe</h3>
+              <input class="input" type="password" [(ngModel)]="pwdCurrent"
+                placeholder="Mot de passe actuel" autocomplete="current-password" />
+              <input class="input" type="password" [(ngModel)]="pwdNew"
+                placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password" />
+              <button class="btn" (click)="changePassword()" [disabled]="!pwdCurrent || pwdNew.length < 8">
+                Changer le mot de passe
+              </button>
+            </div>
+            <div style="display:grid;gap:0.4rem">
+              <h3 style="font-size:0.85rem;margin:0">Changer l'adresse e-mail</h3>
+              <input class="input" type="password" [(ngModel)]="emailPwd"
+                placeholder="Mot de passe actuel" autocomplete="current-password" />
+              <input class="input" type="email" [(ngModel)]="emailNew" placeholder="Nouvelle adresse" />
+              <button class="btn" (click)="requestEmailChange()" [disabled]="!emailPwd || !emailNew">
+                Envoyer le lien de confirmation
+              </button>
+              <p class="muted" style="margin:0;font-size:0.78rem">
+                Un lien de confirmation sera envoyé à la nouvelle adresse ; l'ancienne reste valide
+                jusqu'à confirmation.
+              </p>
+            </div>
+            @if (securityMsg()) {
+              <p style="margin:0;font-size:0.85rem">{{ securityMsg() }}</p>
+            }
+          </div>
         </section>
 
         <section class="card">
@@ -899,6 +932,38 @@ export class IdentityComponent implements OnInit {
       return;
     }
     this.identity.updateProfile({ displayName }).subscribe(() => this.editing.set(false));
+  }
+
+  // --- Sécurité du compte (FSPEC.18) ---
+  pwdCurrent = '';
+  pwdNew = '';
+  emailPwd = '';
+  emailNew = '';
+  readonly securityMsg = signal('');
+  private readonly account = inject(AccountApi);
+
+  changePassword(): void {
+    this.account.changePassword(this.pwdCurrent, this.pwdNew).subscribe({
+      next: () => {
+        this.pwdCurrent = '';
+        this.pwdNew = '';
+        this.securityMsg.set('✅ Mot de passe modifié.');
+      },
+      error: (err) =>
+        this.securityMsg.set(err?.error?.message ?? 'Échec du changement de mot de passe.'),
+    });
+  }
+
+  requestEmailChange(): void {
+    this.account.requestEmailChange(this.emailPwd, this.emailNew).subscribe({
+      next: () => {
+        this.securityMsg.set(`✅ Lien de confirmation envoyé à ${this.emailNew}.`);
+        this.emailPwd = '';
+        this.emailNew = '';
+      },
+      error: (err) =>
+        this.securityMsg.set(err?.error?.message ?? "Échec de la demande de changement d'adresse."),
+    });
   }
 
   /** État courant d'un vecteur de notification (lu depuis les préférences renvoyées par /me). */

@@ -1,12 +1,12 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   styles: [
     `
       .wrap {
@@ -59,6 +59,9 @@ import { AuthService } from '../../core/auth/auth.service';
         <button class="btn btn-primary" type="submit" [disabled]="loading">
           {{ loading ? 'Connexion…' : 'Se connecter' }}
         </button>
+        <a routerLink="/forgot-password" style="text-align:center; font-size:0.85rem">
+          Mot de passe oublié ?
+        </a>
       </form>
     </div>
   `,
