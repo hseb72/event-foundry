@@ -4,6 +4,8 @@ import { PlatformConfigModule } from '../platform-config/platform-config.module'
 import { NotificationSettingsController } from './controllers/notification-settings.controller';
 import { NotificationsController } from './controllers/notifications.controller';
 import { NotificationRepository } from './repositories/notification.repository';
+import { NotificationDigestScheduler } from './services/notification-digest.scheduler';
+import { NotificationDigestService } from './services/notification-digest.service';
 import { NotificationDispatcher } from './services/notification-dispatcher.service';
 import { NotificationEventSubscriber } from './services/notification-event.subscriber';
 import { NotificationPreferencesService } from './services/notification-preferences.service';
@@ -26,6 +28,8 @@ import { NotificationsService } from './services/notifications.service';
     NotificationSettingsService,
     NotificationPreferencesService,
     NotificationEventSubscriber,
+    NotificationDigestService,
+    NotificationDigestScheduler,
   ],
   exports: [NotificationsService],
 })

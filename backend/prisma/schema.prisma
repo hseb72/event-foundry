@@ -118,6 +118,14 @@ enum NotificationStatus {
   READ
 }
 
+/// Priorité d'une notification (ADR.17 / FSPEC.04). `CRITICAL` outrepasse les réglages de récap
+/// et est diffusée immédiatement (RG-NOTIF-05).
+enum NotificationPriority {
+  INFORMATION
+  IMPORTANT
+  CRITICAL
+}
+
 /// Secrets Management (ADR.21). Types, portées et états d'un secret (métadonnées seulement).
 enum SecretType {
   API_KEY
@@ -951,21 +959,28 @@ model RecommendationFeedback {
 /// notification est un canal de communication, jamais un objet métier (TSPEC.07). Le lien vers
 /// l'Event est optionnel (contexte de rebond) et facultatif.
 model Notification {
-  id        String              @id @default(uuid()) @db.Uuid
-  userId    String              @map("user_id") @db.Uuid
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
   type      String
   title     String
   body      String
-  channel   NotificationChannel @default(IN_APP)
-  status    NotificationStatus  @default(UNREAD)
-  eventId   String?             @map("event_id") @db.Uuid
-  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event     Event?              @relation(fields: [eventId], references: [id], onDelete: SetNull)
-  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  readAt    DateTime?           @map("read_at") @db.Timestamptz(6)
+  channel   NotificationChannel  @default(IN_APP)
+  status    NotificationStatus   @default(UNREAD)
+  priority  NotificationPriority @default(INFORMATION)
+  eventId   String?              @map("event_id") @db.Uuid
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event?               @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime?            @map("read_at") @db.Timestamptz(6)
+  // Idempotence des récaps (RG-NOTIF-05) : horodate l'inclusion d'une notification dans le récap
+  // quotidien / hebdomadaire, indépendamment par piste (pas de double envoi sur une même piste).
+  dailyDigestedAt  DateTime?     @map("daily_digested_at") @db.Timestamptz(6)
+  weeklyDigestedAt DateTime?     @map("weekly_digested_at") @db.Timestamptz(6)
 
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([dailyDigestedAt])
+  @@index([weeklyDigestedAt])
   @@map("notifications")
 }
 

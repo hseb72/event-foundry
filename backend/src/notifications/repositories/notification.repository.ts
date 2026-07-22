@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationChannel, NotificationStatus, Prisma, type Notification } from '@prisma/client';
+import {
+  NotificationChannel,
+  NotificationPriority,
+  NotificationStatus,
+  Prisma,
+  type Notification,
+} from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import {
   DEFAULT_USER_PREFERENCES,
@@ -8,6 +14,13 @@ import {
   type VectorChoice,
 } from '../domain/notification-routing';
 
+/** Pistes de récap et colonne d'idempotence associée (une par piste — RG-NOTIF-05). */
+export type DigestTrack = 'daily' | 'weekly';
+const DIGEST_COLUMN: Record<DigestTrack, 'dailyDigestedAt' | 'weeklyDigestedAt'> = {
+  daily: 'dailyDigestedAt',
+  weekly: 'weeklyDigestedAt',
+};
+
 export interface CreateNotificationInput {
   userId: string;
   type: string;
@@ -15,6 +28,9 @@ export interface CreateNotificationInput {
   body: string;
   eventId?: string | null;
   channel?: NotificationChannel;
+  priority?: NotificationPriority;
+  /** Marque la notification comme déjà consommée par les récaps (ex. critique diffusée immédiatement). */
+  digestConsumed?: boolean;
 }
 
 /**
@@ -27,6 +43,7 @@ export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   create(input: CreateNotificationInput): Promise<Notification> {
+    const consumedAt = input.digestConsumed ? new Date() : null;
     return this.prisma.notification.create({
       data: {
         userId: input.userId,
@@ -35,6 +52,9 @@ export class NotificationRepository {
         body: input.body,
         eventId: input.eventId ?? null,
         channel: input.channel ?? NotificationChannel.IN_APP,
+        priority: input.priority ?? NotificationPriority.INFORMATION,
+        dailyDigestedAt: consumedAt,
+        weeklyDigestedAt: consumedAt,
       },
     });
   }
@@ -91,6 +111,30 @@ export class NotificationRepository {
   async eventTitle(eventId: string): Promise<string | null> {
     const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { title: true } });
     return event?.title ?? null;
+  }
+
+  /**
+   * Notifications en attente de récap pour une piste (planificateur — TSPEC.04). Une notification est
+   * « en attente » tant qu'elle n'a pas été datée sur la colonne de la piste. Les récaps déjà émis
+   * (`DIGEST_*`) sont exclus pour ne pas s'auto-agréger. Ordonné par destinataire pour l'agrégation.
+   */
+  findPendingForDigest(track: DigestTrack, limit = 5000): Promise<Notification[]> {
+    return this.prisma.notification.findMany({
+      where: { [DIGEST_COLUMN[track]]: null, NOT: { type: { startsWith: 'DIGEST_' } } },
+      orderBy: [{ userId: 'asc' }, { createdAt: 'asc' }],
+      take: limit,
+    });
+  }
+
+  /** Marque des notifications comme incluses dans le récap d'une piste (idempotence — pas de double envoi). */
+  async markDigested(track: DigestTrack, ids: string[]): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.prisma.notification.updateMany({
+      where: { id: { in: ids } },
+      data: { [DIGEST_COLUMN[track]]: new Date() },
+    });
   }
 
   /**

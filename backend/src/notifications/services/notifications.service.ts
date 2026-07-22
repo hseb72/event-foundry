@@ -1,11 +1,26 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { FollowTargetType, NotificationStatus, type Notification } from '@prisma/client';
+import { FollowTargetType, NotificationPriority, NotificationStatus, type Notification } from '@prisma/client';
 import { FollowService } from '../../follow/follow.service';
-import type { ChannelPreferences } from '../domain/notification-channel';
-import { resolveOutboundVector } from '../domain/notification-routing';
+import { resolveImmediateVector, type NotificationPriorityLevel } from '../domain/notification-routing';
 import { NotificationRepository } from '../repositories/notification.repository';
 import { NotificationDispatcher } from './notification-dispatcher.service';
 import { NotificationSettingsService } from './notification-settings.service';
+
+/** Correspondance enum Prisma → niveau de priorité du domaine de routage (RG-NOTIF-05). */
+const PRIORITY_LEVEL: Record<NotificationPriority, NotificationPriorityLevel> = {
+  INFORMATION: 'information',
+  IMPORTANT: 'important',
+  CRITICAL: 'critical',
+};
+
+/** Contenu d'une notification à émettre (l'in-app est toujours créé ; l'envoi sortant suit le routage). */
+interface NotificationDraft {
+  type: string;
+  title: string;
+  body: string;
+  eventId?: string | null;
+  priority?: NotificationPriority;
+}
 
 /** Données minimales d'un événement publié, pour notifier les abonnés (sans coupler au domaine Events). */
 export interface PublishedEventTargets {
@@ -49,17 +64,30 @@ export class NotificationsService {
   ) {}
 
   /**
-   * Vecteurs sortants effectifs pour une notification **immédiate** (Channel Router — RG-NOTIF-03) :
-   * croise réglages globaux (Operator) et préférences individuelles. L'in-app est toujours conservé
-   * séparément (historique). Les récaps (quotidien/hebdo) relèveront du planificateur (04-C).
+   * Crée l'in-app (historique — toujours) puis applique le **routage immédiat** priorité comprise
+   * (Channel Router — RG-NOTIF-03/05). Une notification `critical` est diffusée immédiatement et
+   * **consommée** des récaps (pas de doublon) ; les autres restent éligibles au planificateur de
+   * récaps selon les pistes actives de l'utilisateur.
    */
-  private async resolveOutbound(userId: string): Promise<ChannelPreferences> {
+  private async emit(userId: string, draft: NotificationDraft): Promise<void> {
+    const priority = draft.priority ?? NotificationPriority.INFORMATION;
     const [settings, preferences] = await Promise.all([
       this.settings.get(),
       this.repository.getUserPreferences(userId),
     ]);
-    const vector = resolveOutboundVector('immediate', preferences, settings);
-    return { email: vector === 'email', push: vector === 'push' };
+    const vector = resolveImmediateVector(PRIORITY_LEVEL[priority], preferences, settings);
+    const notification = await this.repository.create({
+      userId,
+      type: draft.type,
+      title: draft.title,
+      body: draft.body,
+      eventId: draft.eventId ?? null,
+      priority,
+      digestConsumed: priority === NotificationPriority.CRITICAL,
+    });
+    if (vector) {
+      await this.dispatcher.dispatch(notification, { email: vector === 'email', push: vector === 'push' });
+    }
   }
 
   /**
@@ -88,14 +116,12 @@ export class NotificationsService {
         recipients.delete(actorId);
       }
       for (const userId of recipients) {
-        const notification = await this.repository.create({
-          userId,
+        await this.emit(userId, {
           type: 'NEW_FOLLOWED_EVENT',
           title: 'Nouvel événement suivi',
           body: `« ${event.title} » vient d'être publié.`,
           eventId: event.id,
         });
-        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
       }
     } catch (error) {
       this.logger.error(`Notification des abonnés du nouvel événement ${event.id} échouée`, error as Error);
@@ -116,14 +142,12 @@ export class NotificationsService {
       const title = (await this.repository.eventTitle(eventId)) ?? 'un événement';
       const template = MESSAGES[type];
       for (const userId of recipients) {
-        const notification = await this.repository.create({
-          userId,
+        await this.emit(userId, {
           type,
           title: template.title,
           body: template.body(title),
           eventId,
         });
-        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
       }
     } catch (error) {
       this.logger.error(`Notification de la transition ${type} sur ${eventId} échouée`, error as Error);
@@ -142,14 +166,12 @@ export class NotificationsService {
     try {
       const recipients = await this.repository.findUserIdsWithPermission('pipeline.manage');
       for (const userId of recipients) {
-        const notification = await this.repository.create({
-          userId,
+        await this.emit(userId, {
           type: 'IMPORT_READY_FOR_VALIDATION',
           title: 'Import prêt à valider',
           body: `Un import a produit ${createdCount} candidat(s) à valider.`,
-          eventId: null,
+          priority: NotificationPriority.IMPORTANT,
         });
-        await this.dispatcher.dispatch(notification, await this.resolveOutbound(userId));
       }
     } catch (error) {
       this.logger.error(`Notification « import prêt à valider » (${importJobId}) échouée`, error as Error);

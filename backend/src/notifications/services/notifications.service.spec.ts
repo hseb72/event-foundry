@@ -99,12 +99,27 @@ describe('NotificationsService — notification technique « import prêt à val
     expect(repository.create).not.toHaveBeenCalled();
   });
 
-  it('candidats créés → notifie chaque opérateur `pipeline.manage`', async () => {
+  it('candidats créés → crée un in-app IMPORTANT pour chaque opérateur `pipeline.manage`', async () => {
     await service.notifyImportReadyForValidation('job-1', 4);
     expect(repository.findUserIdsWithPermission).toHaveBeenCalledWith('pipeline.manage');
     const recipients = repository.create.mock.calls.map((call) => call[0].userId).sort();
     expect(recipients).toEqual(['op-1', 'op-2']);
+    expect(repository.create.mock.calls[0][0].priority).toBe('IMPORTANT');
+  });
+
+  it('préférences par défaut (immédiat = aucun) → aucun envoi sortant immédiat (relève du récap)', async () => {
+    await service.notifyImportReadyForValidation('job-1', 4);
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('opérateur ayant activé l’immédiat email → envoi sortant immédiat', async () => {
+    repository.getUserPreferences.mockResolvedValue({
+      ...DEFAULT_USER_PREFERENCES,
+      immediate: 'email',
+    });
+    await service.notifyImportReadyForValidation('job-1', 4);
     expect(dispatcher.dispatch).toHaveBeenCalledTimes(2);
+    expect(dispatcher.dispatch.mock.calls[0][1]).toEqual({ email: true, push: false });
   });
 
   it('best-effort : une erreur de ciblage ne remonte pas', async () => {

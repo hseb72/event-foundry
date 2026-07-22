@@ -16,6 +16,12 @@ export type VectorChoice = OutboundVector | 'none';
 /** Pistes de fréquence indépendantes (RG-NOTIF-04). */
 export type FrequencyTrack = 'immediate' | 'daily' | 'weekly';
 
+/** Pistes différables (récaps) par ordre de repli pour une notification critique. */
+export const DIGEST_TRACKS: readonly FrequencyTrack[] = ['daily', 'weekly'];
+
+/** Priorité d'une notification (ADR.17). Seule `critical` outrepasse les réglages de récap. */
+export type NotificationPriorityLevel = 'information' | 'important' | 'critical';
+
 /** Réglages globaux plateforme (Operator) : vecteurs et pistes activés globalement. */
 export interface NotificationGlobalSettings {
   vectors: Record<OutboundVector, boolean>;
@@ -61,4 +67,30 @@ export function resolveOutboundVector(
     return null;
   }
   return settings.vectors[choice] ? choice : null;
+}
+
+/**
+ * Vecteur sortant **immédiat** effectif au moment de la réception d'un événement, priorité comprise
+ * (RG-NOTIF-05). Une notification `critical` ne peut jamais être différée dans un récap : si la piste
+ * immédiate ne donne rien, on se rabat sur le vecteur d'une piste de récap active (quotidienne puis
+ * hebdomadaire) pour la diffuser **maintenant**. Pour les autres priorités, seule la piste immédiate
+ * compte (les pistes de récap sont traitées par le planificateur). Renvoie `null` si aucun vecteur
+ * sortant n'est configuré (l'in-app conserve toujours la trace).
+ */
+export function resolveImmediateVector(
+  priority: NotificationPriorityLevel,
+  preferences: NotificationUserPreferences,
+  settings: NotificationGlobalSettings,
+): OutboundVector | null {
+  const immediate = resolveOutboundVector('immediate', preferences, settings);
+  if (immediate || priority !== 'critical') {
+    return immediate;
+  }
+  for (const track of DIGEST_TRACKS) {
+    const vector = resolveOutboundVector(track, preferences, settings);
+    if (vector) {
+      return vector;
+    }
+  }
+  return null;
 }
