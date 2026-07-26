@@ -78,7 +78,12 @@ export class OrganizationsRepository {
   }): Promise<{ id: string; name: string; slug: string }> {
     return this.prisma.$transaction(async (tx) => {
       const org = await tx.organization.create({
-        data: { name: input.name, slug: input.slug, subscriptionPlanId: input.subscriptionPlanId },
+        data: {
+          name: input.name,
+          slug: input.slug,
+          subscriptionPlanId: input.subscriptionPlanId,
+          createdById: input.userId,
+        },
         select: { id: true, name: true, slug: true },
       });
       const membership = await tx.organizationMembership.create({
@@ -222,5 +227,51 @@ export class OrganizationsRepository {
       where: { id },
       data: { tokenHash, expiresAt, status: InvitationStatus.PENDING },
     });
+  }
+
+  // --- Informations générales & activités couvertes (FSPEC.16) ---
+
+  generalInfo(organizationId: string) {
+    return this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        id: true, name: true, slug: true, contactEmail: true, website: true, logoUrl: true,
+        description: true, createdById: true, isActive: true,
+        subscriptionPlan: { select: { key: true, name: true } },
+        coveredActivities: { select: { activity: { select: { id: true, name: true } } } },
+      },
+    });
+  }
+
+  updateGeneralInfo(
+    organizationId: string,
+    data: { name?: string; contactEmail?: string | null; website?: string | null; logoUrl?: string | null; description?: string | null },
+  ): Promise<unknown> {
+    return this.prisma.organization.update({ where: { id: organizationId }, data });
+  }
+
+  /** Remplace l'ensemble des activités couvertes (validation explicite côté UI — FSPEC.16 §6). */
+  async setCoveredActivities(organizationId: string, activityIds: string[]): Promise<void> {
+    const unique = [...new Set(activityIds)];
+    await this.prisma.$transaction([
+      this.prisma.organizationActivity.deleteMany({ where: { organizationId } }),
+      ...(unique.length
+        ? [this.prisma.organizationActivity.createMany({
+            data: unique.map((activityId) => ({ organizationId, activityId })),
+            skipDuplicates: true,
+          })]
+        : []),
+    ]);
+  }
+
+  /** Vrai si tous les identifiants correspondent à des activités actives (garde-fou d'intégrité). */
+  async activitiesExist(activityIds: string[]): Promise<boolean> {
+    if (activityIds.length === 0) {
+      return true;
+    }
+    const count = await this.prisma.activity.count({
+      where: { id: { in: [...new Set(activityIds)] }, isActive: true },
+    });
+    return count === new Set(activityIds).size;
   }
 }

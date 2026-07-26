@@ -446,16 +446,36 @@ model Organization {
   name               String
   slug               String                   @unique
   isActive           Boolean                  @default(true) @map("is_active")
+  // Informations générales (FSPEC.16 §4) : identité publique de l'organisation.
+  contactEmail       String?                  @map("contact_email")
+  website            String?
+  logoUrl            String?                  @map("logo_url")
+  description        String?
+  createdById        String?                  @map("created_by_id") @db.Uuid
   subscriptionPlanId String?                  @map("subscription_plan_id") @db.Uuid
   subscriptionPlan   SubscriptionPlan?        @relation(fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
   memberships        OrganizationMembership[]
   activeForUsers     User[]                   @relation("UserActiveOrganization")
   addresses          OrganizationAddress[]
   invitations        OrganizationInvitation[]
+  coveredActivities  OrganizationActivity[]
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("organizations")
+}
+
+/// Activité prise en charge par une organisation (FSPEC.16 §6). Proposée à la création d'événement.
+model OrganizationActivity {
+  organizationId String       @map("organization_id") @db.Uuid
+  activityId     String       @map("activity_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activity       Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([organizationId, activityId])
+  @@index([activityId])
+  @@map("organization_activities")
 }
 
 /// État d'une invitation à rejoindre une organisation (FSPEC.19 §6-8).
@@ -580,6 +600,7 @@ model Activity {
   eventFormats EventFormat[]
   aliases      Alias[]
   events       Event[]
+  organizations OrganizationActivity[]
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -15,6 +15,10 @@ describe('OrganizationsService (FSPEC.19)', () => {
     setMemberFunction: jest.Mock;
     removeMember: jest.Mock;
     countByFunction: jest.Mock;
+    generalInfo: jest.Mock;
+    updateGeneralInfo: jest.Mock;
+    setCoveredActivities: jest.Mock;
+    activitiesExist: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let service: OrganizationsService;
@@ -31,6 +35,10 @@ describe('OrganizationsService (FSPEC.19)', () => {
       setMemberFunction: jest.fn().mockResolvedValue(undefined),
       removeMember: jest.fn().mockResolvedValue(undefined),
       countByFunction: jest.fn(),
+      generalInfo: jest.fn().mockResolvedValue({ id: 'org-1' }),
+      updateGeneralInfo: jest.fn().mockResolvedValue(undefined),
+      setCoveredActivities: jest.fn().mockResolvedValue(undefined),
+      activitiesExist: jest.fn().mockResolvedValue(true),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     service = new OrganizationsService(
@@ -119,6 +127,36 @@ describe('OrganizationsService (FSPEC.19)', () => {
       await expect(service.transferOwnership('u-1', 'org-1', 'target')).rejects.toBeInstanceOf(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('informations générales & activités couvertes (FSPEC.16)', () => {
+    it('un simple membre peut consulter les informations générales', async () => {
+      repository.memberFunctions.mockResolvedValue(['Event Manager']);
+      await expect(service.generalInfo('u-1', 'org-1')).resolves.toEqual({ id: 'org-1' });
+    });
+
+    it('un Event Manager ne peut pas modifier l’identité (Forbidden)', async () => {
+      repository.memberFunctions.mockResolvedValue(['Event Manager']);
+      await expect(service.updateGeneralInfo('u-1', 'org-1', { name: 'X' })).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('activités inconnues → rejet (BadRequest)', async () => {
+      repository.memberFunctions.mockResolvedValue(['Owner']);
+      repository.activitiesExist.mockResolvedValue(false);
+      await expect(service.setCoveredActivities('u-1', 'org-1', ['a', 'b'])).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(repository.setCoveredActivities).not.toHaveBeenCalled();
+    });
+
+    it('Owner déclare des activités valides → remplace la liste + audit', async () => {
+      repository.memberFunctions.mockResolvedValue(['Owner']);
+      await service.setCoveredActivities('u-1', 'org-1', ['a']);
+      expect(repository.setCoveredActivities).toHaveBeenCalledWith('org-1', ['a']);
+      expect(audit.record).toHaveBeenCalledWith('organization.activities_updated', 'u-1', expect.any(Object));
     });
   });
 });

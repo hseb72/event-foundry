@@ -3,10 +3,13 @@ import { FormsModule } from '@angular/forms';
 import {
   MyOrganization,
   OrgFunction,
+  OrganizationGeneralInfo,
   OrganizationInvitation,
   OrganizationMember,
   OrganizationsApi,
 } from '../../core/api/organizations.service';
+import { ReferenceDataApi } from '../../core/api/reference-data.service';
+import { ActivityDto } from '../../core/models';
 
 /**
  * Gestion des organisations de l'utilisateur (FSPEC.19) : création, collaborateurs, fonctions,
@@ -53,6 +56,9 @@ import {
               @for (fn of org.functions; track fn) { <span class="fn">{{ fnLabel(fn) }}</span> }
             </div>
             <div class="row">
+              <button class="btn btn-sm" (click)="toggleConfig(org)">
+                {{ configOrg() === org.id ? 'Masquer' : 'Configuration' }}
+              </button>
               @if (canManage(org)) {
                 <button class="btn btn-sm" (click)="toggleMembers(org.id)">
                   {{ expanded() === org.id ? 'Masquer' : 'Collaborateurs' }}
@@ -61,6 +67,38 @@ import {
               <button class="btn btn-sm danger" (click)="leave(org)">Quitter</button>
             </div>
           </div>
+
+          @if (configOrg() === org.id && info(); as gi) {
+            <div class="grid" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:0.8rem">
+              <h3 style="font-size:0.85rem;margin:0">Informations générales</h3>
+              <div class="row"><label class="muted" style="width:120px">Nom</label>
+                <input class="input" [(ngModel)]="gi.name" [disabled]="!canManage(org)" /></div>
+              <div class="row"><label class="muted" style="width:120px">E-mail contact</label>
+                <input class="input" [(ngModel)]="gi.contactEmail" [disabled]="!canManage(org)" placeholder="contact@..." /></div>
+              <div class="row"><label class="muted" style="width:120px">Site / réseau</label>
+                <input class="input" [(ngModel)]="gi.website" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+              <div class="row"><label class="muted" style="width:120px">Logo (URL)</label>
+                <input class="input" [(ngModel)]="gi.logoUrl" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+              <div class="row"><label class="muted" style="width:120px">Description</label>
+                <input class="input" [(ngModel)]="gi.description" [disabled]="!canManage(org)" /></div>
+              <p class="muted" style="margin:0">Abonnement : {{ gi.subscriptionPlan?.name ?? 'Free' }}</p>
+              @if (canManage(org)) {
+                <div><button class="btn btn-sm" (click)="saveGeneral(org, gi)">Enregistrer les informations</button></div>
+              }
+
+              <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Activités couvertes</h3>
+              <div class="row">
+                @for (a of activities(); track a.id) {
+                  <button class="fn" [style.opacity]="selected().has(a.id) ? '1' : '0.5'"
+                    [style.background]="selected().has(a.id) ? 'rgba(219,39,119,0.35)' : 'rgba(255,255,255,0.1)'"
+                    [disabled]="!canManage(org)" (click)="toggleActivity(a.id)">{{ a.name }}</button>
+                }
+              </div>
+              @if (canManage(org)) {
+                <div><button class="btn btn-sm" (click)="saveActivities(org)">Enregistrer les activités</button></div>
+              }
+            </div>
+          }
 
           @if (expanded() === org.id) {
             @if (members(); as list) {
@@ -136,6 +174,12 @@ import {
 })
 export class OrganizationsComponent implements OnInit {
   private readonly api = inject(OrganizationsApi);
+  private readonly refData = inject(ReferenceDataApi);
+
+  readonly configOrg = signal<string | null>(null);
+  readonly info = signal<OrganizationGeneralInfo | null>(null);
+  readonly activities = signal<ActivityDto[]>([]);
+  readonly selected = signal<Set<string>>(new Set());
 
   readonly orgs = signal<MyOrganization[]>([]);
   readonly members = signal<OrganizationMember[] | null>(null);
@@ -286,5 +330,56 @@ export class OrganizationsComponent implements OnInit {
   private toggleReload(id: string): void {
     this.api.members(id).subscribe((list) => this.members.set(list));
     this.reload();
+  }
+
+  // --- Configuration (FSPEC.16) ---
+  toggleConfig(org: MyOrganization): void {
+    if (this.configOrg() === org.id) {
+      this.configOrg.set(null);
+      return;
+    }
+    this.configOrg.set(org.id);
+    this.info.set(null);
+    if (this.activities().length === 0) {
+      this.refData.activities().subscribe((list) => this.activities.set(list));
+    }
+    this.api.generalInfo(org.id).subscribe({
+      next: (gi) => {
+        this.info.set(gi);
+        this.selected.set(new Set(gi.coveredActivities.map((c) => c.activity.id)));
+      },
+      error: (err) => this.message.set(err?.error?.message ?? 'Accès refusé.'),
+    });
+  }
+
+  toggleActivity(id: string): void {
+    const next = new Set(this.selected());
+    next.has(id) ? next.delete(id) : next.add(id);
+    this.selected.set(next);
+  }
+
+  saveGeneral(org: MyOrganization, gi: OrganizationGeneralInfo): void {
+    this.api
+      .updateGeneralInfo(org.id, {
+        name: gi.name,
+        contactEmail: gi.contactEmail ?? undefined,
+        website: gi.website ?? undefined,
+        logoUrl: gi.logoUrl ?? undefined,
+        description: gi.description ?? undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.message.set('✅ Informations enregistrées.');
+          this.reload();
+        },
+        error: (err) => this.message.set(err?.error?.message ?? 'Enregistrement impossible.'),
+      });
+  }
+
+  saveActivities(org: MyOrganization): void {
+    this.api.setActivities(org.id, [...this.selected()]).subscribe({
+      next: () => this.message.set('✅ Activités couvertes enregistrées.'),
+      error: (err) => this.message.set(err?.error?.message ?? 'Enregistrement impossible.'),
+    });
   }
 }

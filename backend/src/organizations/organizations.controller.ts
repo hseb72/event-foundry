@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -18,7 +19,9 @@ import {
   ChangeMemberFunctionDto,
   CreateOrganizationDto,
   InviteMemberDto,
+  SetCoveredActivitiesDto,
   TransferOwnershipDto,
+  UpdateGeneralInfoDto,
 } from './dto/organization.dto';
 import { InvitationsService } from './invitations.service';
 import type { MyOrganization, OrganizationMember } from './organizations.repository';
@@ -51,6 +54,38 @@ export class OrganizationsController {
   @ApiOkResponse({ description: 'Organisations de l’utilisateur et ses fonctions dans chacune.' })
   mine(@CurrentUser() user: AuthenticatedUser): Promise<MyOrganization[]> {
     return this.service.listMine(user.userId);
+  }
+
+  @Get(':id')
+  @ApiOkResponse({ description: 'Informations générales + activités couvertes (membres).' })
+  generalInfo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<unknown> {
+    return this.service.generalInfo(user.userId, id);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Identité de l’organisation mise à jour (Owner/Administrator).' })
+  updateGeneralInfo(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateGeneralInfoDto,
+  ): Promise<unknown> {
+    return this.service.updateGeneralInfo(user.userId, id, dto);
+  }
+
+  @Put(':id/activities')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Activités couvertes déclarées (remplace la liste).' })
+  async setActivities(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetCoveredActivitiesDto,
+  ): Promise<{ updated: boolean }> {
+    await this.service.setCoveredActivities(user.userId, id, dto.activityIds);
+    return { updated: true };
   }
 
   @Get(':id/members')

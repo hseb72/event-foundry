@@ -154,6 +154,36 @@ export class OrganizationsService {
     this.logger.log(`OwnershipTransferred org=${organizationId} from=${actorId} to=${targetUserId}`);
   }
 
+  // --- Informations générales & activités couvertes (FSPEC.16) ---
+
+  /** Informations générales de l'organisation (consultation — réservée aux membres). */
+  async generalInfo(userId: string, organizationId: string): Promise<unknown> {
+    await this.membershipOrThrow(userId, organizationId);
+    return this.repository.generalInfo(organizationId);
+  }
+
+  /** Met à jour l'identité de l'organisation (Owner/Administrator). */
+  async updateGeneralInfo(
+    userId: string,
+    organizationId: string,
+    data: { name?: string; contactEmail?: string | null; website?: string | null; logoUrl?: string | null; description?: string | null },
+  ): Promise<unknown> {
+    await this.assertCanManage(userId, organizationId);
+    await this.repository.updateGeneralInfo(organizationId, data);
+    await this.audit.record('organization.general_updated', userId, { organizationId });
+    return this.repository.generalInfo(organizationId);
+  }
+
+  /** Déclare les activités couvertes (Owner/Administrator). Remplace la liste (validation explicite). */
+  async setCoveredActivities(userId: string, organizationId: string, activityIds: string[]): Promise<void> {
+    await this.assertCanManage(userId, organizationId);
+    if (!(await this.repository.activitiesExist(activityIds))) {
+      throw new BadRequestException('Une ou plusieurs activités sont inconnues ou inactives.');
+    }
+    await this.repository.setCoveredActivities(organizationId, activityIds);
+    await this.audit.record('organization.activities_updated', userId, { organizationId, count: activityIds.length });
+  }
+
   // --- Helpers ---
 
   private async assertCanManage(userId: string, organizationId: string): Promise<void> {

@@ -88,6 +88,36 @@ export class OrganizationsApi {
       { token },
     );
   }
+
+  // --- Informations générales & activités couvertes (FSPEC.16) ---
+
+  generalInfo(id: string): Observable<OrganizationGeneralInfo> {
+    return this.http.get<OrganizationGeneralInfo>(`${API_BASE}/organizations/${id}`);
+  }
+
+  updateGeneralInfo(id: string, data: Partial<OrganizationGeneralInfo>): Observable<OrganizationGeneralInfo> {
+    return this.http.patch<OrganizationGeneralInfo>(`${API_BASE}/organizations/${id}`, data);
+  }
+
+  setActivities(id: string, activityIds: string[]): Observable<{ updated: boolean }> {
+    return this.http.put<{ updated: boolean }>(`${API_BASE}/organizations/${id}/activities`, {
+      activityIds,
+    });
+  }
+}
+
+/** Informations générales d'une organisation (FSPEC.16 §4/§6). */
+export interface OrganizationGeneralInfo {
+  id: string;
+  name: string;
+  slug: string;
+  contactEmail: string | null;
+  website: string | null;
+  logoUrl: string | null;
+  description: string | null;
+  createdById: string | null;
+  subscriptionPlan: { key: string; name: string } | null;
+  coveredActivities: { activity: { id: string; name: string } }[];
 }
 
 /** Invitation en attente (vue Owner/Administrator). */

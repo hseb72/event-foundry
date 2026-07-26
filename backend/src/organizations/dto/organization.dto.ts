@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsIn, IsNotEmpty, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { ORG_FUNCTIONS, type OrgFunction } from '../organizations.service';
 
 export class CreateOrganizationDto {
@@ -37,4 +37,43 @@ export class AcceptInvitationDto {
   @IsString()
   @IsNotEmpty()
   token!: string;
+}
+
+export class UpdateGeneralInfoDto {
+  @ApiPropertyOptional({ example: 'La Cave aux Cartes' })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name?: string;
+
+  @ApiPropertyOptional({ example: 'contact@cave.fr' })
+  @IsOptional()
+  @IsEmail()
+  contactEmail?: string;
+
+  @ApiPropertyOptional({ example: 'https://cave.fr' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  website?: string;
+
+  @ApiPropertyOptional({ example: 'https://cave.fr/logo.png' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  logoUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
+}
+
+export class SetCoveredActivitiesDto {
+  @ApiProperty({ type: [String], description: 'Identifiants des activités couvertes.' })
+  @IsArray()
+  @IsUUID('4', { each: true })
+  activityIds!: string[];
 }
