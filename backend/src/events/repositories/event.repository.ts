@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type EventStatus, type EventStatusEvent } from '@prisma/client';
+import { EventVisibility, Prisma, type EventStatus, type EventStatusEvent } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BaseRepository, CrudDelegate } from '../../infra/repositories/base.repository';
 import {
@@ -108,7 +108,11 @@ export class EventRepository extends BaseRepository<Event> {
         where: { id },
         data: {
           status: toStatus,
-          ...(toStatus === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+          // Invariant FSPEC.22 : une publication garantit la visibilité PUBLIC (un événement diffusé
+          // n'est jamais privé).
+          ...(toStatus === 'PUBLISHED'
+            ? { publishedAt: new Date(), visibility: EventVisibility.PUBLIC }
+            : {}),
         },
         include: EVENT_REFS_INCLUDE,
       });
@@ -144,6 +148,18 @@ export class EventRepository extends BaseRepository<Event> {
       default:
         return { startsAt: 'asc' };
     }
+  }
+
+  /**
+   * Événements **privés** d'un créateur (FSPEC.22 §15) : ses événements personnels non diffusés.
+   * L'état de participation de l'utilisateur est joint (le créateur peut y avoir une participation).
+   */
+  listPrivateForCreator(userId: string): Promise<EventWithRefsAndParticipation[]> {
+    return this.prisma.event.findMany({
+      where: { deletedAt: null, visibility: EventVisibility.PRIVATE, createdById: userId },
+      include: { ...EVENT_REFS_INCLUDE, participations: { where: { userId } } },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   /** Événements du calendrier personnel : ceux ayant une participation de l'utilisateur. */
@@ -183,6 +199,9 @@ export class EventRepository extends BaseRepository<Event> {
 
     return {
       deletedAt: null,
+      // Les événements privés (FSPEC.22) ne paraissent jamais dans le catalogue / la recherche, ni
+      // dans l'espace Organizer : ils sont exposés via une surface dédiée « Mes événements privés ».
+      visibility: EventVisibility.PUBLIC,
       activityId: filter.activityId,
       eventTypeId: filter.eventTypeId,
       eventFormatId: filter.eventFormatId,

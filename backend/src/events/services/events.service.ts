@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EventSource, EventStatus, Prisma } from '@prisma/client';
+import { EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import {
   ActivityNotFoundException,
   CategoryNotFoundException,
@@ -53,6 +53,27 @@ export class EventsService {
       throw new EventNotFoundException(id);
     }
     return event;
+  }
+
+  /**
+   * Lecture d'un Event pour un utilisateur donné, avec **garde de visibilité** (FSPEC.22 §15) : un
+   * événement **privé** n'est accessible qu'à son créateur. Pour tout autre lecteur, il est traité
+   * comme inexistant (on n'en révèle pas l'existence).
+   */
+  async getForReader(id: string, userId: string): Promise<EventWithRefs> {
+    const event = await this.getOrThrow(id);
+    if (event.visibility === EventVisibility.PRIVATE && event.createdById !== userId) {
+      throw new EventNotFoundException(id);
+    }
+    return event;
+  }
+
+  /**
+   * Événements **privés** d'un Explorer (FSPEC.22 §15) : ses propres événements personnels, non
+   * diffusés au catalogue. Triés du plus récent au plus ancien.
+   */
+  listPrivateEvents(userId: string): Promise<EventWithRefsAndParticipation[]> {
+    return this.repository.listPrivateForCreator(userId);
   }
 
   /** Recherche paginée (FSPEC.04). Filtres cumulables ; par défaut, événements à venir. */

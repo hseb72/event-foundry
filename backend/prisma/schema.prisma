@@ -76,6 +76,14 @@ enum EventStatus {
   ARCHIVED
 }
 
+/// Visibilité d'un Event (FSPEC.22) : PUBLIC = diffusable au catalogue (workflow Organizer) ;
+/// PRIVATE = événement personnel issu d'une validation Explorer, visible uniquement de son créateur
+/// (jamais publié, jamais indexé). Invariant : un Event PRIVATE n'est jamais au statut PUBLISHED.
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
 enum AttachmentType {
   IMAGE
   TEXT
@@ -926,6 +934,7 @@ model Event {
   id             String              @id @default(uuid()) @db.Uuid
   source         EventSource
   status         EventStatus         @default(PUBLISHED)
+  visibility     EventVisibility     @default(PUBLIC) @map("visibility")
   activityId     String              @map("activity_id") @db.Uuid
   eventTypeId    String?             @map("event_type_id") @db.Uuid
   eventFormatId  String?             @map("event_format_id") @db.Uuid
@@ -969,6 +978,8 @@ model Event {
   @@index([municipalityId])
   @@index([status])
   @@index([source])
+  @@index([createdById])
+  @@index([visibility])
   @@map("events")
 }
 

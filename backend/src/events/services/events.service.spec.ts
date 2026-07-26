@@ -9,6 +9,7 @@ import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { CreateEventDto } from '../dto/create-event.dto';
 import {
+  EventNotFoundException,
   InvalidEventTypeException,
   InvalidTagsException,
 } from '../exceptions/event-validation.exceptions';
@@ -21,6 +22,7 @@ describe('EventsService', () => {
   let categoryRepo: { findById: jest.Mock };
   let municipalityRepo: { findById: jest.Mock };
   let tagRepo: { findExistingIds: jest.Mock };
+  let eventRepo: { createWithRefs: jest.Mock; findByIdWithRefs: jest.Mock };
   let service: EventsService;
 
   beforeEach(() => {
@@ -29,9 +31,10 @@ describe('EventsService', () => {
     categoryRepo = { findById: jest.fn() };
     municipalityRepo = { findById: jest.fn() };
     tagRepo = { findExistingIds: jest.fn().mockResolvedValue([]) };
+    eventRepo = { createWithRefs: jest.fn(), findByIdWithRefs: jest.fn() };
     const noop = { findById: jest.fn() };
     service = new EventsService(
-      { createWithRefs: jest.fn(), findByIdWithRefs: jest.fn() } as unknown as EventRepository,
+      eventRepo as unknown as EventRepository,
       activityRepo as unknown as ActivityRepository,
       eventTypeRepo as unknown as EventTypeRepository,
       noop as unknown as EventFormatRepository,
@@ -70,6 +73,27 @@ describe('EventsService', () => {
         EventSource.IMPORT,
       ),
     ).rejects.toBeInstanceOf(InvalidEventTypeException);
+  });
+
+  describe('getForReader — garde de visibilité (FSPEC.22 §15)', () => {
+    it('un événement public est lisible par n’importe qui', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PUBLIC', createdById: 'owner' });
+      await expect(service.getForReader('e1', 'autre')).resolves.toEqual(
+        expect.objectContaining({ id: 'e1' }),
+      );
+    });
+
+    it('un événement privé n’est lisible que par son créateur', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });
+      await expect(service.getForReader('e1', 'owner')).resolves.toEqual(
+        expect.objectContaining({ id: 'e1' }),
+      );
+    });
+
+    it('un tiers ne peut pas lire un événement privé (traité comme inexistant)', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });
+      await expect(service.getForReader('e1', 'intrus')).rejects.toBeInstanceOf(EventNotFoundException);
+    });
   });
 
   it('inclut les tags valides et rejette un tag inconnu', async () => {

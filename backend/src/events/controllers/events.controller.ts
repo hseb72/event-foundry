@@ -63,10 +63,32 @@ export class EventsController {
     return EventMapper.toResponse(await this.service.createManual(dto, user.userId));
   }
 
+  /**
+   * Événements privés de l'utilisateur courant (FSPEC.22 §15) : ses événements personnels, non
+   * diffusés au catalogue. Déclaré avant `:id` (segment `me/private` ≠ UUID).
+   */
+  @Get('me/private')
+  @ApiOkResponse({ type: PaginatedEventsResponseDto })
+  async myPrivateEvents(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PaginatedEventsResponseDto> {
+    const items = await this.service.listPrivateEvents(user.userId);
+    return {
+      items: items.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null)),
+      total: items.length,
+      skip: 0,
+      take: items.length,
+    };
+  }
+
+  /** Fiche d'un Event. Un événement privé n'est lisible que par son créateur (FSPEC.22 §15). */
   @Get(':id')
   @ApiOkResponse({ type: EventResponseDto })
-  async getById(@Param('id', ParseUUIDPipe) id: string): Promise<EventResponseDto> {
-    const dto = EventMapper.toResponse(await this.service.getOrThrow(id));
+  async getById(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventResponseDto> {
+    const dto = EventMapper.toResponse(await this.service.getForReader(id, user.userId));
     dto.media = await this.mediaService.listWithUrls(id);
     return dto;
   }

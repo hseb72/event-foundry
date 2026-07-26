@@ -24,6 +24,12 @@ export class EventResponseDto {
   @ApiProperty({ enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'], description: 'Statut catalogue.' })
   status!: string;
 
+  @ApiProperty({
+    enum: ['PUBLIC', 'PRIVATE'],
+    description: 'Visibilité : PRIVATE = événement personnel, visible du seul créateur (FSPEC.22).',
+  })
+  visibility!: string;
+
   @ApiProperty()
   title!: string;
 

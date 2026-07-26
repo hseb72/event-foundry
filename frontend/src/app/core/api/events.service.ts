@@ -24,6 +24,11 @@ export class EventsApi {
     return this.http.get<PaginatedEvents>(`${API_BASE}/events`, { params });
   }
 
+  /** Événements privés de l'utilisateur courant (FSPEC.22 §15). */
+  myPrivateEvents(): Observable<PaginatedEvents> {
+    return this.http.get<PaginatedEvents>(`${API_BASE}/events/me/private`);
+  }
+
   calendar(params: Record<string, string>): Observable<EventDto[]> {
     return this.http.get<EventDto[]>(`${API_BASE}/me/calendar`, { params });
   }

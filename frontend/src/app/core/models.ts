@@ -114,6 +114,7 @@ export interface EventDto {
   id: string;
   source: string;
   status: string;
+  visibility: string;
   title: string;
   description: string | null;
   activity: string;

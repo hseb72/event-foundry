@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EventCandidateStatus, EventSource, EventStatus, Prisma } from '@prisma/client';
+import { EventCandidateStatus, EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import { CreateEventDto } from '../../events/dto/create-event.dto';
 import type { EventWithRefs } from '../../events/entities/event.entity';
 import { EventsService } from '../../events/services/events.service';
@@ -49,16 +49,28 @@ export class EventCandidatesService {
 
   /** Validation : crée l'Event (source = IMPORT) et fige le candidate (transaction). */
   /**
-   * Valide un candidate → crée l'Event (source = IMPORT). L'événement entre dans le **workflow de
-   * publication** comme une création manuelle : statut **DRAFT** et **rattaché au valideur**
-   * (`createdById`), afin qu'il apparaisse dans l'espace Organizer et puisse y être publié.
+   * Valide un candidate → crée l'Event (source = IMPORT). L'issue dépend du **rôle du valideur**
+   * (FSPEC.22 §15-17) :
+   * - **Organizer** (`canPublish`) : Event **PUBLIC** en **DRAFT**, il entre dans l'espace Organizer
+   *   et pourra y être publié au catalogue.
+   * - **Explorer** (sans droit de publication) : Event **PRIVATE** — événement personnel visible de
+   *   son seul créateur, jamais diffusé au catalogue (ESUB-008/009). Il reste utilisable
+   *   immédiatement (intérêt, réservation, planning).
+   *
+   * Dans les deux cas l'Event est **rattaché au valideur** (`createdById`).
    */
-  async validate(id: string, dto: CreateEventDto, userId: string): Promise<EventWithRefs> {
+  async validate(
+    id: string,
+    dto: CreateEventDto,
+    userId: string,
+    canPublish: boolean,
+  ): Promise<EventWithRefs> {
     await this.assertMutable(id);
     const base = await this.eventsService.buildValidatedEventData(dto, EventSource.IMPORT);
     const eventData: Prisma.EventUncheckedCreateInput = {
       ...base,
       status: EventStatus.DRAFT,
+      visibility: canPublish ? EventVisibility.PUBLIC : EventVisibility.PRIVATE,
       createdById: userId,
     };
     return this.repository.createEventAndValidate(id, eventData, userId);

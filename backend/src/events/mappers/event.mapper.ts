@@ -41,6 +41,7 @@ export class EventMapper {
       id: event.id,
       source: event.source,
       status: event.status,
+      visibility: event.visibility,
       title: event.title,
       description: event.description,
       activity: event.activity.name,

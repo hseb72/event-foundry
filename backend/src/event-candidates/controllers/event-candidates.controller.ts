@@ -78,6 +78,11 @@ export class EventCandidatesController {
     return EventCandidateMapper.toResponse(await this.service.correct(id, dto, user.userId));
   }
 
+  /**
+   * Valide un candidate → Event. L'issue dépend du rôle : un valideur habilité à publier (Organizer)
+   * obtient un Event public entrant dans le workflow de publication ; sinon (Explorer) l'Event est
+   * privé, personnel et non diffusé (FSPEC.22 §15-17).
+   */
   @Post('event-candidates/:id/validate')
   @HttpCode(HttpStatus.CREATED)
   async validate(
@@ -85,7 +90,8 @@ export class EventCandidatesController {
     @Body() dto: CreateEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<EventResponseDto> {
-    return EventMapper.toResponse(await this.service.validate(id, dto, user.userId));
+    const canPublish = user.permissions.includes('event.publish');
+    return EventMapper.toResponse(await this.service.validate(id, dto, user.userId, canPublish));
   }
 
   @Post('event-candidates/:id/reject')

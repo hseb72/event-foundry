@@ -44,6 +44,10 @@ import { participationColor, participationLabel } from '../../shared/participati
         background: rgba(220, 38, 38, 0.14);
         color: var(--red);
       }
+      .badge.private {
+        background: rgba(37, 99, 235, 0.14);
+        color: var(--exp, #2563eb);
+      }
       .chip {
         display: inline-block;
         padding: 0.1rem 0.5rem;
@@ -186,6 +190,9 @@ import { participationColor, participationLabel } from '../../shared/participati
           {{ event.title }}
           <span class="badge">{{ event.source === 'IMPORT' ? 'Importé' : 'Manuel' }}</span>
           <span class="badge" [class.archived]="event.status === 'ARCHIVED'">{{ statusLabel() }}</span>
+          @if (event.visibility === 'PRIVATE') {
+            <span class="badge private" title="Événement personnel, visible de vous seul">🔒 Privé</span>
+          }
         </h1>
 
         <dl>
