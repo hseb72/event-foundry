@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import {
   ChangePasswordDto,
   ConfirmEmailChangeDto,
+  DeleteAccountDto,
   ForgotPasswordDto,
   RequestEmailChangeDto,
   ResendVerificationDto,
@@ -13,6 +14,7 @@ import {
   VerifyEmailDto,
 } from '../dto/account.dto';
 import { AccountLifecycleService } from '../services/account-lifecycle.service';
+import { AccountPrivacyService } from '../services/account-privacy.service';
 import { AccountSecurityService } from '../services/account-security.service';
 
 /**
@@ -27,6 +29,7 @@ export class AccountController {
   constructor(
     private readonly lifecycle: AccountLifecycleService,
     private readonly security: AccountSecurityService,
+    private readonly privacy: AccountPrivacyService,
   ) {}
 
   @Public()
@@ -96,5 +99,31 @@ export class AccountController {
   async confirmEmailChange(@Body() dto: ConfirmEmailChangeDto): Promise<{ confirmed: boolean }> {
     await this.security.confirmEmailChange(dto.token);
     return { confirmed: true };
+  }
+
+  @ApiBearerAuth()
+  @Get('me/export')
+  @ApiOkResponse({ description: 'Export RGPD des données personnelles de l’utilisateur (IAM-010).' })
+  exportData(@CurrentUser() user: AuthenticatedUser): Promise<Record<string, unknown>> {
+    return this.privacy.exportData(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Get('me/security-events')
+  @ApiOkResponse({ description: 'Journal de sécurité de l’utilisateur (consultation — §15).' })
+  securityEvents(@CurrentUser() user: AuthenticatedUser): Promise<unknown[]> {
+    return this.privacy.securityHistory(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Post('me/delete')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Compte supprimé (anonymisé, irréversible) après réauthentification.' })
+  async deleteOwnAccount(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DeleteAccountDto,
+  ): Promise<{ deleted: boolean }> {
+    await this.privacy.deleteOwnAccount(user.userId, dto.currentPassword);
+    return { deleted: true };
   }
 }

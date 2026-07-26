@@ -4,6 +4,7 @@ import { AccountController } from './controllers/account.controller';
 import { AccountRepository } from './repositories/account.repository';
 import { AccountLifecycleService } from './services/account-lifecycle.service';
 import { AccountLinkMailer } from './services/account-link-mailer.service';
+import { AccountPrivacyService } from './services/account-privacy.service';
 import { AccountSecurityService } from './services/account-security.service';
 import { SecurityAuditService } from './services/security-audit.service';
 
@@ -19,6 +20,7 @@ import { SecurityAuditService } from './services/security-audit.service';
   providers: [
     AccountLifecycleService,
     AccountSecurityService,
+    AccountPrivacyService,
     AccountLinkMailer,
     SecurityAuditService,
     AccountRepository,

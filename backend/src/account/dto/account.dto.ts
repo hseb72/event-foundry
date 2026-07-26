@@ -63,3 +63,10 @@ export class ConfirmEmailChangeDto {
   @IsNotEmpty()
   token!: string;
 }
+
+export class DeleteAccountDto {
+  @ApiProperty({ description: 'Mot de passe actuel (réauthentification — IAM-008).' })
+  @IsString()
+  @IsNotEmpty()
+  currentPassword!: string;
+}

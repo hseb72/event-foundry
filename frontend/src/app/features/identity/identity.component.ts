@@ -1,7 +1,8 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AccountApi } from '../../core/api/account.service';
+import { AccountApi, SecurityEventDto } from '../../core/api/account.service';
 import { IdentityService } from '../../core/api/identity.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
@@ -39,7 +40,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 @Component({
   selector: 'app-identity',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DatePipe],
   styles: [
     `
       .head {
@@ -330,6 +331,48 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           </label>
           @if (organizerMsg()) {
             <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ organizerMsg() }}</p>
+          }
+        </section>
+
+        <section class="card">
+          <h2>Mes données (RGPD)</h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn" (click)="exportData()" [disabled]="rgpdBusy()">
+              Exporter mes données (JSON)
+            </button>
+            <button class="btn" (click)="loadSecurityEvents()" [disabled]="rgpdBusy()">
+              Journal de sécurité
+            </button>
+          </div>
+          @if (securityEvents(); as events) {
+            <ul style="margin:0.9rem 0 0;padding-left:1rem;font-size:0.82rem;max-height:200px;overflow:auto">
+              @for (ev of events; track ev.id) {
+                <li>
+                  <strong>{{ securityLabel(ev.type) }}</strong>
+                  <span class="muted"> · {{ ev.occurredAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+                </li>
+              } @empty {
+                <li class="muted">Aucun événement de sécurité.</li>
+              }
+            </ul>
+          }
+
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:1rem 0" />
+          <h3 style="font-size:0.9rem;margin:0 0 0.4rem;color:var(--red)">Supprimer mon compte</h3>
+          <p class="muted" style="margin:0 0 0.6rem;font-size:0.82rem">
+            Action irréversible : vos données personnelles sont effacées (anonymisation). Les
+            historiques nécessaires à l'intégrité de la plateforme sont conservés de façon anonyme.
+          </p>
+          <div style="display:grid;gap:0.4rem;max-width:320px">
+            <input class="input" type="password" [(ngModel)]="deletePwd"
+              placeholder="Mot de passe actuel" autocomplete="current-password" />
+            <button class="btn" style="border-color:var(--red);color:var(--red)"
+              (click)="deleteAccount()" [disabled]="!deletePwd || rgpdBusy()">
+              Supprimer définitivement mon compte
+            </button>
+          </div>
+          @if (rgpdMsg()) {
+            <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ rgpdMsg() }}</p>
           }
         </section>
 
@@ -1009,6 +1052,86 @@ export class IdentityComponent implements OnInit {
       error: (err) => {
         this.organizerBusy.set(false);
         this.organizerMsg.set(err?.error?.message ?? 'Action impossible pour le moment.');
+      },
+    });
+  }
+
+  // --- Données personnelles / RGPD (FSPEC.18 §14) ---
+  readonly rgpdBusy = signal(false);
+  readonly rgpdMsg = signal('');
+  readonly securityEvents = signal<SecurityEventDto[] | null>(null);
+  deletePwd = '';
+
+  private static readonly SECURITY_LABELS: Record<string, string> = {
+    'account.created': 'Création du compte',
+    'account.email_verified': 'Adresse e-mail vérifiée',
+    'account.email_verification_sent': 'Lien de vérification envoyé',
+    'auth.login_succeeded': 'Connexion réussie',
+    'auth.login_failed': 'Échec de connexion',
+    'account.password_changed': 'Mot de passe changé',
+    'account.password_reset_requested': 'Récupération demandée',
+    'account.password_reset_completed': 'Mot de passe réinitialisé',
+    'account.email_change_requested': "Changement d'adresse demandé",
+    'account.email_changed': "Adresse e-mail changée",
+    'account.suspended': 'Compte suspendu',
+    'account.reactivated': 'Compte réactivé',
+    'account.data_exported': 'Export de données',
+    'account.deleted': 'Suppression du compte',
+  };
+
+  securityLabel(type: string): string {
+    return IdentityComponent.SECURITY_LABELS[type] ?? type;
+  }
+
+  exportData(): void {
+    this.rgpdBusy.set(true);
+    this.account.exportData().subscribe({
+      next: (data) => {
+        this.rgpdBusy.set(false);
+        // Téléchargement d'un fichier JSON local (aucune donnée n'est envoyée à un tiers).
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'eventfoundry-mes-donnees.json';
+        link.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.rgpdBusy.set(false);
+        this.rgpdMsg.set('Export impossible pour le moment.');
+      },
+    });
+  }
+
+  loadSecurityEvents(): void {
+    this.rgpdBusy.set(true);
+    this.account.securityEvents().subscribe({
+      next: (events) => {
+        this.rgpdBusy.set(false);
+        this.securityEvents.set(events);
+      },
+      error: () => {
+        this.rgpdBusy.set(false);
+        this.rgpdMsg.set('Journal indisponible pour le moment.');
+      },
+    });
+  }
+
+  deleteAccount(): void {
+    if (!confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) {
+      return;
+    }
+    this.rgpdBusy.set(true);
+    this.account.deleteAccount(this.deletePwd).subscribe({
+      next: () => {
+        // Compte anonymisé : on ferme la session et on renvoie vers la vitrine publique.
+        this.auth.logout();
+        void this.router.navigate(['/welcome']);
+      },
+      error: (err) => {
+        this.rgpdBusy.set(false);
+        this.rgpdMsg.set(err?.error?.message ?? 'Suppression impossible (mot de passe incorrect ?).');
       },
     });
   }

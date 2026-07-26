@@ -95,6 +95,64 @@ export class AccountRepository {
     return count > 0;
   }
 
+  /**
+   * Rassemble les données personnelles d'un utilisateur pour l'export RGPD (droit de consultation —
+   * IAM-010). Inclut le profil, les préférences, les appartenances et le détail des participations,
+   * suivis et notifications. Aucune donnée d'un autre utilisateur n'est exposée.
+   */
+  async gatherPersonalData(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        status: true,
+        emailVerifiedAt: true,
+        preferences: true,
+        createdAt: true,
+        roles: { select: { role: { select: { name: true } } } },
+        memberships: { select: { organization: { select: { name: true } }, createdAt: true } },
+        participations: {
+          select: { eventId: true, interested: true, reservationStatus: true, paymentStatus: true },
+        },
+        follows: { select: { targetType: true, targetId: true, createdAt: true } },
+        notifications: { select: { type: true, title: true, createdAt: true }, take: 500 },
+      },
+    });
+  }
+
+  /**
+   * Suppression RGPD par **anonymisation** (IAM-007) : la ligne utilisateur est conservée pour ne
+   * pas casser l'intégrité (événements créés, audit) mais toutes les données personnelles sont
+   * effacées. Les satellites purement personnels (jetons, notifications, suivis, participations,
+   * retours de recommandation) sont supprimés. Le journal de sécurité est conservé (audit). En
+   * transaction pour une bascule atomique.
+   */
+  async anonymizeAccount(userId: string, anonymizedEmail: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.accountToken.deleteMany({ where: { userId } }),
+      this.prisma.notification.deleteMany({ where: { userId } }),
+      this.prisma.follow.deleteMany({ where: { userId } }),
+      this.prisma.userParticipation.deleteMany({ where: { userId } }),
+      this.prisma.recommendationFeedback.deleteMany({ where: { userId } }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          email: anonymizedEmail,
+          displayName: 'Utilisateur supprimé',
+          passwordHash: '',
+          status: 'DELETED',
+          isActive: false,
+          emailVerifiedAt: null,
+          preferences: Prisma.DbNull,
+          activeExperience: null,
+          activeOrganizationId: null,
+        },
+      }),
+    ]);
+  }
+
   /** Journal d'audit sécurité (IAM-009). L'audit survit à la suppression du compte (SetNull). */
   async recordSecurityEvent(
     type: string,
