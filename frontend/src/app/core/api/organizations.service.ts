@@ -55,4 +55,47 @@ export class OrganizationsApi {
   transfer(id: string, userId: string): Observable<{ transferred: boolean }> {
     return this.http.post<{ transferred: boolean }>(`${API_BASE}/organizations/${id}/transfer`, { userId });
   }
+
+  // --- Invitations (FSPEC.19-B) ---
+
+  invite(id: string, email: string, fn: OrgFunction): Observable<{ id: string }> {
+    return this.http.post<{ id: string }>(`${API_BASE}/organizations/${id}/invitations`, {
+      email,
+      function: fn,
+    });
+  }
+
+  invitations(id: string): Observable<OrganizationInvitation[]> {
+    return this.http.get<OrganizationInvitation[]>(`${API_BASE}/organizations/${id}/invitations`);
+  }
+
+  cancelInvitation(id: string, invitationId: string): Observable<{ cancelled: boolean }> {
+    return this.http.delete<{ cancelled: boolean }>(
+      `${API_BASE}/organizations/${id}/invitations/${invitationId}`,
+    );
+  }
+
+  resendInvitation(id: string, invitationId: string): Observable<{ resent: boolean }> {
+    return this.http.post<{ resent: boolean }>(
+      `${API_BASE}/organizations/${id}/invitations/${invitationId}/resend`,
+      {},
+    );
+  }
+
+  acceptInvitation(token: string): Observable<{ organizationId: string; organizationName: string }> {
+    return this.http.post<{ organizationId: string; organizationName: string }>(
+      `${API_BASE}/invitations/accept`,
+      { token },
+    );
+  }
+}
+
+/** Invitation en attente (vue Owner/Administrator). */
+export interface OrganizationInvitation {
+  id: string;
+  email: string;
+  function: string;
+  status: string;
+  expiresAt: string;
+  createdAt: string;
 }

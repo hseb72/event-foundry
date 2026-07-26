@@ -451,10 +451,40 @@ model Organization {
   memberships        OrganizationMembership[]
   activeForUsers     User[]                   @relation("UserActiveOrganization")
   addresses          OrganizationAddress[]
+  invitations        OrganizationInvitation[]
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("organizations")
+}
+
+/// État d'une invitation à rejoindre une organisation (FSPEC.19 §6-8).
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
+/// Invitation d'un collaborateur (FSPEC.19). La fonction est stockée par nom (Owner/Administrator/
+/// Event Manager), résolue en rôle à l'acceptation. Jeton à usage unique haché (jamais en clair).
+model OrganizationInvitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  function       String
+  status         InvitationStatus @default(PENDING)
+  tokenHash      String           @map("token_hash")
+  invitedById    String?          @map("invited_by_id") @db.Uuid
+  expiresAt      DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId, status])
+  @@index([tokenHash])
+  @@map("organization_invitations")
 }
 
 /**

@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
@@ -78,13 +78,14 @@ export class LoginComponent {
   constructor(
     private readonly auth: AuthService,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {}
 
   submit(): void {
     this.loading = true;
     this.error = '';
     this.auth.login(this.email, this.password).subscribe({
-      next: () => void this.router.navigate(['/discover']),
+      next: () => void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('next') || '/discover'),
       error: () => {
         this.error = 'Identifiants invalides.';
         this.loading = false;

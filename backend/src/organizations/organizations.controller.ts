@@ -13,11 +13,14 @@ import {
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
+import type { OrganizationInvitation } from '@prisma/client';
 import {
   ChangeMemberFunctionDto,
   CreateOrganizationDto,
+  InviteMemberDto,
   TransferOwnershipDto,
 } from './dto/organization.dto';
+import { InvitationsService } from './invitations.service';
 import type { MyOrganization, OrganizationMember } from './organizations.repository';
 import { OrganizationsService } from './organizations.service';
 
@@ -30,7 +33,10 @@ import { OrganizationsService } from './organizations.service';
 @ApiBearerAuth()
 @Controller('organizations')
 export class OrganizationsController {
-  constructor(private readonly service: OrganizationsService) {}
+  constructor(
+    private readonly service: OrganizationsService,
+    private readonly invitations: InvitationsService,
+  ) {}
 
   @Post()
   @ApiOkResponse({ description: 'Organisation créée ; l’appelant en devient Owner.' })
@@ -102,5 +108,50 @@ export class OrganizationsController {
   ): Promise<{ transferred: boolean }> {
     await this.service.transferOwnership(user.userId, id, dto.userId);
     return { transferred: true };
+  }
+
+  // --- Invitations (FSPEC.19 §6-9) ---
+
+  @Post(':id/invitations')
+  @ApiOkResponse({ description: 'Collaborateur invité par e-mail (lien sécurisé à durée limitée).' })
+  invite(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InviteMemberDto,
+  ): Promise<{ id: string }> {
+    return this.invitations.invite(user.userId, id, dto.email, dto.function);
+  }
+
+  @Get(':id/invitations')
+  @ApiOkResponse({ description: 'Invitations en attente de l’organisation.' })
+  listInvitations(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<OrganizationInvitation[]> {
+    return this.invitations.listPending(user.userId, id);
+  }
+
+  @Delete(':id/invitations/:invitationId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Invitation annulée.' })
+  async cancelInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
+  ): Promise<{ cancelled: boolean }> {
+    await this.invitations.cancel(user.userId, id, invitationId);
+    return { cancelled: true };
+  }
+
+  @Post(':id/invitations/:invitationId/resend')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Invitation renvoyée (nouveau lien).' })
+  async resendInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('invitationId', ParseUUIDPipe) invitationId: string,
+  ): Promise<{ resent: boolean }> {
+    await this.invitations.resend(user.userId, id, invitationId);
+    return { resent: true };
   }
 }

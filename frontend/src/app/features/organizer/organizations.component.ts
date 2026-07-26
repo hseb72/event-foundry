@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import {
   MyOrganization,
   OrgFunction,
+  OrganizationInvitation,
   OrganizationMember,
   OrganizationsApi,
 } from '../../core/api/organizations.service';
@@ -92,6 +93,37 @@ import {
                 </tbody>
               </table>
             }
+
+            <h3 style="font-size:0.85rem;margin:1rem 0 0.4rem">Inviter un collaborateur</h3>
+            <div class="row">
+              <input class="input" [(ngModel)]="inviteEmail" placeholder="e-mail" type="email" />
+              <select [(ngModel)]="inviteFunction">
+                <option value="Event Manager">Responsable d'événements</option>
+                <option value="Administrator">Administrateur</option>
+                <option value="Owner">Owner</option>
+              </select>
+              <button class="btn btn-sm" (click)="invite(org)" [disabled]="!inviteEmail">Inviter</button>
+            </div>
+
+            @if (invitations(); as invs) {
+              @if (invs.length) {
+                <table class="members">
+                  <thead><tr><th>Invitation en attente</th><th>Fonction</th><th></th></tr></thead>
+                  <tbody>
+                    @for (inv of invs; track inv.id) {
+                      <tr>
+                        <td>{{ inv.email }}</td>
+                        <td><span class="fn">{{ fnLabel(inv.function) }}</span></td>
+                        <td class="row">
+                          <button class="btn btn-sm" (click)="resend(org, inv)">Renvoyer</button>
+                          <button class="btn btn-sm danger" (click)="cancelInvite(org, inv)">Annuler</button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            }
           }
         </section>
       } @empty {
@@ -107,10 +139,13 @@ export class OrganizationsComponent implements OnInit {
 
   readonly orgs = signal<MyOrganization[]>([]);
   readonly members = signal<OrganizationMember[] | null>(null);
+  readonly invitations = signal<OrganizationInvitation[] | null>(null);
   readonly expanded = signal<string | null>(null);
   readonly busy = signal(false);
   readonly message = signal('');
   newName = '';
+  inviteEmail = '';
+  inviteFunction: OrgFunction = 'Event Manager';
 
   private static readonly FN_LABELS: Record<string, string> = {
     Owner: 'Owner',
@@ -161,9 +196,43 @@ export class OrganizationsComponent implements OnInit {
     }
     this.expanded.set(id);
     this.members.set(null);
+    this.invitations.set(null);
     this.api.members(id).subscribe({
       next: (list) => this.members.set(list),
       error: (err) => this.message.set(err?.error?.message ?? 'Accès refusé.'),
+    });
+    this.loadInvitations(id);
+  }
+
+  private loadInvitations(id: string): void {
+    this.api.invitations(id).subscribe({
+      next: (list) => this.invitations.set(list),
+      error: () => this.invitations.set([]),
+    });
+  }
+
+  invite(org: MyOrganization): void {
+    this.api.invite(org.id, this.inviteEmail.trim(), this.inviteFunction).subscribe({
+      next: () => {
+        this.message.set(`✅ Invitation envoyée à ${this.inviteEmail}.`);
+        this.inviteEmail = '';
+        this.loadInvitations(org.id);
+      },
+      error: (err) => this.message.set(err?.error?.message ?? 'Invitation impossible.'),
+    });
+  }
+
+  resend(org: MyOrganization, inv: OrganizationInvitation): void {
+    this.api.resendInvitation(org.id, inv.id).subscribe({
+      next: () => this.message.set(`Invitation renvoyée à ${inv.email}.`),
+      error: (err) => this.message.set(err?.error?.message ?? 'Renvoi impossible.'),
+    });
+  }
+
+  cancelInvite(org: MyOrganization, inv: OrganizationInvitation): void {
+    this.api.cancelInvitation(org.id, inv.id).subscribe({
+      next: () => this.loadInvitations(org.id),
+      error: (err) => this.message.set(err?.error?.message ?? 'Annulation impossible.'),
     });
   }
 

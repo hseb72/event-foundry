@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Experience, RoleScope } from '@prisma/client';
+import { Experience, InvitationStatus, RoleScope, type OrganizationInvitation } from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 
 /** Résumé d'une organisation vue par un membre (avec ses fonctions dans celle-ci). */
@@ -160,6 +160,67 @@ export class OrganizationsRepository {
   countByFunction(organizationId: string, roleName: string): Promise<number> {
     return this.prisma.organizationMembership.count({
       where: { organizationId, roles: { some: { role: { name: roleName } } } },
+    });
+  }
+
+  /** Rejoint (ou met à jour) une organisation avec une unique fonction. Idempotent. */
+  async joinWithFunction(userId: string, organizationId: string, roleId: string): Promise<void> {
+    const membership = await this.prisma.organizationMembership.upsert({
+      where: { userId_organizationId: { userId, organizationId } },
+      update: {},
+      create: { userId, organizationId },
+      select: { id: true },
+    });
+    await this.prisma.$transaction([
+      this.prisma.membershipRole.deleteMany({ where: { membershipId: membership.id } }),
+      this.prisma.membershipRole.create({ data: { membershipId: membership.id, roleId } }),
+    ]);
+  }
+
+  // --- Invitations (FSPEC.19 §6-8) ---
+
+  createInvitation(input: {
+    organizationId: string;
+    email: string;
+    function: string;
+    tokenHash: string;
+    invitedById: string;
+    expiresAt: Date;
+  }): Promise<OrganizationInvitation> {
+    return this.prisma.organizationInvitation.create({ data: input });
+  }
+
+  listPendingInvitations(organizationId: string): Promise<OrganizationInvitation[]> {
+    return this.prisma.organizationInvitation.findMany({
+      where: { organizationId, status: InvitationStatus.PENDING },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findInvitationByToken(
+    tokenHash: string,
+  ): Promise<(OrganizationInvitation & { organization: { id: string; name: string } }) | null> {
+    return this.prisma.organizationInvitation.findFirst({
+      where: { tokenHash },
+      include: { organization: { select: { id: true, name: true } } },
+    });
+  }
+
+  findInvitation(id: string, organizationId: string): Promise<OrganizationInvitation | null> {
+    return this.prisma.organizationInvitation.findFirst({ where: { id, organizationId } });
+  }
+
+  setInvitationStatus(id: string, status: InvitationStatus, acceptedAt?: Date): Promise<OrganizationInvitation> {
+    return this.prisma.organizationInvitation.update({
+      where: { id },
+      data: { status, ...(acceptedAt ? { acceptedAt } : {}) },
+    });
+  }
+
+  refreshInvitation(id: string, tokenHash: string, expiresAt: Date): Promise<OrganizationInvitation> {
+    return this.prisma.organizationInvitation.update({
+      where: { id },
+      data: { tokenHash, expiresAt, status: InvitationStatus.PENDING },
     });
   }
 }

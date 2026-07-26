@@ -21,6 +21,7 @@ import { OperatorAdminComponent } from './features/operator/operator-admin.compo
 import { OperatorConfigComponent } from './features/operator/operator-config.component';
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
+import { AcceptInvitationComponent } from './features/organizer/accept-invitation.component';
 import { OrganizationsComponent } from './features/organizer/organizations.component';
 import { LoginComponent } from './features/login/login.component';
 import { NotificationsComponent } from './features/notifications/notifications.component';
@@ -45,6 +46,8 @@ export const routes: Routes = [
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'confirm-email-change', component: ConfirmEmailChangeComponent },
+  // Cible du lien d'invitation (FSPEC.19) : gère l'auth puis fait rejoindre l'organisation.
+  { path: 'accept-invitation', component: AcceptInvitationComponent },
   {
     path: '',
     component: ShellComponent,

@@ -36,6 +36,16 @@ const FUNCTION_PERMISSIONS: Record<OrgFunction, string[]> = {
 /** Fonctions autorisées à gérer les collaborateurs (inviter, changer, retirer). */
 const CAN_MANAGE_MEMBERS: OrgFunction[] = ['Owner', 'Administrator'];
 
+/** Permissions (miroir du seed) exposées pour le provisioning à la volée d'une fonction donnée. */
+export function functionPermissions(fn: OrgFunction): string[] {
+  return FUNCTION_PERMISSIONS[fn];
+}
+
+/** Un ensemble de fonctions autorise-t-il la gestion des collaborateurs ? (Owner/Administrator). */
+export function canManageMembers(functions: string[]): boolean {
+  return functions.some((fn) => CAN_MANAGE_MEMBERS.includes(fn as OrgFunction));
+}
+
 /**
  * Domaine Organisations (FSPEC.19) : création self-service (le créateur devient Owner), gestion des
  * collaborateurs et de leurs fonctions, départ et transfert de propriété. Décisions déterministes :
