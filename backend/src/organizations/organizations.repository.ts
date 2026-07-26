@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Experience, InvitationStatus, RoleScope, type OrganizationInvitation } from '@prisma/client';
+import { computeOnboarding } from '../account/services/onboarding.service';
 import { PrismaService } from '../infra/prisma/prisma.service';
 
 /** Résumé d'une organisation vue par un membre (avec ses fonctions dans celle-ci). */
@@ -17,7 +18,17 @@ export interface OrganizationMember {
   displayName: string;
   email: string;
   functions: string[];
+  /** Niveau d'onboarding (0..1) affiché aux administrateurs (FSPEC.16 §5). */
+  onboardingLevel: number;
 }
+
+const MEMBER_USER_SELECT = {
+  id: true,
+  displayName: true,
+  email: true,
+  emailVerifiedAt: true,
+  termsAcceptedAt: true,
+} as const;
 
 /**
  * Accès PostgreSQL du domaine Organisations (Prisma confiné — ADR.02). Gère organisations,
@@ -117,7 +128,7 @@ export class OrganizationsRepository {
     const memberships = await this.prisma.organizationMembership.findMany({
       where: { organizationId },
       include: {
-        user: { select: { id: true, displayName: true, email: true } },
+        user: { select: MEMBER_USER_SELECT },
         roles: { include: { role: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'asc' },
@@ -127,6 +138,7 @@ export class OrganizationsRepository {
       displayName: m.user.displayName,
       email: m.user.email,
       functions: m.roles.map((r) => r.role.name),
+      onboardingLevel: computeOnboarding(m.user.emailVerifiedAt, m.user.termsAcceptedAt).level,
     }));
   }
 

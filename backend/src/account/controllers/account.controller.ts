@@ -16,6 +16,7 @@ import {
 import { AccountLifecycleService } from '../services/account-lifecycle.service';
 import { AccountPrivacyService } from '../services/account-privacy.service';
 import { AccountSecurityService } from '../services/account-security.service';
+import { OnboardingService, type OnboardingState } from '../services/onboarding.service';
 
 /**
  * Cycle de vie et sécurité du compte (FSPEC.18). Les endpoints « à lien » sont publics par nature
@@ -30,6 +31,7 @@ export class AccountController {
     private readonly lifecycle: AccountLifecycleService,
     private readonly security: AccountSecurityService,
     private readonly privacy: AccountPrivacyService,
+    private readonly onboarding: OnboardingService,
   ) {}
 
   @Public()
@@ -113,6 +115,21 @@ export class AccountController {
   @ApiOkResponse({ description: 'Journal de sécurité de l’utilisateur (consultation — §15).' })
   securityEvents(@CurrentUser() user: AuthenticatedUser): Promise<unknown[]> {
     return this.privacy.securityHistory(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Get('me/onboarding')
+  @ApiOkResponse({ description: 'État d’onboarding de l’utilisateur (étapes + niveau).' })
+  onboardingState(@CurrentUser() user: AuthenticatedUser): Promise<OnboardingState> {
+    return this.onboarding.get(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Post('me/onboarding/accept-terms')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Conditions d’utilisation acceptées.' })
+  acceptTerms(@CurrentUser() user: AuthenticatedUser): Promise<OnboardingState> {
+    return this.onboarding.acceptTerms(user.userId);
   }
 
   @ApiBearerAuth()

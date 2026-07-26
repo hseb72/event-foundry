@@ -6,6 +6,7 @@ import { AccountLifecycleService } from './services/account-lifecycle.service';
 import { AccountLinkMailer } from './services/account-link-mailer.service';
 import { AccountPrivacyService } from './services/account-privacy.service';
 import { AccountSecurityService } from './services/account-security.service';
+import { OnboardingService } from './services/onboarding.service';
 import { SecurityAuditService } from './services/security-audit.service';
 
 /**
@@ -21,6 +22,7 @@ import { SecurityAuditService } from './services/security-audit.service';
     AccountLifecycleService,
     AccountSecurityService,
     AccountPrivacyService,
+    OnboardingService,
     AccountLinkMailer,
     SecurityAuditService,
     AccountRepository,

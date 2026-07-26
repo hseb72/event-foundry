@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { IdentityService } from '../../core/api/identity.service';
+import { OperatorInvitation, OperatorInvitationsApi } from '../../core/api/operator-invitations.service';
 import { UsersAdminApi } from '../../core/api/users.service';
 import { AdminUserDto, OrganizationAdmin } from '../../core/models';
 
@@ -112,6 +113,34 @@ const ORGANIZATION_ROLE = 'Organizer';
       <div class="msg" [class.err]="isError()" [class.ok]="!isError()">{{ message() }}</div>
     }
 
+    <section class="card">
+      <h2>Inviter un Operator</h2>
+      <div class="row-form">
+        <div class="field">
+          <label for="opEmail">E-mail</label>
+          <input id="opEmail" class="input" [(ngModel)]="inviteEmail" placeholder="operateur@example.com" />
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="inviteOperator()" [disabled]="!inviteEmail">Inviter</button>
+      </div>
+      @if (operatorInvites().length) {
+        <table>
+          <thead><tr><th>Invitation en attente</th><th>Rôle</th><th></th></tr></thead>
+          <tbody>
+            @for (inv of operatorInvites(); track inv.id) {
+              <tr>
+                <td>{{ inv.email }}</td>
+                <td>{{ inv.roleName }}</td>
+                <td>
+                  <button class="btn btn-sm" (click)="resendOperator(inv.id)">Renvoyer</button>
+                  <button class="btn btn-sm" (click)="cancelOperator(inv.id)">Annuler</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
     <div class="cols">
       <section class="card">
         <h2>Organisations</h2>
@@ -211,6 +240,10 @@ const ORGANIZATION_ROLE = 'Organizer';
 export class OperatorAdminComponent implements OnInit {
   private readonly identity = inject(IdentityService);
   private readonly usersApi = inject(UsersAdminApi);
+  private readonly operatorInvites_api = inject(OperatorInvitationsApi);
+
+  readonly operatorInvites = signal<OperatorInvitation[]>([]);
+  inviteEmail = '';
 
   readonly orgs = signal<OrganizationAdmin[]>([]);
   readonly users = signal<AdminUserDto[]>([]);
@@ -232,6 +265,26 @@ export class OperatorAdminComponent implements OnInit {
   private reload(): void {
     this.identity.listOrganizations().subscribe({ next: (o) => this.orgs.set(o), error: (e) => this.fail(e) });
     this.usersApi.list().subscribe({ next: (u) => this.users.set(u), error: (e) => this.fail(e) });
+    this.operatorInvites_api.pending().subscribe({ next: (i) => this.operatorInvites.set(i), error: () => {} });
+  }
+
+  inviteOperator(): void {
+    this.operatorInvites_api.invite(this.inviteEmail.trim()).subscribe({
+      next: () => {
+        this.inviteEmail = '';
+        this.ok('Invitation envoyée.');
+        this.reload();
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  resendOperator(id: string): void {
+    this.operatorInvites_api.resend(id).subscribe({ next: () => this.ok('Invitation renvoyée.'), error: (e) => this.fail(e) });
+  }
+
+  cancelOperator(id: string): void {
+    this.operatorInvites_api.cancel(id).subscribe({ next: () => this.reload(), error: (e) => this.fail(e) });
   }
 
   createOrg(): void {

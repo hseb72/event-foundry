@@ -1,5 +1,6 @@
-import { Component, computed, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AccountApi, OnboardingState } from '../core/api/account.service';
 import { IdentityService } from '../core/api/identity.service';
 import { NotificationsApi } from '../core/api/notifications.service';
 import { AuthService } from '../core/auth/auth.service';
@@ -55,6 +56,20 @@ const NAV: NavItem[] = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   styles: [
     `
+      .onboarding {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        background: rgba(219, 39, 119, 0.14);
+        border: 1px solid rgba(219, 39, 119, 0.35);
+        border-radius: 10px;
+        padding: 0.6rem 0.9rem;
+        margin: 0 0 1rem;
+        font-size: 0.86rem;
+      }
+      .ob-step { opacity: 0.8; }
+      .ob-step.ok { opacity: 1; color: var(--green, #16a34a); }
       .layout {
         display: grid;
         grid-template-columns: 250px 1fr;
@@ -322,6 +337,19 @@ const NAV: NavItem[] = [
         </div>
       </aside>
       <main class="main">
+        @if (onboarding(); as ob) {
+          @if (!ob.completed) {
+            <div class="onboarding">
+              <span>👋 Finalisez votre inscription :</span>
+              @for (s of ob.steps; track s.key) {
+                <span class="ob-step" [class.ok]="s.done">{{ s.done ? '✓' : '○' }} {{ s.label }}</span>
+              }
+              @if (!termsDone()) {
+                <button class="btn btn-sm" (click)="acceptTerms()">Accepter les conditions</button>
+              }
+            </div>
+          }
+        }
         <router-outlet />
       </main>
     </div>
@@ -334,9 +362,14 @@ export class ShellComponent implements OnInit {
   private readonly theme = inject(ThemeService);
   private readonly router = inject(Router);
 
+  private readonly account = inject(AccountApi);
   readonly experiences = EXPERIENCES;
   readonly me = this.identity.me;
   readonly unreadNotifications = this.notificationsApi.unread;
+  readonly onboarding = signal<OnboardingState | null>(null);
+  readonly termsDone = computed(() =>
+    (this.onboarding()?.steps ?? []).some((s) => s.key === 'terms_accepted' && s.done),
+  );
 
   readonly activeExperience = computed<Experience | null>(() => this.me()?.activeExperience ?? null);
   // Le switcher n'affiche que les expériences réellement débloquées : masqué pour un Explorer pur
@@ -363,6 +396,11 @@ export class ShellComponent implements OnInit {
   ngOnInit(): void {
     this.identity.loadMe().subscribe((me) => this.theme.syncFromPreferences(me.preferences));
     this.notificationsApi.refreshUnread();
+    this.account.onboarding().subscribe((ob) => this.onboarding.set(ob));
+  }
+
+  acceptTerms(): void {
+    this.account.acceptTerms().subscribe((ob) => this.onboarding.set(ob));
   }
 
   isAvailable(experience: Experience): boolean {

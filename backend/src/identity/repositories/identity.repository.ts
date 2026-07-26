@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { RoleScope } from '@prisma/client';
-import type { Experience, Prisma } from '@prisma/client';
+import { InvitationStatus, RoleScope } from '@prisma/client';
+import type { Experience, OperatorInvitation, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { identityInclude, type IdentityGraph } from '../entities/identity-graph.entity';
 
@@ -111,6 +111,53 @@ export class IdentityRepository {
 
   async removePlatformRole(userId: string, roleId: string): Promise<void> {
     await this.prisma.userRole.deleteMany({ where: { userId, roleId } });
+  }
+
+  findUserIdByEmail(email: string): Promise<string | null> {
+    return this.prisma.user
+      .findUnique({ where: { email }, select: { id: true } })
+      .then((u) => u?.id ?? null);
+  }
+
+  // --- Invitations d'Operator (FSPEC.17 §5) ---
+
+  createOperatorInvitation(input: {
+    email: string;
+    roleName: string;
+    tokenHash: string;
+    invitedById: string;
+    expiresAt: Date;
+  }): Promise<OperatorInvitation> {
+    return this.prisma.operatorInvitation.create({ data: input });
+  }
+
+  listPendingOperatorInvitations(): Promise<OperatorInvitation[]> {
+    return this.prisma.operatorInvitation.findMany({
+      where: { status: InvitationStatus.PENDING },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findOperatorInvitationByToken(tokenHash: string): Promise<OperatorInvitation | null> {
+    return this.prisma.operatorInvitation.findFirst({ where: { tokenHash } });
+  }
+
+  findOperatorInvitation(id: string): Promise<OperatorInvitation | null> {
+    return this.prisma.operatorInvitation.findUnique({ where: { id } });
+  }
+
+  setOperatorInvitationStatus(id: string, status: InvitationStatus, acceptedAt?: Date): Promise<OperatorInvitation> {
+    return this.prisma.operatorInvitation.update({
+      where: { id },
+      data: { status, ...(acceptedAt ? { acceptedAt } : {}) },
+    });
+  }
+
+  refreshOperatorInvitation(id: string, tokenHash: string, expiresAt: Date): Promise<OperatorInvitation> {
+    return this.prisma.operatorInvitation.update({
+      where: { id },
+      data: { tokenHash, expiresAt, status: InvitationStatus.PENDING },
+    });
   }
 
   async updateProfile(userId: string, update: ProfileUpdate): Promise<void> {

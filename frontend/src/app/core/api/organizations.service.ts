@@ -18,6 +18,7 @@ export interface OrganizationMember {
   displayName: string;
   email: string;
   functions: string[];
+  onboardingLevel: number;
 }
 
 /** Client du domaine Organisations (FSPEC.19) : création, mes organisations, gestion des membres. */

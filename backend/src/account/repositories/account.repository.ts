@@ -63,6 +63,11 @@ export class AccountRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  /** Acceptation des conditions d'utilisation (étape d'onboarding — FSPEC.16/17). Idempotent. */
+  acceptTerms(userId: string): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { termsAcceptedAt: new Date() } });
+  }
+
   /** Marque l'e-mail vérifié et active le compte (IAM-003) — transition REGISTERED → ACTIVE. */
   markEmailVerified(userId: string): Promise<User> {
     return this.prisma.user.update({

@@ -1,5 +1,6 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { AccountApi } from '../../core/api/account.service';
 import { OrganizationsApi } from '../../core/api/organizations.service';
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -68,9 +69,20 @@ export class AcceptInvitationComponent implements OnInit {
       this.error.set('Lien incomplet : jeton manquant.');
       return;
     }
-    this.nextUrl = `/accept-invitation?token=${token}`;
+    const kind = this.route.snapshot.queryParamMap.get('kind');
+    this.nextUrl = `/accept-invitation?token=${token}${kind ? '&kind=' + kind : ''}`;
     if (!this.auth.isAuthenticated()) {
       this.state.set('auth');
+      return;
+    }
+    if (kind === 'operator') {
+      this.account.acceptOperatorInvitation(token).subscribe({
+        next: (res) => {
+          this.orgName.set(`l'équipe ${res.roleName}`);
+          this.state.set('done');
+        },
+        error: (err) => this.fail(err),
+      });
       return;
     }
     this.api.acceptInvitation(token).subscribe({
@@ -78,10 +90,14 @@ export class AcceptInvitationComponent implements OnInit {
         this.orgName.set(res.organizationName);
         this.state.set('done');
       },
-      error: (err) => {
-        this.state.set('error');
-        this.error.set(err?.error?.message ?? 'Invitation invalide ou expirée.');
-      },
+      error: (err) => this.fail(err),
     });
+  }
+
+  private readonly account = inject(AccountApi);
+
+  private fail(err: unknown): void {
+    this.state.set('error');
+    this.error.set((err as { error?: { message?: string } })?.error?.message ?? 'Invitation invalide ou expirée.');
   }
 }

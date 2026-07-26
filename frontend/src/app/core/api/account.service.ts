@@ -40,6 +40,31 @@ export class AccountApi {
   deleteAccount(currentPassword: string): Observable<{ deleted: boolean }> {
     return this.http.post<{ deleted: boolean }>(`${API_BASE}/account/me/delete`, { currentPassword });
   }
+
+  // Onboarding (FSPEC.16/17)
+  onboarding(): Observable<OnboardingState> {
+    return this.http.get<OnboardingState>(`${API_BASE}/account/me/onboarding`);
+  }
+
+  acceptTerms(): Observable<OnboardingState> {
+    return this.http.post<OnboardingState>(`${API_BASE}/account/me/onboarding/accept-terms`, {});
+  }
+
+  acceptOperatorInvitation(token: string): Observable<{ roleName: string }> {
+    return this.http.post<{ roleName: string }>(`${API_BASE}/operator-invitations/accept`, { token });
+  }
+}
+
+export interface OnboardingStep {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+export interface OnboardingState {
+  steps: OnboardingStep[];
+  completed: boolean;
+  level: number;
 }
 
 /** Entrée du journal de sécurité (audit personnel). */

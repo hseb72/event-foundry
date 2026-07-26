@@ -1,3 +1,4 @@
+import { DecimalPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
@@ -19,7 +20,7 @@ import { ActivityDto } from '../../core/models';
 @Component({
   selector: 'app-organizations',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DecimalPipe],
   styles: [
     `
       .grid { display: grid; gap: 1rem; }
@@ -109,7 +110,11 @@ import { ActivityDto } from '../../core/models';
                 <tbody>
                   @for (m of list; track m.userId) {
                     <tr>
-                      <td>{{ m.displayName }}<br /><span class="muted">{{ m.email }}</span></td>
+                      <td>{{ m.displayName }}<br /><span class="muted">{{ m.email }}</span>
+                        @if (m.onboardingLevel < 1) {
+                          <span class="fn" style="background:rgba(234,179,8,0.25)">Onboarding {{ (m.onboardingLevel * 100) | number: '1.0-0' }}%</span>
+                        }
+                      </td>
                       <td>
                         <select
                           [ngModel]="m.functions[0]"

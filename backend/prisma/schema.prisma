@@ -330,6 +330,8 @@ model User {
   activeOrganization   Organization?            @relation("UserActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
   // Préférences utilisateur (JSONB) : thème, langue, etc. Aucune donnée métier.
   preferences          Json?                    @db.JsonB
+  // Onboarding (FSPEC.16/17) : acceptation des conditions d'utilisation (étape d'intégration).
+  termsAcceptedAt      DateTime?                @map("terms_accepted_at") @db.Timestamptz(6)
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1218,4 +1220,23 @@ model ModerationLog {
 
   @@index([objectType, objectId, createdAt])
   @@map("moderation_logs")
+}
+
+/// Invitation à devenir Operator (FSPEC.17 §5). Portée PLATEFORME (rôle Operator), distincte des
+/// invitations d'organisation. Jeton à usage unique haché ; expire (comme les invitations d'org).
+model OperatorInvitation {
+  id           String           @id @default(uuid()) @db.Uuid
+  email        String
+  roleName     String           @map("role_name")
+  status       InvitationStatus @default(PENDING)
+  tokenHash    String           @map("token_hash")
+  invitedById  String?          @map("invited_by_id") @db.Uuid
+  expiresAt    DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt   DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([tokenHash])
+  @@map("operator_invitations")
 }
