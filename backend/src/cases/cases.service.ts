@@ -1,12 +1,20 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import { CasePriority, CaseStatus, type Case, type CaseRoutingRule } from '@prisma/client';
+import {
+  DOMAIN_EVENTS,
+  type CaseAssignedPayload,
+  type CaseCreatedPayload,
+  type CaseStatusChangedPayload,
+} from '../platform/event-bus/domain-event';
+import { EVENT_BUS, makeDomainEvent, type EventBus } from '../platform/event-bus/event-bus';
 import { canTransition, CASE_TYPES, type CaseOrigin } from './case-catalog';
 import { decideRouting, type RoutingContext, type RoutingRuleDef } from './case-routing';
 import { CaseFilter, CasesRepository } from './cases.repository';
@@ -34,7 +42,10 @@ export interface OpenCaseInput {
 export class CasesService {
   private readonly logger = new Logger(CasesService.name);
 
-  constructor(private readonly repository: CasesRepository) {}
+  constructor(
+    private readonly repository: CasesRepository,
+    @Inject(EVENT_BUS) private readonly bus: EventBus,
+  ) {}
 
   /** Ouvre une Case, l'oriente via les Routing Rules (repli catalogue) et historise sa création (§7-9). */
   async open(input: OpenCaseInput): Promise<Case> {
@@ -88,6 +99,16 @@ export class CasesService {
       `CaseOpened ${reference} type=${type} → ${routing.domain}/${routing.workQueue}` +
         (routing.matchedRuleId ? ` (règle ${routing.matchedRuleId})` : ' (repli catalogue)'),
     );
+    // Fait métier « Case ouverte » (§19) : les Operators de la file sont alertés via le bus.
+    this.bus.publish(
+      makeDomainEvent<CaseCreatedPayload>(DOMAIN_EVENTS.CASE_CREATED, {
+        caseId: created.id,
+        reference: created.reference,
+        subject: created.subject,
+        domain: created.domain,
+        requesterId: created.requesterId,
+      }),
+    );
     return created;
   }
 
@@ -134,6 +155,17 @@ export class CasesService {
     const status = current.status === CaseStatus.NEW ? CaseStatus.ASSIGNED : current.status;
     const updated = await this.repository.update(id, { assigneeId, status });
     await this.repository.recordEvent({ caseId: id, kind: 'ASSIGNED', actorId, metadata: { assigneeId } as never });
+    // N'informer que sur une affectation à autrui (une prise en charge personnelle est explicite).
+    if (assigneeId !== actorId) {
+      this.bus.publish(
+        makeDomainEvent<CaseAssignedPayload>(DOMAIN_EVENTS.CASE_ASSIGNED, {
+          caseId: id,
+          reference: updated.reference,
+          subject: updated.subject,
+          assigneeId,
+        }),
+      );
+    }
     return updated;
   }
 
@@ -159,6 +191,16 @@ export class CasesService {
       body: to === CaseStatus.CLOSED ? (closeReason ?? null) : null,
       metadata: { from: current.status, to } as never,
     });
+    // Le demandeur est informé des étapes qui le concernent (§19). Le subscriber filtre les statuts.
+    this.bus.publish(
+      makeDomainEvent<CaseStatusChangedPayload>(DOMAIN_EVENTS.CASE_STATUS_CHANGED, {
+        caseId: id,
+        reference: updated.reference,
+        subject: updated.subject,
+        status: to,
+        requesterId: updated.requesterId,
+      }),
+    );
     return updated;
   }
 

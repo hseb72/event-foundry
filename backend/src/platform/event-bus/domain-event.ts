@@ -20,6 +20,9 @@ export const DOMAIN_EVENTS = {
   IMPORT_FAILED: 'import.failed',
   EVENT_PUBLISHED: 'event.published',
   PARTICIPATION_CHANGED: 'participation.changed',
+  CASE_CREATED: 'case.created',
+  CASE_ASSIGNED: 'case.assigned',
+  CASE_STATUS_CHANGED: 'case.status_changed',
 } as const;
 
 export type DomainEventName = (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS];
@@ -53,6 +56,32 @@ export type EventPublishedPayload = {
   activityId: string;
   categoryId: string | null;
   venueId: string | null;
+};
+
+/** Une Case a été ouverte (FSPEC.21) : sert à alerter les Operators de la file concernée. */
+export type CaseCreatedPayload = {
+  caseId: string;
+  reference: string;
+  subject: string;
+  domain: string;
+  requesterId: string | null;
+};
+
+/** Une Case a été affectée à un Operator (pour l'informer de sa prise en charge). */
+export type CaseAssignedPayload = {
+  caseId: string;
+  reference: string;
+  subject: string;
+  assigneeId: string;
+};
+
+/** Le statut d'une Case a changé (pour informer le demandeur des étapes qui le concernent). */
+export type CaseStatusChangedPayload = {
+  caseId: string;
+  reference: string;
+  subject: string;
+  status: string;
+  requesterId: string | null;
 };
 
 /** La participation d'un utilisateur à un Event a changé (axes ou activation). */

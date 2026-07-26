@@ -178,6 +178,58 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Notification **technique** (FSPEC.21 §19) : une nouvelle Case est ouverte → informe les Operators
+   * habilités (`case.manage`). Best-effort. (Un ciblage par file/domaine affinera plus tard.)
+   */
+  async notifyOperatorsNewCase(reference: string, subject: string): Promise<void> {
+    try {
+      const recipients = await this.repository.findUserIdsWithPermission('case.manage');
+      for (const userId of recipients) {
+        await this.emit(userId, {
+          type: 'CASE_OPENED',
+          title: 'Nouveau dossier à traiter',
+          body: `${reference} — ${subject}`,
+          priority: NotificationPriority.INFORMATION,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Notification « nouveau dossier » (${reference}) échouée`, error as Error);
+    }
+  }
+
+  /** Notification à l'Operator affecté à une Case (FSPEC.21 §19). Best-effort. */
+  async notifyCaseAssigned(assigneeId: string, reference: string, subject: string): Promise<void> {
+    try {
+      await this.emit(assigneeId, {
+        type: 'CASE_ASSIGNED',
+        title: 'Dossier qui vous est affecté',
+        body: `${reference} — ${subject}`,
+        priority: NotificationPriority.IMPORTANT,
+      });
+    } catch (error) {
+      this.logger.error(`Notification « dossier affecté » (${reference}) échouée`, error as Error);
+    }
+  }
+
+  /** Informe le demandeur d'une évolution de sa Case qui le concerne (§19). Best-effort. */
+  async notifyRequesterCaseUpdate(requesterId: string, reference: string, status: string): Promise<void> {
+    const messages: Record<string, string> = {
+      WAITING_FOR_USER: 'Votre demande attend une information de votre part.',
+      RESOLVED: 'Votre demande a été résolue.',
+      CLOSED: 'Votre demande a été clôturée.',
+    };
+    const body = messages[status];
+    if (!body) {
+      return;
+    }
+    try {
+      await this.emit(requesterId, { type: `CASE_${status}`, title: `Demande ${reference}`, body });
+    } catch (error) {
+      this.logger.error(`Notification « demande mise à jour » (${reference}) échouée`, error as Error);
+    }
+  }
+
   list(userId: string, status?: NotificationStatus): Promise<Notification[]> {
     return this.repository.listForUser(userId, status);
   }

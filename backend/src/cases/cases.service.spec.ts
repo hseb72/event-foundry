@@ -30,7 +30,7 @@ describe('CasesService (FSPEC.21)', () => {
       listForRequester: jest.fn(),
       activeRoutingRules: jest.fn().mockResolvedValue([]),
     };
-    service = new CasesService(repository as unknown as CasesRepository);
+    service = new CasesService(repository as unknown as CasesRepository, { publish: jest.fn(), subscribe: jest.fn() });
   });
 
   describe('open (routage §9)', () => {
