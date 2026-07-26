@@ -57,6 +57,22 @@ export class EventRepository extends BaseRepository<Event> {
   }
 
   /**
+   * Détecte un doublon au **catalogue public** (FSPEC.22 §13) : un événement public non supprimé,
+   * de même date de début et de titre identique (comparaison insensible à la casse). Déterministe.
+   */
+  async publicDuplicateExists(title: string, startsAt: Date): Promise<boolean> {
+    const count = await this.prisma.event.count({
+      where: {
+        deletedAt: null,
+        visibility: EventVisibility.PUBLIC,
+        startsAt,
+        title: { equals: title, mode: 'insensitive' },
+      },
+    });
+    return count > 0;
+  }
+
+  /**
    * Met à jour les champs éditables d'un Event et remplace intégralement ses tags (sémantique PUT).
    * Le remplacement des tags et la mise à jour des champs sont atomiques (écriture imbriquée Prisma).
    * La provenance (source) et le statut ne sont jamais modifiés ici.

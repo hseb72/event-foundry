@@ -157,6 +157,13 @@ import { EventFormComponent } from '../../shared/event-form.component';
               }
             </div>
 
+            @if (holdNotice) {
+              <p
+                style="background: rgba(234, 179, 8, 0.14); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 0.6rem 0.9rem;"
+              >
+                ⏸️ {{ holdNotice }}
+              </p>
+            }
             @if (actionError) {
               <p style="color: var(--red, #c0392b)">{{ actionError }}</p>
             }
@@ -194,6 +201,8 @@ export class ValidationComponent implements OnInit {
   detailLoading = false;
   busy = false;
   actionError = '';
+  /** Message « validation retenue pour vérification » (FSPEC.22 §13, 422). */
+  holdNotice = '';
 
   constructor(private readonly api: EventCandidatesApi) {}
 
@@ -241,6 +250,7 @@ export class ValidationComponent implements OnInit {
     if (!this.selected) return;
     this.busy = true;
     this.actionError = '';
+    this.holdNotice = '';
     this.api.validate(this.selected.id, input).subscribe({
       next: () => {
         this.busy = false;
@@ -248,7 +258,13 @@ export class ValidationComponent implements OnInit {
       },
       error: (err) => {
         this.busy = false;
-        this.actionError = err?.error?.message ?? 'La validation a échoué.';
+        // 422 SUBMISSION_HELD_FOR_REVIEW (§13) : ce n'est pas un échec — une Case a été ouverte, le
+        // candidat reste modifiable. On l'affiche comme une mise en attente plutôt qu'une erreur.
+        if (err?.error?.code === 'SUBMISSION_HELD_FOR_REVIEW') {
+          this.holdNotice = err.error.message;
+        } else {
+          this.actionError = err?.error?.message ?? 'La validation a échoué.';
+        }
       },
     });
   }

@@ -184,6 +184,14 @@ export class EventsService {
   }
 
   /**
+   * Détecte un doublon au catalogue public (FSPEC.22 §13) : événement public identique par titre et
+   * date de début. Déterministe ; sert de contrôle automatique avant validation.
+   */
+  hasPublicDuplicate(title: string, startsAt: Date): Promise<boolean> {
+    return this.repository.publicDuplicateExists(title, startsAt);
+  }
+
+  /**
    * Valide la cohérence hiérarchique (FSPEC.03 RM-002..005) et construit les données
    * d'Event sans écrire. Le Domain est déduit de l'Activity côté persistance.
    */
