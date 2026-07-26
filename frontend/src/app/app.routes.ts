@@ -21,6 +21,7 @@ import { OperatorAdminComponent } from './features/operator/operator-admin.compo
 import { OperatorConfigComponent } from './features/operator/operator-config.component';
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
 import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
+import { OrganizationsComponent } from './features/organizer/organizations.component';
 import { LoginComponent } from './features/login/login.component';
 import { NotificationsComponent } from './features/notifications/notifications.component';
 import { RecommendationsComponent } from './features/recommendations/recommendations.component';
@@ -72,6 +73,7 @@ export const routes: Routes = [
         component: OrganizerEventsComponent,
         canActivate: [permissionGuard('event.create')],
       },
+      { path: 'organizer/organizations', component: OrganizationsComponent },
       { path: 'discover', component: CatalogueComponent },
       { path: 'search', component: SearchComponent },
       {

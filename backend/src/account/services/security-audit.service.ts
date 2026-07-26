@@ -33,7 +33,9 @@ export class SecurityAuditService {
   constructor(private readonly repository: AccountRepository) {}
 
   async record(
-    type: SecurityEventType,
+    // Clés de sécurité connues (autocomplétées) + types d'audit propres à d'autres domaines
+    // (ex. organisations — ORG-009). Le journal `security_events` reste un audit générique.
+    type: SecurityEventType | (string & {}),
     userId: string | null,
     metadata?: Record<string, unknown>,
   ): Promise<void> {

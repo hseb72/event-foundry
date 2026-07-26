@@ -8,6 +8,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { DiscoveryModule } from './discovery/discovery.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 import { PublicModule } from './public/public.module';
 import { EventsModule } from './events/events.module';
 import { IdentityModule } from './identity/identity.module';
@@ -52,6 +53,7 @@ import { UsersModule } from './users/users.module';
     IdentityModule,
     AuthModule,
     AccountModule,
+    OrganizationsModule,
     ReferenceDataModule,
     ImportsModule,
     EventsModule,
