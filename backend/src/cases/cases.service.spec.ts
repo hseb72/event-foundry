@@ -12,6 +12,7 @@ describe('CasesService (FSPEC.21)', () => {
     update: jest.Mock;
     referenceExists: jest.Mock;
     listForRequester: jest.Mock;
+    activeRoutingRules: jest.Mock;
   };
   let service: CasesService;
 
@@ -27,6 +28,7 @@ describe('CasesService (FSPEC.21)', () => {
       update: jest.fn().mockImplementation((_id, data) => Promise.resolve(aCase(data))),
       referenceExists: jest.fn().mockResolvedValue(false),
       listForRequester: jest.fn(),
+      activeRoutingRules: jest.fn().mockResolvedValue([]),
     };
     service = new CasesService(repository as unknown as CasesRepository);
   });

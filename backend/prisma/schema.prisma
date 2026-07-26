@@ -1158,6 +1158,7 @@ model Case {
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   closedAt       DateTime?    @map("closed_at") @db.Timestamptz(6)
+  closeReason    String?      @map("close_reason")
 
   @@index([status, domain, workQueue])
   @@index([assigneeId])
@@ -1181,4 +1182,21 @@ model CaseEvent {
 
   @@index([caseId, occurredAt])
   @@map("case_events")
+}
+
+/// Règle de routage configurable d'une Case (FSPEC.21 §14 / CASE-008). Évaluées par ordre croissant
+/// (`orderIndex`), la première applicable l'emporte ; un repli déterministe (catalogue) garantit une
+/// destination si aucune règle ne matche. Critères et résultat stockés en JSON (aucun code métier).
+model CaseRoutingRule {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  orderIndex Int      @map("order_index")
+  isActive   Boolean  @default(true) @map("is_active")
+  criteria   Json     @db.JsonB
+  result     Json     @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isActive, orderIndex])
+  @@map("case_routing_rules")
 }

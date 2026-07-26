@@ -4,11 +4,13 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { CASE_TYPES } from '../case-catalog';
@@ -56,6 +58,38 @@ export class ChangeStatusDto {
   @ApiProperty({ enum: CaseStatus })
   @IsEnum(CaseStatus)
   status!: CaseStatus;
+
+  @ApiPropertyOptional({ description: 'Motif de clôture (quand le statut passe à CLOSED — §22).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  closeReason?: string;
+}
+
+export class RoutingRuleDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name!: string;
+
+  @ApiProperty({ description: 'Ordre d’évaluation (croissant ; première règle applicable gagne).' })
+  @IsInt()
+  @Min(0)
+  orderIndex!: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiProperty({ type: Object, description: 'Critères (types, origins, organizationId, requiresEvent, aiConfidenceBelow).' })
+  @IsObject()
+  criteria!: Record<string, unknown>;
+
+  @ApiProperty({ type: Object, description: 'Résultat (domain, workQueue, priority, initialStatus, defaultAssigneeId).' })
+  @IsObject()
+  result!: Record<string, unknown>;
 }
 
 export class ChangePriorityDto {

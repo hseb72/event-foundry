@@ -1,7 +1,14 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CaseCatalog, CaseDashboard, CaseDetail, CaseSummary, CasesApi } from '../../core/api/cases.service';
+import {
+  CaseCatalog,
+  CaseDashboard,
+  CaseDetail,
+  CaseSummary,
+  CasesApi,
+  RoutingRule,
+} from '../../core/api/cases.service';
 
 /**
  * Console Operator du Case Management (FSPEC.21) : file filtrable, tableau de bord opérationnel, et
@@ -76,6 +83,46 @@ import { CaseCatalog, CaseDashboard, CaseDetail, CaseSummary, CasesApi } from '.
         </table>
       </section>
 
+      <section class="card">
+        <div class="row" style="justify-content:space-between">
+          <h2 style="margin:0">Règles de routage</h2>
+          <button class="btn btn-sm" (click)="toggleRules()">{{ showRules() ? 'Masquer' : 'Configurer' }}</button>
+        </div>
+        @if (showRules()) {
+          <p class="muted">Évaluées par ordre croissant ; la première applicable l'emporte. Sinon, repli sur le routage par défaut.</p>
+          <table>
+            <thead><tr><th>Ordre</th><th>Nom</th><th>Si (type)</th><th>→ Domaine / priorité</th><th>Active</th><th></th></tr></thead>
+            <tbody>
+              @for (r of rules(); track r.id) {
+                <tr>
+                  <td>{{ r.orderIndex }}</td>
+                  <td>{{ r.name }}</td>
+                  <td class="muted">{{ ruleTypes(r) }}</td>
+                  <td>{{ label(ruleDomain(r)) }}{{ rulePriority(r) ? ' · ' + label(rulePriority(r)) : '' }}</td>
+                  <td><input type="checkbox" [checked]="r.isActive !== false" (change)="toggleRuleActive(r, $event)" /></td>
+                  <td><button class="btn btn-sm danger" (click)="deleteRule(r)">Suppr.</button></td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="muted">Aucune règle : routage par défaut appliqué.</td></tr> }
+            </tbody>
+          </table>
+
+          <h3 style="font-size:0.85rem;margin:0.8rem 0 0.4rem">Nouvelle règle</h3>
+          <div class="row">
+            <input class="input" [(ngModel)]="nr.name" placeholder="Nom" style="width:160px" />
+            <input class="input" type="number" [(ngModel)]="nr.orderIndex" placeholder="Ordre" style="width:80px" />
+            <input class="input" [(ngModel)]="nr.types" placeholder="Types (séparés par ,)" style="width:220px" />
+            <select [(ngModel)]="nr.domain">
+              @for (dm of catalog()?.domains ?? []; track dm) { <option [value]="dm">{{ label(dm) }}</option> }
+            </select>
+            <select [(ngModel)]="nr.priority">
+              <option value="">Priorité (auto)</option>
+              @for (p of catalog()?.priorities ?? []; track p) { <option [value]="p">{{ label(p) }}</option> }
+            </select>
+            <button class="btn btn-sm" (click)="addRule()" [disabled]="!nr.name.trim() || !nr.domain">Ajouter</button>
+          </div>
+        }
+      </section>
+
       @if (detail(); as d) {
         <section class="card">
           <div class="row" style="justify-content:space-between">
@@ -130,6 +177,11 @@ export class CasesConsoleComponent implements OnInit {
   fUnassigned = false;
   commentBody = '';
   commentInternal = true;
+
+  // Routing Rules (§14)
+  readonly showRules = signal(false);
+  readonly rules = signal<RoutingRule[]>([]);
+  nr = { name: '', orderIndex: 10, types: '', domain: '', priority: '' };
 
   ngOnInit(): void {
     this.api.catalog().subscribe((c) => this.catalog.set(c));
@@ -203,5 +255,59 @@ export class CasesConsoleComponent implements OnInit {
       this.commentBody = '';
       this.after();
     });
+  }
+
+  // --- Routing Rules ---
+  toggleRules(): void {
+    this.showRules.update((v) => !v);
+    if (this.showRules() && this.rules().length === 0) {
+      this.loadRules();
+    }
+  }
+
+  private loadRules(): void {
+    this.api.routingRules().subscribe((list) => this.rules.set(list));
+  }
+
+  ruleTypes(r: RoutingRule): string {
+    const t = (r.criteria as { types?: string[] }).types;
+    return t?.length ? t.join(', ') : 'tous';
+  }
+
+  ruleDomain(r: RoutingRule): string {
+    return (r.result as { domain?: string }).domain ?? '';
+  }
+
+  rulePriority(r: RoutingRule): string {
+    return (r.result as { priority?: string }).priority ?? '';
+  }
+
+  toggleRuleActive(r: RoutingRule, event: Event): void {
+    const isActive = (event.target as HTMLInputElement).checked;
+    this.api
+      .updateRule(r.id, { name: r.name, orderIndex: r.orderIndex, isActive, criteria: r.criteria, result: r.result })
+      .subscribe(() => this.loadRules());
+  }
+
+  deleteRule(r: RoutingRule): void {
+    if (!confirm(`Supprimer la règle « ${r.name} » ?`)) {
+      return;
+    }
+    this.api.deleteRule(r.id).subscribe(() => this.loadRules());
+  }
+
+  addRule(): void {
+    const types = this.nr.types.split(',').map((s) => s.trim()).filter(Boolean);
+    const criteria: Record<string, unknown> = types.length ? { types } : {};
+    const result: Record<string, unknown> = { domain: this.nr.domain };
+    if (this.nr.priority) {
+      result['priority'] = this.nr.priority;
+    }
+    this.api
+      .createRule({ name: this.nr.name.trim(), orderIndex: Number(this.nr.orderIndex), criteria, result })
+      .subscribe(() => {
+        this.nr = { name: '', orderIndex: 10, types: '', domain: '', priority: '' };
+        this.loadRules();
+      });
   }
 }

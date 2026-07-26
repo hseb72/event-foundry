@@ -106,4 +106,37 @@ export class CasesApi {
   comment(id: string, body: string, internal: boolean): Observable<{ added: boolean }> {
     return this.http.post<{ added: boolean }>(`${API_BASE}/cases/${id}/comments`, { body, internal });
   }
+
+  setStatusWithReason(id: string, status: string, closeReason?: string): Observable<CaseSummary> {
+    return this.http.patch<CaseSummary>(`${API_BASE}/cases/${id}/status`, { status, closeReason });
+  }
+
+  // Routing Rules (§14)
+  routingRules(): Observable<RoutingRule[]> {
+    return this.http.get<RoutingRule[]>(`${API_BASE}/cases/routing-rules`);
+  }
+
+  createRule(rule: RoutingRuleInput): Observable<RoutingRule> {
+    return this.http.post<RoutingRule>(`${API_BASE}/cases/routing-rules`, rule);
+  }
+
+  updateRule(id: string, rule: RoutingRuleInput): Observable<RoutingRule> {
+    return this.http.patch<RoutingRule>(`${API_BASE}/cases/routing-rules/${id}`, rule);
+  }
+
+  deleteRule(id: string): Observable<{ deleted: boolean }> {
+    return this.http.delete<{ deleted: boolean }>(`${API_BASE}/cases/routing-rules/${id}`);
+  }
+}
+
+export interface RoutingRuleInput {
+  name: string;
+  orderIndex: number;
+  isActive?: boolean;
+  criteria: Record<string, unknown>;
+  result: Record<string, unknown>;
+}
+
+export interface RoutingRule extends RoutingRuleInput {
+  id: string;
 }

@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { CasePriority, CaseStatus, Prisma, type Case, type CaseEvent } from '@prisma/client';
+import {
+  CasePriority,
+  CaseStatus,
+  Prisma,
+  type Case,
+  type CaseEvent,
+  type CaseRoutingRule,
+} from '@prisma/client';
 import { PrismaService } from '../infra/prisma/prisma.service';
 
 export interface CreateCaseInput {
@@ -110,6 +117,38 @@ export class CasesRepository {
     return this.prisma.case
       .findUnique({ where: { reference }, select: { id: true } })
       .then((c) => c != null);
+  }
+
+  // --- Routing Rules configurables (§14) ---
+
+  activeRoutingRules(): Promise<CaseRoutingRule[]> {
+    return this.prisma.caseRoutingRule.findMany({
+      where: { isActive: true },
+      orderBy: { orderIndex: 'asc' },
+    });
+  }
+
+  listRoutingRules(): Promise<CaseRoutingRule[]> {
+    return this.prisma.caseRoutingRule.findMany({ orderBy: { orderIndex: 'asc' } });
+  }
+
+  createRoutingRule(data: {
+    name: string;
+    orderIndex: number;
+    isActive: boolean;
+    criteria: Prisma.InputJsonValue;
+    result: Prisma.InputJsonValue;
+  }): Promise<CaseRoutingRule> {
+    return this.prisma.caseRoutingRule.create({ data });
+  }
+
+  updateRoutingRule(id: string, data: Prisma.CaseRoutingRuleUpdateInput): Promise<CaseRoutingRule> {
+    return this.prisma.caseRoutingRule.update({ where: { id }, data });
+  }
+
+  async deleteRoutingRule(id: string): Promise<number> {
+    const result = await this.prisma.caseRoutingRule.deleteMany({ where: { id } });
+    return result.count;
   }
 
   /** Indicateurs de pilotage (§21) : comptes par statut / domaine + charge par assignee + critiques. */

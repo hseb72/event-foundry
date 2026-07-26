@@ -6,8 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import { CasePriority, CaseStatus, type Case } from '@prisma/client';
-import { canTransition, CASE_TYPES, route, type CaseOrigin } from './case-catalog';
+import { CasePriority, CaseStatus, type Case, type CaseRoutingRule } from '@prisma/client';
+import { canTransition, CASE_TYPES, type CaseOrigin } from './case-catalog';
+import { decideRouting, type RoutingContext, type RoutingRuleDef } from './case-routing';
 import { CaseFilter, CasesRepository } from './cases.repository';
 
 /** Données d'ouverture d'une Case (§7-8). */
@@ -35,10 +36,20 @@ export class CasesService {
 
   constructor(private readonly repository: CasesRepository) {}
 
-  /** Ouvre une Case, l'oriente automatiquement et historise sa création (§7-9). */
+  /** Ouvre une Case, l'oriente via les Routing Rules (repli catalogue) et historise sa création (§7-9). */
   async open(input: OpenCaseInput): Promise<Case> {
     const type = CASE_TYPES.includes(input.type as never) ? input.type : 'OTHER';
-    const routing = route(type, input.priority);
+    const context: RoutingContext = {
+      type,
+      origin: input.origin,
+      organizationId: input.organizationId ?? null,
+      eventId: input.eventId ?? null,
+      aiConfidence: typeof input.metadata?.['aiConfidence'] === 'number'
+        ? (input.metadata['aiConfidence'] as number)
+        : null,
+      priority: input.priority ?? null,
+    };
+    const routing = decideRouting(await this.loadRules(), context);
     const reference = await this.uniqueReference();
     const created = await this.repository.create({
       reference,
@@ -54,14 +65,41 @@ export class CasesService {
       eventId: input.eventId ?? null,
       metadata: input.metadata as never,
     });
+    // Statut / assignation initiaux issus d'une règle applicable (§14 §Résultat).
+    if (routing.initialStatus !== CaseStatus.NEW || routing.defaultAssigneeId) {
+      await this.repository.update(created.id, {
+        status: routing.initialStatus,
+        ...(routing.defaultAssigneeId ? { assigneeId: routing.defaultAssigneeId } : {}),
+      });
+    }
     await this.repository.recordEvent({
       caseId: created.id,
       kind: 'CREATED',
       actorId: input.requesterId,
-      metadata: { type, domain: routing.domain, workQueue: routing.workQueue, origin: input.origin } as never,
+      metadata: {
+        type,
+        domain: routing.domain,
+        workQueue: routing.workQueue,
+        origin: input.origin,
+        matchedRuleId: routing.matchedRuleId,
+      } as never,
     });
-    this.logger.log(`CaseOpened ${reference} type=${type} → ${routing.domain}/${routing.workQueue}`);
+    this.logger.log(
+      `CaseOpened ${reference} type=${type} → ${routing.domain}/${routing.workQueue}` +
+        (routing.matchedRuleId ? ` (règle ${routing.matchedRuleId})` : ' (repli catalogue)'),
+    );
     return created;
+  }
+
+  private async loadRules(): Promise<RoutingRuleDef[]> {
+    const rows = await this.repository.activeRoutingRules();
+    return rows.map((r: CaseRoutingRule) => ({
+      id: r.id,
+      name: r.name,
+      orderIndex: r.orderIndex,
+      criteria: r.criteria as unknown as RoutingRuleDef['criteria'],
+      result: r.result as unknown as RoutingRuleDef['result'],
+    }));
   }
 
   list(filter: CaseFilter) {
@@ -104,23 +142,65 @@ export class CasesService {
     return this.assign(id, actorId, actorId);
   }
 
-  /** Change le statut en respectant les transitions autorisées (§11). Clôture → date de clôture. */
-  async changeStatus(id: string, to: CaseStatus, actorId: string): Promise<Case> {
+  /** Change le statut en respectant les transitions autorisées (§11). Clôture → date + motif (§22). */
+  async changeStatus(id: string, to: CaseStatus, actorId: string, closeReason?: string): Promise<Case> {
     const current = await this.getOrThrow(id);
     if (current.status === to || !canTransition(current.status, to)) {
       throw new BadRequestException(`Transition de statut invalide : ${current.status} → ${to}.`);
     }
     const updated = await this.repository.update(id, {
       status: to,
-      ...(to === CaseStatus.CLOSED ? { closedAt: new Date() } : {}),
+      ...(to === CaseStatus.CLOSED ? { closedAt: new Date(), closeReason: closeReason ?? null } : {}),
     });
     await this.repository.recordEvent({
       caseId: id,
       kind: 'STATUS_CHANGED',
       actorId,
+      body: to === CaseStatus.CLOSED ? (closeReason ?? null) : null,
       metadata: { from: current.status, to } as never,
     });
     return updated;
+  }
+
+  // --- Routing Rules configurables (§14) — administration Operator ---
+
+  listRoutingRules(): Promise<CaseRoutingRule[]> {
+    return this.repository.listRoutingRules();
+  }
+
+  createRoutingRule(input: {
+    name: string;
+    orderIndex: number;
+    isActive?: boolean;
+    criteria: Record<string, unknown>;
+    result: Record<string, unknown>;
+  }): Promise<CaseRoutingRule> {
+    return this.repository.createRoutingRule({
+      name: input.name,
+      orderIndex: input.orderIndex,
+      isActive: input.isActive ?? true,
+      criteria: input.criteria as never,
+      result: input.result as never,
+    });
+  }
+
+  updateRoutingRule(
+    id: string,
+    input: Partial<{ name: string; orderIndex: number; isActive: boolean; criteria: Record<string, unknown>; result: Record<string, unknown> }>,
+  ): Promise<CaseRoutingRule> {
+    return this.repository.updateRoutingRule(id, {
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.orderIndex !== undefined ? { orderIndex: input.orderIndex } : {}),
+      ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+      ...(input.criteria !== undefined ? { criteria: input.criteria as never } : {}),
+      ...(input.result !== undefined ? { result: input.result as never } : {}),
+    });
+  }
+
+  async deleteRoutingRule(id: string): Promise<void> {
+    if ((await this.repository.deleteRoutingRule(id)) === 0) {
+      throw new NotFoundException(`Règle de routage introuvable : ${id}.`);
+    }
   }
 
   /** Réévalue la priorité (§12). Historisé. */

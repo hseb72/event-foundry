@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -17,6 +18,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CASE_DOMAINS, CASE_TYPES, workQueueFor, type CaseDomain, type CaseOrigin } from './case-catalog';
 import { CasesService } from './cases.service';
+import type { CaseRoutingRule } from '@prisma/client';
 import {
   AssignCaseDto,
   ChangePriorityDto,
@@ -24,6 +26,7 @@ import {
   CommentDto,
   EscalateDto,
   OpenCaseDto,
+  RoutingRuleDto,
 } from './dto/case.dto';
 
 /**
@@ -117,6 +120,42 @@ export class CasesController {
     });
   }
 
+  // --- Routing Rules configurables (§14) ---
+
+  @Get('routing-rules')
+  @RequirePermissions('case.manage')
+  @ApiOkResponse({ description: 'Règles de routage (ordre d’évaluation).' })
+  routingRules(): Promise<CaseRoutingRule[]> {
+    return this.service.listRoutingRules();
+  }
+
+  @Post('routing-rules')
+  @RequirePermissions('case.manage')
+  @ApiOkResponse({ description: 'Règle de routage créée.' })
+  createRule(@Body() dto: RoutingRuleDto): Promise<CaseRoutingRule> {
+    return this.service.createRoutingRule(dto);
+  }
+
+  @Patch('routing-rules/:ruleId')
+  @RequirePermissions('case.manage')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Règle de routage mise à jour.' })
+  updateRule(
+    @Param('ruleId', ParseUUIDPipe) ruleId: string,
+    @Body() dto: RoutingRuleDto,
+  ): Promise<CaseRoutingRule> {
+    return this.service.updateRoutingRule(ruleId, dto);
+  }
+
+  @Delete('routing-rules/:ruleId')
+  @RequirePermissions('case.manage')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Règle de routage supprimée.' })
+  async deleteRule(@Param('ruleId', ParseUUIDPipe) ruleId: string): Promise<{ deleted: boolean }> {
+    await this.service.deleteRoutingRule(ruleId);
+    return { deleted: true };
+  }
+
   @Get(':id')
   @RequirePermissions('case.manage')
   @ApiOkResponse({ description: 'Détail d’une Case avec son historique complet.' })
@@ -153,7 +192,7 @@ export class CasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ChangeStatusDto,
   ): Promise<Case> {
-    return this.service.changeStatus(id, dto.status, user.userId);
+    return this.service.changeStatus(id, dto.status, user.userId, dto.closeReason);
   }
 
   @Patch(':id/priority')
