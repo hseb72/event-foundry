@@ -4,6 +4,7 @@ import { AccountController } from './controllers/account.controller';
 import { AccountRepository } from './repositories/account.repository';
 import { AccountLifecycleService } from './services/account-lifecycle.service';
 import { AccountLinkMailer } from './services/account-link-mailer.service';
+import { AccountMfaService } from './services/account-mfa.service';
 import { AccountPrivacyService } from './services/account-privacy.service';
 import { AccountSecurityService } from './services/account-security.service';
 import { OnboardingService } from './services/onboarding.service';
@@ -22,11 +23,12 @@ import { SecurityAuditService } from './services/security-audit.service';
     AccountLifecycleService,
     AccountSecurityService,
     AccountPrivacyService,
+    AccountMfaService,
     OnboardingService,
     AccountLinkMailer,
     SecurityAuditService,
     AccountRepository,
   ],
-  exports: [AccountLifecycleService, SecurityAuditService],
+  exports: [AccountLifecycleService, SecurityAuditService, AccountMfaService, AccountRepository],
 })
 export class AccountModule {}

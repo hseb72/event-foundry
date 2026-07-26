@@ -70,3 +70,17 @@ export class DeleteAccountDto {
   @IsNotEmpty()
   currentPassword!: string;
 }
+
+export class MfaEnableDto {
+  @ApiProperty({ description: 'Code TOTP à 6 chiffres généré par l’application d’authentification.' })
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+}
+
+export class MfaDisableDto {
+  @ApiProperty({ description: 'Mot de passe actuel (réauthentification — IAM-008).' })
+  @IsString()
+  @IsNotEmpty()
+  currentPassword!: string;
+}

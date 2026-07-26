@@ -33,9 +33,9 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
 
-  login(email: string, password: string): Observable<AuthTokens> {
+  login(email: string, password: string, mfaCode?: string): Observable<AuthTokens> {
     return this.http
-      .post<AuthTokens>(`${API_BASE}/auth/login`, { email, password })
+      .post<AuthTokens>(`${API_BASE}/auth/login`, { email, password, mfaCode })
       .pipe(tap((tokens) => this.storeTokens(tokens)));
   }
 

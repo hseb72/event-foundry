@@ -18,6 +18,9 @@ export const SECURITY_EVENTS = {
   ACCOUNT_DELETED: 'account.deleted',
   DATA_EXPORTED: 'account.data_exported',
   TERMS_ACCEPTED: 'account.terms_accepted',
+  MFA_ENABLED: 'account.mfa_enabled',
+  MFA_DISABLED: 'account.mfa_disabled',
+  MFA_RECOVERY_USED: 'account.mfa_recovery_used',
 } as const;
 
 export type SecurityEventType = (typeof SECURITY_EVENTS)[keyof typeof SECURITY_EVENTS];

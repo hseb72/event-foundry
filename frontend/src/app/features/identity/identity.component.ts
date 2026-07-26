@@ -286,6 +286,28 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
                 jusqu'à confirmation.
               </p>
             </div>
+            <div style="display:grid;gap:0.4rem">
+              <h3 style="font-size:0.85rem;margin:0">Authentification à deux facteurs (2FA)</h3>
+              @if (mfaEnabled()) {
+                <p class="muted" style="margin:0;font-size:0.82rem">✅ 2FA activée.</p>
+                <input class="input" type="password" [(ngModel)]="mfaDisablePwd" placeholder="Mot de passe actuel" autocomplete="current-password" />
+                <button class="btn" (click)="disableMfa()" [disabled]="!mfaDisablePwd">Désactiver la 2FA</button>
+              } @else if (mfaSecret()) {
+                <p class="muted" style="margin:0;font-size:0.82rem">
+                  Ajoutez ce compte à votre application d'authentification, puis saisissez le code généré.
+                </p>
+                <code style="font-size:0.8rem;word-break:break-all">{{ mfaSecret() }}</code>
+                <input class="input" [(ngModel)]="mfaCode" placeholder="Code à 6 chiffres" />
+                <button class="btn btn-primary" (click)="enableMfa()" [disabled]="mfaCode.length < 6">Activer</button>
+              } @else if (mfaRecovery().length) {
+                <p style="margin:0;font-size:0.82rem">✅ 2FA activée. Conservez vos codes de récupération :</p>
+                <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+                  @for (c of mfaRecovery(); track c) { <code style="font-size:0.8rem">{{ c }}</code> }
+                </div>
+              } @else {
+                <button class="btn" (click)="setupMfa()">Activer la 2FA</button>
+              }
+            </div>
             @if (securityMsg()) {
               <p style="margin:0;font-size:0.85rem">{{ securityMsg() }}</p>
             }
@@ -768,6 +790,7 @@ export class IdentityComponent implements OnInit {
       this.loadAddresses();
     }
     this.loadAiConfig();
+    this.loadMfa();
   }
 
   // --- Configuration IA personnelle (ADR.16 / TSPEC.07) ---
@@ -1027,6 +1050,45 @@ export class IdentityComponent implements OnInit {
       },
       error: (err) =>
         this.securityMsg.set(err?.error?.message ?? "Échec de la demande de changement d'adresse."),
+    });
+  }
+
+  // --- MFA (FSPEC.18 §MFA) ---
+  readonly mfaEnabled = signal(false);
+  readonly mfaSecret = signal('');
+  readonly mfaRecovery = signal<string[]>([]);
+  mfaCode = '';
+  mfaDisablePwd = '';
+
+  private loadMfa(): void {
+    this.account.mfaStatus().subscribe((s) => this.mfaEnabled.set(s.enabled));
+  }
+
+  setupMfa(): void {
+    this.account.mfaSetup().subscribe((r) => this.mfaSecret.set(r.secret));
+  }
+
+  enableMfa(): void {
+    this.account.mfaEnable(this.mfaCode).subscribe({
+      next: (r) => {
+        this.mfaSecret.set('');
+        this.mfaCode = '';
+        this.mfaRecovery.set(r.recoveryCodes);
+        this.mfaEnabled.set(true);
+      },
+      error: (err) => this.securityMsg.set(err?.error?.message ?? 'Code invalide.'),
+    });
+  }
+
+  disableMfa(): void {
+    this.account.mfaDisable(this.mfaDisablePwd).subscribe({
+      next: () => {
+        this.mfaEnabled.set(false);
+        this.mfaRecovery.set([]);
+        this.mfaDisablePwd = '';
+        this.securityMsg.set('2FA désactivée.');
+      },
+      error: (err) => this.securityMsg.set(err?.error?.message ?? 'Échec de la désactivation.'),
     });
   }
 

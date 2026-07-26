@@ -3,7 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AccountLifecycleService } from '../../account/services/account-lifecycle.service';
+import { AccountMfaService } from '../../account/services/account-mfa.service';
 import { SECURITY_EVENTS, SecurityAuditService } from '../../account/services/security-audit.service';
+import { MfaRequiredException } from '../exceptions/mfa-required.exception';
 import {
   IDENTITY_SERVICE,
   type IIdentityService,
@@ -39,6 +41,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly lifecycle: AccountLifecycleService,
     private readonly audit: SecurityAuditService,
+    private readonly mfa: AccountMfaService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthTokensDto> {
@@ -72,6 +75,13 @@ export class AuthService {
     if (!passwordMatches) {
       await this.audit.record(SECURITY_EVENTS.LOGIN_FAILED, user.id);
       throw new InvalidCredentialsException();
+    }
+    // Second facteur (FSPEC.18 §MFA) : après le mot de passe, un code TOTP (ou de récupération) est
+    // exigé si le MFA est activé. Le client distingue ce cas via le code `MFA_REQUIRED`.
+    if (user.mfaEnabledAt) {
+      if (!dto.mfaCode || !(await this.mfa.verifySecondFactor(user, dto.mfaCode))) {
+        throw new MfaRequiredException();
+      }
     }
     await this.audit.record(SECURITY_EVENTS.LOGIN_SUCCEEDED, user.id);
     return this.issueFor(user.id);

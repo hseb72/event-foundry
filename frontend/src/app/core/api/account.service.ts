@@ -53,6 +53,23 @@ export class AccountApi {
   acceptOperatorInvitation(token: string): Observable<{ roleName: string }> {
     return this.http.post<{ roleName: string }>(`${API_BASE}/operator-invitations/accept`, { token });
   }
+
+  // MFA (FSPEC.18 §MFA)
+  mfaStatus(): Observable<{ enabled: boolean }> {
+    return this.http.get<{ enabled: boolean }>(`${API_BASE}/account/me/mfa`);
+  }
+
+  mfaSetup(): Observable<{ secret: string; otpauthUri: string }> {
+    return this.http.post<{ secret: string; otpauthUri: string }>(`${API_BASE}/account/me/mfa/setup`, {});
+  }
+
+  mfaEnable(code: string): Observable<{ recoveryCodes: string[] }> {
+    return this.http.post<{ recoveryCodes: string[] }>(`${API_BASE}/account/me/mfa/enable`, { code });
+  }
+
+  mfaDisable(currentPassword: string): Observable<{ disabled: boolean }> {
+    return this.http.post<{ disabled: boolean }>(`${API_BASE}/account/me/mfa/disable`, { currentPassword });
+  }
 }
 
 export interface OnboardingStep {

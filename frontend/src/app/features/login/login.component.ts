@@ -53,11 +53,16 @@ import { AuthService } from '../../core/auth/auth.service';
           [(ngModel)]="password"
           required
         />
+        @if (mfaRequired) {
+          <label for="mfa">Code d'authentification (2FA)</label>
+          <input id="mfa" class="input" name="mfa" [(ngModel)]="mfaCode" placeholder="123456 ou code de récupération"
+            autocomplete="one-time-code" autofocus />
+        }
         @if (error) {
           <div class="error">{{ error }}</div>
         }
         <button class="btn btn-primary" type="submit" [disabled]="loading">
-          {{ loading ? 'Connexion…' : 'Se connecter' }}
+          {{ loading ? 'Connexion…' : mfaRequired ? 'Valider le code' : 'Se connecter' }}
         </button>
         <a routerLink="/forgot-password" style="text-align:center; font-size:0.85rem">
           Mot de passe oublié ?
@@ -72,6 +77,8 @@ import { AuthService } from '../../core/auth/auth.service';
 export class LoginComponent {
   email = '';
   password = '';
+  mfaCode = '';
+  mfaRequired = false;
   error = '';
   loading = false;
 
@@ -84,11 +91,17 @@ export class LoginComponent {
   submit(): void {
     this.loading = true;
     this.error = '';
-    this.auth.login(this.email, this.password).subscribe({
+    this.auth.login(this.email, this.password, this.mfaCode || undefined).subscribe({
       next: () => void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('next') || '/discover'),
-      error: () => {
-        this.error = 'Identifiants invalides.';
+      error: (err) => {
         this.loading = false;
+        if (err?.error?.code === 'MFA_REQUIRED') {
+          // Le mot de passe est correct : on demande le second facteur (FSPEC.18 §MFA).
+          this.mfaRequired = true;
+          this.error = this.mfaCode ? 'Code invalide.' : '';
+        } else {
+          this.error = 'Identifiants invalides.';
+        }
       },
     });
   }

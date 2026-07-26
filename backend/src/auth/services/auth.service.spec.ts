@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { AccountLifecycleService } from '../../account/services/account-lifecycle.service';
+import type { AccountMfaService } from '../../account/services/account-mfa.service';
 import type { SecurityAuditService } from '../../account/services/security-audit.service';
 import type { EffectiveIdentity } from '../../identity/interfaces/effective-identity';
 import type { IIdentityService } from '../../identity/interfaces/identity-service.interface';
@@ -42,6 +43,7 @@ describe('AuthService', () => {
   let config: { getOrThrow: jest.Mock; get: jest.Mock };
   let lifecycle: { issueEmailVerification: jest.Mock };
   let audit: { record: jest.Mock };
+  let mfa: { verifySecondFactor: jest.Mock };
   let service: AuthService;
 
   beforeEach(() => {
@@ -70,6 +72,7 @@ describe('AuthService', () => {
     };
     lifecycle = { issueEmailVerification: jest.fn().mockResolvedValue(undefined) };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
+    mfa = { verifySecondFactor: jest.fn().mockResolvedValue(true) };
     service = new AuthService(
       users,
       identity,
@@ -78,6 +81,7 @@ describe('AuthService', () => {
       config as unknown as ConfigService,
       lifecycle as unknown as AccountLifecycleService,
       audit as unknown as SecurityAuditService,
+      mfa as unknown as AccountMfaService,
     );
   });
 

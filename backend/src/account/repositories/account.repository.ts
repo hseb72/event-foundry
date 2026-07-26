@@ -68,6 +68,33 @@ export class AccountRepository {
     return this.prisma.user.update({ where: { id: userId }, data: { termsAcceptedAt: new Date() } });
   }
 
+  // --- MFA (FSPEC.18 §MFA) ---
+
+  /** Enregistre le secret TOTP en attente d'activation (MFA pas encore actif). */
+  setMfaSecret(userId: string, secret: string): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { mfaSecret: secret, mfaEnabledAt: null } });
+  }
+
+  /** Active le MFA avec ses codes de récupération (hachés). */
+  enableMfa(userId: string, recoveryHashes: string[]): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaEnabledAt: new Date(), mfaRecoveryCodes: recoveryHashes },
+    });
+  }
+
+  disableMfa(userId: string): Promise<User> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaSecret: null, mfaEnabledAt: null, mfaRecoveryCodes: [] },
+    });
+  }
+
+  /** Met à jour la liste des codes de récupération restants (après consommation d'un code). */
+  setRecoveryCodes(userId: string, recoveryHashes: string[]): Promise<User> {
+    return this.prisma.user.update({ where: { id: userId }, data: { mfaRecoveryCodes: recoveryHashes } });
+  }
+
   /** Marque l'e-mail vérifié et active le compte (IAM-003) — transition REGISTERED → ACTIVE. */
   markEmailVerified(userId: string): Promise<User> {
     return this.prisma.user.update({

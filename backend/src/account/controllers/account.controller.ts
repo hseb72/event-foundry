@@ -8,12 +8,15 @@ import {
   ConfirmEmailChangeDto,
   DeleteAccountDto,
   ForgotPasswordDto,
+  MfaDisableDto,
+  MfaEnableDto,
   RequestEmailChangeDto,
   ResendVerificationDto,
   ResetPasswordDto,
   VerifyEmailDto,
 } from '../dto/account.dto';
 import { AccountLifecycleService } from '../services/account-lifecycle.service';
+import { AccountMfaService } from '../services/account-mfa.service';
 import { AccountPrivacyService } from '../services/account-privacy.service';
 import { AccountSecurityService } from '../services/account-security.service';
 import { OnboardingService, type OnboardingState } from '../services/onboarding.service';
@@ -32,6 +35,7 @@ export class AccountController {
     private readonly security: AccountSecurityService,
     private readonly privacy: AccountPrivacyService,
     private readonly onboarding: OnboardingService,
+    private readonly mfa: AccountMfaService,
   ) {}
 
   @Public()
@@ -130,6 +134,44 @@ export class AccountController {
   @ApiOkResponse({ description: 'Conditions d’utilisation acceptées.' })
   acceptTerms(@CurrentUser() user: AuthenticatedUser): Promise<OnboardingState> {
     return this.onboarding.acceptTerms(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Get('me/mfa')
+  @ApiOkResponse({ description: 'État du MFA (activé ou non).' })
+  mfaStatus(@CurrentUser() user: AuthenticatedUser): Promise<{ enabled: boolean }> {
+    return this.mfa.status(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Post('me/mfa/setup')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Secret TOTP + URI d’approvisionnement (avant activation).' })
+  mfaSetup(@CurrentUser() user: AuthenticatedUser): Promise<{ secret: string; otpauthUri: string }> {
+    return this.mfa.setup(user.userId);
+  }
+
+  @ApiBearerAuth()
+  @Post('me/mfa/enable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'MFA activé ; renvoie les codes de récupération (une seule fois).' })
+  mfaEnable(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: MfaEnableDto,
+  ): Promise<{ recoveryCodes: string[] }> {
+    return this.mfa.enable(user.userId, dto.code);
+  }
+
+  @ApiBearerAuth()
+  @Post('me/mfa/disable')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'MFA désactivé (réauthentification requise).' })
+  async mfaDisable(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: MfaDisableDto,
+  ): Promise<{ disabled: boolean }> {
+    await this.mfa.disable(user.userId, dto.currentPassword);
+    return { disabled: true };
   }
 
   @ApiBearerAuth()
