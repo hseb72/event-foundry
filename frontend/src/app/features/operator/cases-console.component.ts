@@ -9,6 +9,7 @@ import {
   CasesApi,
   RoutingRule,
 } from '../../core/api/cases.service';
+import { ModerationApi } from '../../core/api/moderation.service';
 
 /**
  * Console Operator du Case Management (FSPEC.21) : file filtrable, tableau de bord opérationnel, et
@@ -143,6 +144,24 @@ import {
           </div>
           @if (actionMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ actionMsg() }}</p> }
 
+          @if (isModeration(d)) {
+            <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+              <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Décision de modération</h3>
+              <div class="row">
+                <select [(ngModel)]="modDecision">
+                  <option value="NO_ACTION">Aucune action</option>
+                  <option value="REQUEST_CORRECTION">Demander une correction</option>
+                  <option value="HIDE">Masquer</option>
+                  <option value="SUSPEND">Suspendre</option>
+                  <option value="RESTORE">Rétablir</option>
+                </select>
+                <input class="input" [(ngModel)]="modJustification" placeholder="Justification" style="flex:1;min-width:180px" />
+                <button class="btn btn-sm" (click)="decide(d)">Appliquer</button>
+              </div>
+              @if (modMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ modMsg() }}</p> }
+            </div>
+          }
+
           <h3 style="font-size:0.85rem;margin:0.8rem 0 0.4rem">Historique</h3>
           @for (e of d.events; track e.id) {
             <div class="entry">
@@ -182,6 +201,28 @@ export class CasesConsoleComponent implements OnInit {
   readonly showRules = signal(false);
   readonly rules = signal<RoutingRule[]>([]);
   nr = { name: '', orderIndex: 10, types: '', domain: '', priority: '' };
+
+  // Modération (FSPEC.20)
+  private readonly moderation = inject(ModerationApi);
+  readonly modMsg = signal('');
+  modDecision = 'NO_ACTION';
+  modJustification = '';
+
+  isModeration(d: CaseDetail): boolean {
+    return d.domain === 'MODERATION';
+  }
+
+  decide(d: CaseDetail): void {
+    this.modMsg.set('');
+    this.moderation.decide(d.id, this.modDecision, this.modJustification.trim() || undefined).subscribe({
+      next: () => {
+        this.modMsg.set('✅ Décision appliquée et historisée.');
+        this.modJustification = '';
+        this.after();
+      },
+      error: (err) => this.modMsg.set(err?.error?.message ?? 'Décision refusée.'),
+    });
+  }
 
   ngOnInit(): void {
     this.api.catalog().subscribe((c) => this.catalog.set(c));

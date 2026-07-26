@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
+import { ModerationApi } from '../../core/api/moderation.service';
 import { ParticipationApi } from '../../core/api/participation.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -339,6 +340,30 @@ import { participationColor, participationLabel } from '../../shared/participati
 
           <span class="state" [style.color]="color()">{{ label() }}</span>
         </div>
+
+        <div style="margin-top:0.8rem">
+          @if (!reportOpen()) {
+            <button class="btn" style="font-size:0.82rem" (click)="reportOpen.set(true)">⚑ Signaler</button>
+          } @else if (reportRef()) {
+            <p class="muted" style="font-size:0.85rem">Merci — signalement {{ reportRef() }} transmis à la modération.</p>
+          } @else {
+            <div style="display:grid;gap:0.4rem;max-width:340px">
+              <select [(ngModel)]="reportReason">
+                <option value="INCORRECT_INFO">Information incorrecte</option>
+                <option value="OFFENSIVE">Contenu offensant</option>
+                <option value="DUPLICATE">Doublon</option>
+                <option value="SPAM">Spam</option>
+                <option value="FRAUD">Fraude</option>
+                <option value="OTHER">Autre</option>
+              </select>
+              <textarea class="input" [(ngModel)]="reportDetails" placeholder="Détails (facultatif)"></textarea>
+              <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-primary" style="font-size:0.82rem" (click)="submitReport()">Envoyer le signalement</button>
+                <button class="btn" style="font-size:0.82rem" (click)="reportOpen.set(false)">Annuler</button>
+              </div>
+            </div>
+          }
+        </div>
       </div>
     }
   `,
@@ -360,6 +385,25 @@ export class EventDetailComponent implements OnInit {
   readonly aiBusy = signal(false);
   readonly aiResult = signal<{ label: string; text: string; provider: string | null } | null>(null);
   readonly aiEmpty = signal(false);
+
+  // Signalement (FSPEC.20)
+  private readonly moderation = inject(ModerationApi);
+  readonly reportOpen = signal(false);
+  readonly reportRef = signal('');
+  reportReason = 'INCORRECT_INFO';
+  reportDetails = '';
+
+  submitReport(): void {
+    if (!this.event) {
+      return;
+    }
+    this.moderation
+      .report({ objectType: 'EVENT', objectId: this.event.id, reason: this.reportReason, details: this.reportDetails.trim() })
+      .subscribe({
+        next: (res) => this.reportRef.set(res.reference),
+        error: () => this.reportRef.set(''),
+      });
+  }
 
   constructor(
     private readonly route: ActivatedRoute,

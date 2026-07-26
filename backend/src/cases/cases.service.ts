@@ -224,6 +224,17 @@ export class CasesService {
     return updated;
   }
 
+  /** Enregistre un événement d'historique typé sur une Case (usage inter-domaine, ex. modération). */
+  async logEvent(id: string, actorId: string, kind: string, body?: string, metadata?: Record<string, unknown>): Promise<void> {
+    await this.getOrThrow(id);
+    await this.repository.recordEvent({ caseId: id, kind, actorId, body: body ?? null, metadata: metadata as never });
+  }
+
+  /** Lecture d'une Case sans exposition (usage inter-domaine). */
+  getCase(id: string): Promise<Case> {
+    return this.getOrThrow(id);
+  }
+
   /** Ajoute un commentaire à l'historique (§13). `internal=false` = échange visible du demandeur. */
   async addComment(id: string, actorId: string, body: string, internal: boolean): Promise<void> {
     await this.getOrThrow(id);

@@ -9,6 +9,7 @@ import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
 import { CasesModule } from './cases/cases.module';
 import { DiscoveryModule } from './discovery/discovery.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PublicModule } from './public/public.module';
 import { EventsModule } from './events/events.module';
@@ -56,6 +57,7 @@ import { UsersModule } from './users/users.module';
     AccountModule,
     OrganizationsModule,
     CasesModule,
+    ModerationModule,
     ReferenceDataModule,
     ImportsModule,
     EventsModule,
