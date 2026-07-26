@@ -1,0 +1,187 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import { CasePriority, CaseStatus, type Case } from '@prisma/client';
+import { canTransition, CASE_TYPES, route, type CaseOrigin } from './case-catalog';
+import { CaseFilter, CasesRepository } from './cases.repository';
+
+/** Données d'ouverture d'une Case (§7-8). */
+export interface OpenCaseInput {
+  type: string;
+  subject: string;
+  description: string;
+  origin: CaseOrigin;
+  requesterId: string | null;
+  organizationId?: string | null;
+  eventId?: string | null;
+  priority?: CasePriority;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Domaine Case Management (FSPEC.21) : point d'entrée unique des demandes adressées aux Operators.
+ * Ouverture + routage déterministe (§9), cycle de vie contrôlé (§11), affectation unique (CASE-005),
+ * commentaires et **historique immuable** (§20 / CASE-006). Une Case n'est jamais supprimée
+ * (CASE-007). Les autres domaines (import, RGPD, IA…) ouvrent des Cases via `open`.
+ */
+@Injectable()
+export class CasesService {
+  private readonly logger = new Logger(CasesService.name);
+
+  constructor(private readonly repository: CasesRepository) {}
+
+  /** Ouvre une Case, l'oriente automatiquement et historise sa création (§7-9). */
+  async open(input: OpenCaseInput): Promise<Case> {
+    const type = CASE_TYPES.includes(input.type as never) ? input.type : 'OTHER';
+    const routing = route(type, input.priority);
+    const reference = await this.uniqueReference();
+    const created = await this.repository.create({
+      reference,
+      type,
+      domain: routing.domain,
+      workQueue: routing.workQueue,
+      priority: routing.priority,
+      subject: input.subject,
+      description: input.description,
+      origin: input.origin,
+      requesterId: input.requesterId,
+      organizationId: input.organizationId ?? null,
+      eventId: input.eventId ?? null,
+      metadata: input.metadata as never,
+    });
+    await this.repository.recordEvent({
+      caseId: created.id,
+      kind: 'CREATED',
+      actorId: input.requesterId,
+      metadata: { type, domain: routing.domain, workQueue: routing.workQueue, origin: input.origin } as never,
+    });
+    this.logger.log(`CaseOpened ${reference} type=${type} → ${routing.domain}/${routing.workQueue}`);
+    return created;
+  }
+
+  list(filter: CaseFilter) {
+    return this.repository.list(filter);
+  }
+
+  dashboard() {
+    return this.repository.dashboard();
+  }
+
+  detail(id: string) {
+    return this.detailOrThrow(id);
+  }
+
+  /** Les Cases dont l'utilisateur est le demandeur (suivi de ses propres demandes). */
+  listMine(userId: string) {
+    return this.repository.listForRequester(userId);
+  }
+
+  /** Détail d'une Case pour son demandeur (échanges internes masqués). */
+  async detailForRequester(id: string, userId: string) {
+    const detail = await this.detailOrThrow(id);
+    if (detail.requesterId !== userId) {
+      throw new ForbiddenException('Cette demande ne vous appartient pas.');
+    }
+    return { ...detail, events: detail.events.filter((e) => e.visibility === 'PUBLIC') };
+  }
+
+  /** Affecte (ou réaffecte) une Case à un Operator (CASE-005/010). NEW → ASSIGNED. */
+  async assign(id: string, assigneeId: string, actorId: string): Promise<Case> {
+    const current = await this.getOrThrow(id);
+    const status = current.status === CaseStatus.NEW ? CaseStatus.ASSIGNED : current.status;
+    const updated = await this.repository.update(id, { assigneeId, status });
+    await this.repository.recordEvent({ caseId: id, kind: 'ASSIGNED', actorId, metadata: { assigneeId } as never });
+    return updated;
+  }
+
+  /** L'Operator prend en charge la Case lui-même. */
+  claim(id: string, actorId: string): Promise<Case> {
+    return this.assign(id, actorId, actorId);
+  }
+
+  /** Change le statut en respectant les transitions autorisées (§11). Clôture → date de clôture. */
+  async changeStatus(id: string, to: CaseStatus, actorId: string): Promise<Case> {
+    const current = await this.getOrThrow(id);
+    if (current.status === to || !canTransition(current.status, to)) {
+      throw new BadRequestException(`Transition de statut invalide : ${current.status} → ${to}.`);
+    }
+    const updated = await this.repository.update(id, {
+      status: to,
+      ...(to === CaseStatus.CLOSED ? { closedAt: new Date() } : {}),
+    });
+    await this.repository.recordEvent({
+      caseId: id,
+      kind: 'STATUS_CHANGED',
+      actorId,
+      metadata: { from: current.status, to } as never,
+    });
+    return updated;
+  }
+
+  /** Réévalue la priorité (§12). Historisé. */
+  async changePriority(id: string, priority: CasePriority, actorId: string): Promise<Case> {
+    const current = await this.getOrThrow(id);
+    const updated = await this.repository.update(id, { priority });
+    await this.repository.recordEvent({
+      caseId: id,
+      kind: 'PRIORITY_CHANGED',
+      actorId,
+      metadata: { from: current.priority, to: priority } as never,
+    });
+    return updated;
+  }
+
+  /** Escalade (§16) : porte la priorité à CRITICAL et historise (CASE-011). */
+  async escalate(id: string, actorId: string, reason?: string): Promise<Case> {
+    await this.getOrThrow(id);
+    const updated = await this.repository.update(id, { priority: CasePriority.CRITICAL });
+    await this.repository.recordEvent({ caseId: id, kind: 'ESCALATED', actorId, body: reason ?? null });
+    return updated;
+  }
+
+  /** Ajoute un commentaire à l'historique (§13). `internal=false` = échange visible du demandeur. */
+  async addComment(id: string, actorId: string, body: string, internal: boolean): Promise<void> {
+    await this.getOrThrow(id);
+    await this.repository.recordEvent({
+      caseId: id,
+      kind: 'COMMENT',
+      actorId,
+      body,
+      visibility: internal ? 'INTERNAL' : 'PUBLIC',
+    });
+  }
+
+  // --- Helpers ---
+
+  private async getOrThrow(id: string): Promise<Case> {
+    const found = await this.repository.findById(id);
+    if (!found) {
+      throw new NotFoundException(`Case introuvable : ${id}.`);
+    }
+    return found;
+  }
+
+  private async detailOrThrow(id: string) {
+    const detail = await this.repository.detail(id);
+    if (!detail) {
+      throw new NotFoundException(`Case introuvable : ${id}.`);
+    }
+    return detail;
+  }
+
+  /** Référence lisible et unique (ex. C-LMØ3K7A2). */
+  private async uniqueReference(): Promise<string> {
+    for (let i = 0; i < 6; i++) {
+      const candidate = `C-${randomBytes(4).toString('hex').toUpperCase()}`;
+      if (!(await this.repository.referenceExists(candidate))) {
+        return candidate;
+      }
+    }
+    throw new BadRequestException('Impossible de générer une référence de Case unique.');
+  }
+}

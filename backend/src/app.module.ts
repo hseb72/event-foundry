@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { EventCandidatesModule } from './event-candidates/event-candidates.module';
+import { CasesModule } from './cases/cases.module';
 import { DiscoveryModule } from './discovery/discovery.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PublicModule } from './public/public.module';
@@ -54,6 +55,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     AccountModule,
     OrganizationsModule,
+    CasesModule,
     ReferenceDataModule,
     ImportsModule,
     EventsModule,

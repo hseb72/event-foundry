@@ -59,6 +59,7 @@ const PERMISSIONS: Record<string, string> = {
   'organization.manage': 'Gérer son organisation',
   'member.manage': "Gérer les collaborateurs d'une organisation",
   'organization.transfer': "Transférer la propriété d'une organisation",
+  'case.manage': 'Traiter les dossiers (Cases) adressés aux Operators',
   'reference.manage': 'Administrer les référentiels',
   'pipeline.manage': 'Superviser le pipeline documentaire',
   'user.manage': 'Administrer les utilisateurs et leurs rôles',
@@ -202,6 +203,7 @@ const ROLES: RoleSeed[] = [
       'pipeline.manage',
       'dashboard.view',
       'user.manage',
+      'case.manage',
     ],
   },
   {
