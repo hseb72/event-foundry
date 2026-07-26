@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { PlatformConfigApi } from '../../core/api/platform-config.service';
+import { PlatformConfigApi, PlatformGeneralInfo } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
 import { NotificationsApi } from '../../core/api/notifications.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
@@ -126,6 +126,21 @@ import {
     <p class="muted">Paramètres de la plateforme : mail et intelligence artificielle.</p>
 
     <div class="grid">
+      <section class="card">
+        <h2>Informations générales</h2>
+        <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">Identité publique de la plateforme.</p>
+        <div class="two">
+          <div class="field"><label class="muted">Nom de la plateforme</label><input class="input" [(ngModel)]="general.platformName" /></div>
+          <div class="field"><label class="muted">E-mail de contact</label><input class="input" [(ngModel)]="general.contactEmail" /></div>
+          <div class="field"><label class="muted">E-mail support</label><input class="input" [(ngModel)]="general.supportEmail" /></div>
+          <div class="field"><label class="muted">E-mail recrutement</label><input class="input" [(ngModel)]="general.recruitmentEmail" placeholder="(facultatif)" /></div>
+        </div>
+        <div class="field" style="margin-top:0.6rem"><label class="muted">Informations publiques</label>
+          <input class="input" [(ngModel)]="general.publicInfo" placeholder="Données institutionnelles (facultatif)" /></div>
+        <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="saveGeneral()">Enregistrer</button>
+          @if (generalSaved()) { <span class="status">Enregistré</span> }</div>
+      </section>
+
       <section class="card">
         <h2>Configuration mail (SMTP)</h2>
         <div class="two">
@@ -322,6 +337,14 @@ export class OperatorConfigComponent implements OnInit {
   private readonly notificationsApi = inject(NotificationsApi);
 
   readonly useCases = AI_USE_CASES;
+  readonly generalSaved = signal(false);
+  general: PlatformGeneralInfo = {
+    platformName: '',
+    contactEmail: '',
+    supportEmail: '',
+    recruitmentEmail: '',
+    publicInfo: '',
+  };
   readonly mailStatus = signal('');
   readonly aiStatus = signal('');
   readonly techStatus = signal('');
@@ -358,6 +381,9 @@ export class OperatorConfigComponent implements OnInit {
 
   ngOnInit(): void {
     this.aiConfigApi.providers().subscribe((providers) => (this.providers = providers));
+    this.api.getGeneral().subscribe((info) => {
+      this.general = { ...info, recruitmentEmail: info.recruitmentEmail ?? '', publicInfo: info.publicInfo ?? '' };
+    });
     this.api.getMail().subscribe((config) => {
       if (config) {
         this.mail = { ...config, username: config.username ?? '' };
@@ -424,6 +450,19 @@ export class OperatorConfigComponent implements OnInit {
 
   toggleUseCase(uc: AiUseCase): void {
     this.ai.useCases = { ...this.ai.useCases, [uc]: !this.ai.useCases[uc] };
+  }
+
+  saveGeneral(): void {
+    this.generalSaved.set(false);
+    this.api
+      .updateGeneral({
+        platformName: this.general.platformName.trim(),
+        contactEmail: this.general.contactEmail.trim(),
+        supportEmail: this.general.supportEmail.trim(),
+        recruitmentEmail: this.general.recruitmentEmail?.trim() || null,
+        publicInfo: this.general.publicInfo?.trim() || null,
+      })
+      .subscribe(() => this.generalSaved.set(true));
   }
 
   saveMail(): void {

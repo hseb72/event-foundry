@@ -62,3 +62,53 @@ export class MailConfigDto {
   @ApiProperty({ enum: SecretStatus })
   status!: SecretStatus;
 }
+
+/** Informations générales / identité publique de la plateforme (FSPEC.17 §4). */
+export class UpdateGeneralInfoDto {
+  @ApiProperty({ example: 'EventFoundry' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  platformName!: string;
+
+  @ApiProperty({ example: 'contact@eventfoundry.app' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  contactEmail!: string;
+
+  @ApiProperty({ example: 'support@eventfoundry.app' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  supportEmail!: string;
+
+  @ApiPropertyOptional({ description: 'Contact recrutement (facultatif).' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  recruitmentEmail?: string;
+
+  @ApiPropertyOptional({ description: 'Informations institutionnelles publiques.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  publicInfo?: string;
+}
+
+export class GeneralInfoDto {
+  @ApiProperty()
+  platformName!: string;
+
+  @ApiProperty()
+  contactEmail!: string;
+
+  @ApiProperty()
+  supportEmail!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  recruitmentEmail!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  publicInfo!: string | null;
+}

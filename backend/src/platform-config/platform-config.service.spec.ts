@@ -74,6 +74,22 @@ describe('PlatformConfigService — configuration mail (FSPEC.09)', () => {
     expect(JSON.stringify(dto)).not.toContain('super-secret-word');
   });
 
+  it('getGeneral : repli sur les valeurs par défaut quand rien n’est configuré', async () => {
+    repo.find.mockResolvedValue(null);
+    await expect(service.getGeneral()).resolves.toMatchObject({ platformName: 'EventFoundry' });
+  });
+
+  it('updateGeneral : persiste l’identité publique (sans secret)', async () => {
+    repo.upsert.mockResolvedValue(setting());
+    const result = await service.updateGeneral({
+      platformName: 'MyPlatform',
+      contactEmail: 'c@x.io',
+      supportEmail: 's@x.io',
+    });
+    expect(result).toMatchObject({ platformName: 'MyPlatform', recruitmentEmail: null });
+    expect(repo.upsert).toHaveBeenCalledWith('GENERAL', 'info', expect.objectContaining({ secretRef: null }));
+  });
+
   it('testMail : TESTED quand la connexion SMTP se vérifie, FAILED sinon', async () => {
     repo.find.mockResolvedValue(setting());
     repo.setStatus.mockResolvedValue(setting());

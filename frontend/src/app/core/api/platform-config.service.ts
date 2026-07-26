@@ -12,10 +12,27 @@ import {
   UpdateTechnicalConfigInput,
 } from '../models';
 
+/** Identité publique de la plateforme (FSPEC.17 §4). */
+export interface PlatformGeneralInfo {
+  platformName: string;
+  contactEmail: string;
+  supportEmail: string;
+  recruitmentEmail: string | null;
+  publicInfo: string | null;
+}
+
 /** Client de la configuration plateforme Operator (FSPEC.09). Aucun secret n'est renvoyé en clair. */
 @Injectable({ providedIn: 'root' })
 export class PlatformConfigApi {
   private readonly http = inject(HttpClient);
+
+  getGeneral(): Observable<PlatformGeneralInfo> {
+    return this.http.get<PlatformGeneralInfo>(`${API_BASE}/admin/config/general`);
+  }
+
+  updateGeneral(input: PlatformGeneralInfo): Observable<PlatformGeneralInfo> {
+    return this.http.put<PlatformGeneralInfo>(`${API_BASE}/admin/config/general`, input);
+  }
 
   getMail(): Observable<MailConfig | null> {
     return this.http.get<MailConfig | null>(`${API_BASE}/admin/config/mail`);

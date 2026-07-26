@@ -6,7 +6,7 @@ import { AiCallLogService } from '../ai/ai-call-log.service';
 import { AiConfigService, PLATFORM_SCOPE_KEY } from '../ai/ai-config.service';
 import { AiCallStatsDto } from '../ai/dto/ai-call-stats.dto';
 import { AiConfigDto, UpdateAiConfigDto } from '../ai/dto/ai-config.dto';
-import { MailConfigDto, UpdateMailConfigDto } from './dto/platform-config.dto';
+import { GeneralInfoDto, MailConfigDto, UpdateGeneralInfoDto, UpdateMailConfigDto } from './dto/platform-config.dto';
 import { TechnicalConfigDto, UpdateTechnicalConfigDto } from './dto/technical-config.dto';
 import { PlatformConfigService } from './platform-config.service';
 import { TechnicalConfigService } from './technical-config.service';
@@ -27,6 +27,18 @@ export class PlatformConfigController {
     private readonly aiCallLog: AiCallLogService,
     private readonly technical: TechnicalConfigService,
   ) {}
+
+  @Get('general')
+  @ApiOkResponse({ type: GeneralInfoDto })
+  getGeneral(): Promise<GeneralInfoDto> {
+    return this.config.getGeneral();
+  }
+
+  @Put('general')
+  @ApiOkResponse({ type: GeneralInfoDto })
+  updateGeneral(@Body() dto: UpdateGeneralInfoDto): Promise<GeneralInfoDto> {
+    return this.config.updateGeneral(dto);
+  }
 
   @Get('mail')
   @ApiOkResponse({ type: MailConfigDto })

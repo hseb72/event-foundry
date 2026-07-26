@@ -5,11 +5,22 @@ import {
   SECRETS_PROVIDER,
   type SecretsProvider,
 } from '../secrets/ports/secrets-provider';
-import { MailConfigDto, UpdateMailConfigDto } from './dto/platform-config.dto';
+import { GeneralInfoDto, MailConfigDto, UpdateGeneralInfoDto, UpdateMailConfigDto } from './dto/platform-config.dto';
 import { PlatformConfigRepository } from './platform-config.repository';
 
 const MAIL_SECTION = 'MAIL';
 const MAIL_KEY = 'smtp';
+const GENERAL_SECTION = 'GENERAL';
+const GENERAL_KEY = 'info';
+
+/** Valeurs par défaut de l'identité publique (FSPEC.17 §4) tant qu'aucun Operator ne l'a définie. */
+const DEFAULT_GENERAL: GeneralInfoDto = {
+  platformName: 'EventFoundry',
+  contactEmail: 'contact@eventfoundry.app',
+  supportEmail: 'support@eventfoundry.app',
+  recruitmentEmail: null,
+  publicInfo: null,
+};
 
 interface MailValue {
   host: string;
@@ -32,6 +43,31 @@ export class PlatformConfigService {
     private readonly repository: PlatformConfigRepository,
     @Inject(SECRETS_PROVIDER) private readonly secrets: SecretsProvider,
   ) {}
+
+  /** Identité publique de la plateforme (FSPEC.17 §4). Repli sur les valeurs par défaut si absente. */
+  async getGeneral(): Promise<GeneralInfoDto> {
+    const setting = await this.repository.find(GENERAL_SECTION, GENERAL_KEY);
+    if (!setting) {
+      return { ...DEFAULT_GENERAL };
+    }
+    return { ...DEFAULT_GENERAL, ...(setting.value as unknown as Partial<GeneralInfoDto>) };
+  }
+
+  async updateGeneral(dto: UpdateGeneralInfoDto): Promise<GeneralInfoDto> {
+    const value: GeneralInfoDto = {
+      platformName: dto.platformName,
+      contactEmail: dto.contactEmail,
+      supportEmail: dto.supportEmail,
+      recruitmentEmail: dto.recruitmentEmail ?? null,
+      publicInfo: dto.publicInfo ?? null,
+    };
+    await this.repository.upsert(GENERAL_SECTION, GENERAL_KEY, {
+      value: value as unknown as Prisma.InputJsonValue,
+      secretRef: null,
+      status: SecretStatus.CONFIGURED,
+    });
+    return value;
+  }
 
   async getMail(): Promise<MailConfigDto | null> {
     const setting = await this.repository.find(MAIL_SECTION, MAIL_KEY);
