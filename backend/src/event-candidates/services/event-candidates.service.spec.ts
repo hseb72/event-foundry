@@ -20,7 +20,7 @@ describe('EventCandidatesService', () => {
   let cases: { open: jest.Mock };
   let moderationTerms: { firstMatch: jest.Mock };
   let service: EventCandidatesService;
-  const operator = { userId: 'user-1', isOperator: true };
+  const operator = { userId: 'user-1', isOperator: true, activeOrganizationId: null };
 
   beforeEach(() => {
     repo = {
@@ -75,6 +75,30 @@ describe('EventCandidatesService', () => {
     );
   });
 
+  it('validation Organizer avec organisation active → Event rattaché à l\'organisation (origine durable)', async () => {
+    repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
+    eventsService.buildValidatedEventData.mockResolvedValue({
+      source: 'IMPORT',
+      activityId: 'a1',
+      title: 'T',
+      startsAt: '2024-07-12T00:00:00.000Z',
+    });
+    repo.createEventAndValidate.mockResolvedValue({ id: 'e3' });
+
+    await service.validate(
+      'c1',
+      { activityId: 'a1' } as CreateEventDto,
+      { userId: 'org-user', isOperator: true, activeOrganizationId: 'org-9' },
+      true,
+    );
+
+    expect(repo.createEventAndValidate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ visibility: 'PUBLIC', organizationId: 'org-9' }),
+      'org-user',
+    );
+  });
+
   it('validation Explorer (sans droit de publication) → Event PRIVATE personnel (FSPEC.22 §15)', async () => {
     repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
     eventsService.buildValidatedEventData.mockResolvedValue({
@@ -86,7 +110,7 @@ describe('EventCandidatesService', () => {
     repo.createEventAndValidate.mockResolvedValue({ id: 'e2' });
 
     repo.ownerId.mockResolvedValue('user-2');
-    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false }, false);
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false, activeOrganizationId: null }, false);
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
       'c1',
@@ -130,7 +154,7 @@ describe('EventCandidatesService', () => {
       eventsService.hasPublicDuplicate.mockResolvedValue(true);
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'org-1', isOperator: true }, true),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'org-1', isOperator: true, activeOrganizationId: null }, true),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(

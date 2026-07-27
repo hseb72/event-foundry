@@ -269,6 +269,20 @@ L'Explorer peut immédiatement :
 
 L'événement n'est pas publié dans le catalogue public.
 
+## Origine durable (privé vs organisation)
+
+Un événement **retient son origine** de façon durable :
+
+- **événement privé personnel** (validation Explorer) : `visibility = PRIVATE`, `organizationId = null` ;
+- **événement d'une organisation** (création / validation par un Organizer avec organisation active) :
+  `visibility = PUBLIC`, `organizationId` renseigné ;
+- **organisateur autonome** (sans organisation) : `visibility = PUBLIC`, `organizationId = null`.
+
+Conséquence UX (expérience Explorer) : une **seule** entrée de menu « Mes événements privés » regroupe
+la soumission (box « Nouvelle soumission » repliable), les soumissions en cours, la qualification des
+brouillons et la **liste des événements privés**. Une fois qualifiés, les événements privés
+apparaissent **ici**, jamais dans l'expérience Organizer (`organizationId` reste `null`).
+
 ---
 
 # 16. Notification d'un Organizer

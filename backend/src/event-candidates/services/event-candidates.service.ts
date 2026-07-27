@@ -29,6 +29,8 @@ import {
 export interface CandidateActor {
   userId: string;
   isOperator: boolean;
+  /** Organisation active de l'acteur : fige l'origine d'un événement validé **publiable** (FSPEC.22). */
+  activeOrganizationId: string | null;
 }
 
 @Injectable()
@@ -107,6 +109,9 @@ export class EventCandidatesService {
       status: EventStatus.DRAFT,
       visibility: canPublish ? EventVisibility.PUBLIC : EventVisibility.PRIVATE,
       createdById: actor.userId,
+      // Origine durable (FSPEC.22) : un événement publiable est rattaché à l'organisation active de
+      // l'acteur ; un événement privé personnel (Explorer) reste sans organisation.
+      organizationId: canPublish ? actor.activeOrganizationId : null,
     };
     return this.repository.createEventAndValidate(id, eventData, actor.userId);
   }

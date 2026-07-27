@@ -34,7 +34,11 @@ function parseIntOrDefault(value: string | undefined, fallback: number): number 
 
 /** Un Operator (droit `validation.review`) qualifie tout candidat ; sinon, seulement les siens. */
 function actorOf(user: AuthenticatedUser): CandidateActor {
-  return { userId: user.userId, isOperator: user.permissions.includes('validation.review') };
+  return {
+    userId: user.userId,
+    isOperator: user.permissions.includes('validation.review'),
+    activeOrganizationId: user.activeOrganizationId,
+  };
 }
 
 @ApiTags('event-candidates')

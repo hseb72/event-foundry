@@ -62,7 +62,10 @@ export class EventsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateEventDto,
   ): Promise<EventResponseDto> {
-    return EventMapper.toResponse(await this.service.createManual(dto, user.userId));
+    // L'origine est figée : créé dans le cadre de l'organisation active (ou autonome si aucune).
+    return EventMapper.toResponse(
+      await this.service.createManual(dto, user.userId, user.activeOrganizationId),
+    );
   }
 
   /**

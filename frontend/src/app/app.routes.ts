@@ -10,7 +10,6 @@ import { UsersAdminComponent } from './features/admin/users-admin.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { HomeComponent } from './features/home/home.component';
 import { CalendarComponent } from './features/calendar/calendar.component';
-import { PrivateEventsComponent } from './features/calendar/private-events.component';
 import { SubmitEventComponent } from './features/submit/submit-event.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
 import { CreateEventComponent } from './features/create-event/create-event.component';
@@ -101,12 +100,9 @@ export const routes: Routes = [
         canActivate: [permissionGuard('recommendation.view')],
       },
       { path: 'calendar', component: CalendarComponent },
-      { path: 'my-events', component: PrivateEventsComponent },
-      {
-        path: 'submit',
-        component: SubmitEventComponent,
-        canActivate: [permissionGuard('import.create')],
-      },
+      // Menu Explorer unique : soumission + qualification + liste des événements privés (FSPEC.22).
+      { path: 'my-events', component: SubmitEventComponent },
+      { path: 'submit', redirectTo: 'my-events', pathMatch: 'full' },
       { path: 'follows', component: FollowsComponent },
       { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },

@@ -10,10 +10,13 @@ import {
   EventCandidateDetailDto,
   EventCandidateDto,
   EventDraft,
+  EventDto,
   ImportResponse,
 } from '../../core/models';
+import { EventsApi } from '../../core/api/events.service';
 import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
+import { EventCardComponent } from '../../shared/event-card.component';
 
 /**
  * Entonnoir de soumission Explorer (FSPEC.22 §5-6, §15). L'utilisateur soumet une source (texte, URL
@@ -24,7 +27,7 @@ import { FileDropComponent } from '../../shared/file-drop.component';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, RouterLink, EventFormComponent, DatePipe, FileDropComponent],
+  imports: [FormsModule, RouterLink, EventFormComponent, DatePipe, FileDropComponent, EventCardComponent],
   styles: [
     `
       .intro {
@@ -128,22 +131,53 @@ import { FileDropComponent } from '../../shared/file-drop.component';
       }
       .err { color: var(--red); }
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
+      .box-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .box-head h2 { margin: 0; }
+      .results {
+        display: grid;
+        gap: 0.9rem;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        margin-top: 0.4rem;
+      }
+      .note {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--exp-weak, rgba(37, 99, 235, 0.1));
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.6rem 0.9rem;
+        margin: 0.2rem 0 0.6rem;
+        font-size: 0.88rem;
+      }
     `,
   ],
   template: `
-    <h1>Soumettre un événement</h1>
+    <h1>Mes événements privés</h1>
     <p class="intro">
-      Transmettez une affiche, un texte ou un lien : nous en extrayons les événements. Après
-      validation, chaque événement devient un <strong>événement privé</strong>, visible de vous seul —
-      vous pourrez le suivre dans votre planning sans qu'il soit publié.
+      Vos événements personnels. Soumettez une affiche, un texte ou un lien : après validation, chaque
+      événement devient un <strong>événement privé</strong>, visible de vous seul — vous pourrez le
+      suivre dans votre planning sans qu'il soit publié.
     </p>
 
-    @if (message()) { <div class="ok">✅ {{ message() }} <a routerLink="/my-events">Voir mes événements privés</a></div> }
+    @if (message()) { <div class="ok">✅ {{ message() }}</div> }
 
     <div class="grid">
-      <!-- Soumission -->
+      <!-- Box « Nouvelle soumission » repliable -->
       <section class="card">
-        <h2>Nouvelle soumission</h2>
+        <div class="box-head">
+          <h2>Nouvelle soumission</h2>
+          <button class="btn btn-sm" (click)="submitOpen.set(!submitOpen())" [attr.aria-expanded]="submitOpen()">
+            {{ submitOpen() ? '▲ Réduire' : '▼ Étendre' }}
+          </button>
+        </div>
+
+        @if (submitOpen()) {
         <div class="tabs">
           <button [class.on]="tab() === 'text'" (click)="tab.set('text')">Texte</button>
           <button [class.on]="tab() === 'url'" (click)="tab.set('url')">Lien (URL)</button>
@@ -178,6 +212,7 @@ import { FileDropComponent } from '../../shared/file-drop.component';
           </div>
         }
         @if (error()) { <p class="err">{{ error() }}</p> }
+        }
       </section>
 
       <!-- Mes soumissions -->
@@ -200,34 +235,53 @@ import { FileDropComponent } from '../../shared/file-drop.component';
         }
       </section>
 
-      <!-- Qualification -->
-      <section class="card">
-        <h2>À qualifier</h2>
-        @if (!drafts().length) {
-          <p class="muted">Aucun brouillon à qualifier. Soumettez une source ci-dessus.</p>
-        } @else {
+      <!-- À qualifier : visible uniquement s'il y a des brouillons (ou un brouillon sélectionné) -->
+      @if (drafts().length || selected()) {
+        <section class="card">
+          <h2>À qualifier</h2>
           @for (d of drafts(); track d.id) {
             <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
               <strong>{{ draftTitle(d) }}</strong>
               <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
             </div>
           }
-        }
 
-        @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
+          @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
 
-        @if (selected(); as sel) {
-          <div style="margin-top:0.8rem">
-            <h2>Qualifier ce brouillon</h2>
-            <app-event-form
-              [draft]="draft()"
-              submitLabel="Valider → mon événement privé"
-              [showReject]="true"
-              [busy]="busy()"
-              (save)="validate($event)"
-              (reject)="reject(sel.id)"
-            />
+          @if (selected(); as sel) {
+            <div style="margin-top:0.8rem">
+              <h2>Qualifier ce brouillon</h2>
+              <app-event-form
+                [draft]="draft()"
+                submitLabel="Valider → mon événement privé"
+                [showReject]="true"
+                [busy]="busy()"
+                (save)="validate($event)"
+                (reject)="reject(sel.id)"
+              />
+            </div>
+          }
+        </section>
+      }
+
+      <!-- Liste des événements privés -->
+      <section class="card">
+        <h2>Liste de mes événements privés</h2>
+        <div class="note">
+          🔒 Une fois qualifiés, vos événements privés apparaissent <strong>ici</strong> — jamais dans
+          l'expérience Organizer. Un événement retient s'il a été créé à titre privé ou dans le cadre
+          d'une organisation.
+        </div>
+        @if (privateEvents().length) {
+          <div class="results">
+            @for (event of privateEvents(); track event.id) {
+              <app-event-card [event]="event" />
+            }
           </div>
+        } @else {
+          <p class="muted">
+            Aucun événement privé pour l'instant. Validez un brouillon ci-dessus pour en créer un.
+          </p>
         }
       </section>
     </div>
@@ -236,10 +290,14 @@ import { FileDropComponent } from '../../shared/file-drop.component';
 export class SubmitEventComponent implements OnInit {
   private readonly imports = inject(ImportsApi);
   private readonly candidates = inject(EventCandidatesApi);
+  private readonly eventsApi = inject(EventsApi);
 
   readonly tab = signal<'text' | 'url' | 'image'>('text');
+  /** Box « Nouvelle soumission » repliée par défaut (l'utilisateur l'étend pour soumettre). */
+  readonly submitOpen = signal(false);
   readonly submissions = signal<ImportResponse[]>([]);
   readonly drafts = signal<EventCandidateDto[]>([]);
+  readonly privateEvents = signal<EventDto[]>([]);
   readonly selected = signal<EventCandidateDetailDto | null>(null);
   readonly draft = signal<EventDraft | null>(null);
   readonly busy = signal(false);
@@ -258,6 +316,7 @@ export class SubmitEventComponent implements OnInit {
   refresh(): void {
     this.imports.listMine().subscribe({ next: (list) => this.submissions.set(list) });
     this.candidates.listMine('PENDING').subscribe({ next: (list) => this.drafts.set(list) });
+    this.eventsApi.myPrivateEvents().subscribe({ next: (page) => this.privateEvents.set(page.items) });
   }
 
   onFile(file: File): void {

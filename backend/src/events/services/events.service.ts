@@ -136,13 +136,22 @@ export class EventsService {
     return this.repository.listCalendarForUser(userId, range.startsFrom, range.startsTo);
   }
 
-  /** Création manuelle (source = MANUAL) : l'organisateur crée un brouillon (workflow Publishing). */
-  async createManual(dto: CreateEventDto, actorId: string): Promise<EventWithRefs> {
+  /**
+   * Création manuelle (source = MANUAL) : l'organisateur crée un brouillon (workflow Publishing).
+   * `organizationId` fige l'**origine** de l'événement (FSPEC.22) : renseigné = créé dans le cadre
+   * d'une organisation ; null = organisateur autonome. Un événement privé personnel ne passe pas ici.
+   */
+  async createManual(
+    dto: CreateEventDto,
+    actorId: string,
+    organizationId: string | null = null,
+  ): Promise<EventWithRefs> {
     const data = await this.buildValidatedEventData(dto, EventSource.MANUAL);
     const event = await this.repository.createWithRefs({
       ...data,
       status: EventStatus.DRAFT,
       createdById: actorId,
+      organizationId,
     });
     await this.repository.recordStatusEvent(event.id, null, EventStatus.DRAFT, actorId);
     return event;

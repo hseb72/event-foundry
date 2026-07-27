@@ -482,6 +482,8 @@ model Organization {
   addresses          OrganizationAddress[]
   invitations        OrganizationInvitation[]
   coveredActivities  OrganizationActivity[]
+  /// Événements créés dans le cadre de cette organisation (origine durable — FSPEC.22).
+  events             Event[]
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -968,9 +970,14 @@ model Event {
   price                  Float?
   currency               String?
   createdById            String?                  @map("created_by_id") @db.Uuid
+  // Origine durable (FSPEC.22) : un Event privé personnel a `organizationId = null` (visibility
+  // PRIVATE) ; un Event créé **dans le cadre d'une organisation** porte son `organizationId`
+  // (visibility PUBLIC). Un organisateur autonome (sans organisation) : null + PUBLIC.
+  organizationId         String?                  @map("organization_id") @db.Uuid
   publishedAt            DateTime?                @map("published_at") @db.Timestamptz(6)
   deletedAt              DateTime?                @map("deleted_at") @db.Timestamptz(6)
   createdBy              User?                    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  organization           Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   activity               Activity                 @relation(fields: [activityId], references: [id], onDelete: Restrict)
   eventType              EventType?               @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
   organizer              Organizer?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
@@ -998,6 +1005,7 @@ model Event {
   @@index([source])
   @@index([createdById])
   @@index([visibility])
+  @@index([organizationId])
   @@map("events")
 }
 
