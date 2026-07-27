@@ -484,6 +484,8 @@ model Organization {
   coveredActivities  OrganizationActivity[]
   /// Événements créés dans le cadre de cette organisation (origine durable — FSPEC.22).
   events             Event[]
+  /// Soumissions (imports) réalisées au nom de cette organisation (visibles de toute l'équipe).
+  importJobs         ImportJob[]
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -839,6 +841,10 @@ model ImportJob {
   // Nullable : jobs système / connecteurs automatiques sans utilisateur, et survie à la suppression.
   createdById         String?          @map("created_by_id") @db.Uuid
   createdBy           User?            @relation("UserImportJobs", fields: [createdById], references: [id], onDelete: SetNull)
+  // Organisation d'origine (FSPEC.22) : renseignée quand la soumission est faite depuis l'expérience
+  // Organizer (import de l'organisation, visible de toute l'équipe) ; null pour un import Explorer perso.
+  organizationId      String?          @map("organization_id") @db.Uuid
+  organization        Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   // Framework d'import unifié V3 (ADR.13/14) — nullables pour compatibilité avec les jobs OCR V2.
   channel             ImportChannel?
   providerId          String?          @map("provider_id")
@@ -863,6 +869,7 @@ model ImportJob {
   @@index([status])
   @@index([createdAt])
   @@index([providerId])
+  @@index([organizationId])
   @@index([createdById])
   @@map("import_jobs")
 }

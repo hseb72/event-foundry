@@ -36,6 +36,7 @@ export class EventMapper {
   static toResponse(
     event: EventWithRefs,
     participation: UserParticipation | null = null,
+    options: { includeCreator?: boolean } = {},
   ): EventResponseDto {
     return {
       id: event.id,
@@ -65,6 +66,8 @@ export class EventMapper {
       price: event.price,
       currency: event.currency,
       participation: participation ? EventMapper.toParticipationState(participation) : null,
+      // Pseudo de l'auteur : uniquement en vue d'organisation (jamais exposé en découverte publique).
+      ...(options.includeCreator ? { createdByName: event.createdBy?.displayName ?? null } : {}),
     };
   }
 

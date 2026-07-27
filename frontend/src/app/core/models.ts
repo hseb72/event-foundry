@@ -140,6 +140,8 @@ export interface EventDto {
   participation: ParticipationState | null;
   /** Vrai si cet événement privé mentionne un organisateur enregistré, notifiable (FSPEC.22 §16). */
   canNotifyOrganizer?: boolean;
+  /** Pseudo de l'auteur : exposé uniquement dans la vue d'organisation (FSPEC.22), absent en découverte. */
+  createdByName?: string | null;
 }
 
 export interface PaginatedEvents {
@@ -165,6 +167,8 @@ export interface ImportResponse {
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
+  /** Pseudo de l'auteur : présent dans la vue d'organisation (FSPEC.22), absent en vue personnelle. */
+  createdByName?: string | null;
 }
 
 export interface ImportJobEventDto {
@@ -394,6 +398,8 @@ export interface EventCandidateDto {
   confidence: Record<string, number>;
   correctedAt: string | null;
   createdAt: string;
+  /** Pseudo de l'auteur : présent dans la vue d'organisation (FSPEC.22), absent en vue personnelle. */
+  createdByName?: string | null;
 }
 
 export interface EventCandidateDetailDto extends EventCandidateDto {

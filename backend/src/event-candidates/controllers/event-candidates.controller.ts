@@ -73,6 +73,23 @@ export class EventCandidatesController {
     return candidates.map(EventCandidateMapper.toResponse);
   }
 
+  /**
+   * Brouillons à qualifier de l'organisation active (FSPEC.22 — vue partagée d'équipe) : les candidats
+   * issus des soumissions de l'organisation, avec le pseudo de l'auteur. Vide hors expérience Organizer.
+   */
+  @Get('organization/event-candidates')
+  async listOrganization(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('status') status?: EventCandidateStatus,
+  ): Promise<EventCandidateResponseDto[]> {
+    const organizationId = user.activeExperience === 'ORGANIZER' ? user.activeOrganizationId : null;
+    if (!organizationId) {
+      return [];
+    }
+    const candidates = await this.service.listForOrganization(organizationId, status);
+    return candidates.map(EventCandidateMapper.toResponseWithCreator);
+  }
+
   @Get('imports/:importJobId/event-candidates')
   async listByImport(
     @Param('importJobId', ParseUUIDPipe) importJobId: string,

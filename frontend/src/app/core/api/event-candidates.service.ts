@@ -22,6 +22,18 @@ export class EventCandidatesApi {
     return this.http.get<EventCandidateDto[]>(`${API_BASE}/me/event-candidates`, { params });
   }
 
+  /**
+   * Brouillons à qualifier de l'organisation active (FSPEC.22 — vue partagée d'équipe). Chaque
+   * brouillon porte le pseudo de son auteur (`createdByName`).
+   */
+  listOrganization(status?: string): Observable<EventCandidateDto[]> {
+    const params: Record<string, string> = {};
+    if (status) {
+      params['status'] = status;
+    }
+    return this.http.get<EventCandidateDto[]>(`${API_BASE}/organization/event-candidates`, { params });
+  }
+
   list(status?: string): Observable<EventCandidateDto[]> {
     const params: Record<string, string> = {};
     if (status) {

@@ -29,6 +29,9 @@ export interface SearchEventsFilter {
   autonomousCreatorId?: string;
   status?: Prisma.EventWhereInput['status'];
   sort?: 'upcoming' | 'newest' | 'title';
+  /** Tri directionnel (tableau Organizer) — prioritaire sur `sort` quand présent. */
+  sortBy?: 'startsAt' | 'title' | 'status';
+  sortDir?: 'asc' | 'desc';
   city?: string;
   text?: string;
   participationScope?: ParticipationScope;
@@ -156,7 +159,7 @@ export class EventRepository extends BaseRepository<Event> {
       this.prisma.event.findMany({
         where,
         include: { ...EVENT_REFS_INCLUDE, participations: { where: { userId: filter.userId } } },
-        orderBy: this.buildOrderBy(filter.sort),
+        orderBy: this.buildOrderBy(filter),
         skip: filter.skip,
         take: filter.take,
       }),
@@ -165,9 +168,18 @@ export class EventRepository extends BaseRepository<Event> {
     return { items, total };
   }
 
-  /** Tri de la découverte : à venir (défaut), nouveautés, ordre alphabétique. */
-  private buildOrderBy(sort: SearchEventsFilter['sort']): Prisma.EventOrderByWithRelationInput {
-    switch (sort) {
+  /**
+   * Tri des résultats. Le **tri directionnel** (`sortBy`/`sortDir`, tableau Organizer paginé côté
+   * serveur) est prioritaire ; à défaut, le tri de découverte : à venir, nouveautés, alphabétique.
+   */
+  private buildOrderBy(
+    filter: Pick<SearchEventsFilter, 'sort' | 'sortBy' | 'sortDir'>,
+  ): Prisma.EventOrderByWithRelationInput {
+    if (filter.sortBy) {
+      const dir: Prisma.SortOrder = filter.sortDir === 'desc' ? 'desc' : 'asc';
+      return { [filter.sortBy]: dir };
+    }
+    switch (filter.sort) {
       case 'newest':
         return { publishedAt: 'desc' };
       case 'title':

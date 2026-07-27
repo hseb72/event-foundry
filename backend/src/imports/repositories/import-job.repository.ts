@@ -2,7 +2,27 @@ import { Injectable } from '@nestjs/common';
 import { ImportJobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BaseRepository, CrudDelegate } from '../../infra/repositories/base.repository';
-import type { ImportJob, ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
+import type {
+  ImportJob,
+  ImportJobDetail,
+  ImportJobWithAttachment,
+  ImportJobWithCreator,
+} from '../entities/import-job.entity';
+
+/** États non terminaux : une soumission encore « en cours d'analyse » (avant qualification). */
+const IN_ANALYSIS_STATUSES: ImportJobStatus[] = [
+  ImportJobStatus.PENDING,
+  ImportJobStatus.OCR_RUNNING,
+  ImportJobStatus.OCR_DONE,
+  ImportJobStatus.CLASSIFICATION_RUNNING,
+  ImportJobStatus.DISCOVERING,
+  ImportJobStatus.FETCHING,
+  ImportJobStatus.EXTRACTING,
+  ImportJobStatus.VALIDATING,
+  ImportJobStatus.NORMALIZING,
+  ImportJobStatus.DEDUPLICATING,
+  ImportJobStatus.PERSISTING,
+];
 
 @Injectable()
 export class ImportJobRepository extends BaseRepository<ImportJob> {
@@ -58,6 +78,29 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     });
   }
 
+  /**
+   * Soumissions d'une organisation encore **en cours d'analyse** (FSPEC.22 — vue partagée d'équipe).
+   * Toute l'organisation voit les mêmes soumissions en cours, avec le pseudo de l'auteur, quel que
+   * soit l'agent qui les a initiées. Les plus récentes d'abord.
+   */
+  listInAnalysisForOrganization(
+    organizationId: string,
+    skip: number,
+    take: number,
+  ): Promise<ImportJobWithCreator[]> {
+    return this.prisma.importJob.findMany({
+      where: { organizationId, status: { in: IN_ANALYSIS_STATUSES } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        attachment: true,
+        _count: { select: { candidates: true } },
+        createdBy: { select: { displayName: true } },
+      },
+    });
+  }
+
   /** Détail d'une soumission restreinte à son auteur (garde de propriété pour l'espace personnel). */
   findDetailByIdForUser(id: string, userId: string): Promise<ImportJobDetail | null> {
     return this.prisma.importJob.findFirst({
@@ -82,6 +125,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     channel?: Prisma.ImportJobCreateInput['channel'];
     providerId?: string | null;
     createdById?: string | null;
+    organizationId?: string | null;
   }): Promise<ImportJobWithAttachment> {
     return this.prisma.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({ data: input.attachment });
@@ -94,6 +138,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
           channel: input.channel ?? null,
           providerId: input.providerId ?? null,
           createdById: input.createdById ?? null,
+          organizationId: input.organizationId ?? null,
         },
         include: { attachment: true, _count: { select: { candidates: true } } },
       });

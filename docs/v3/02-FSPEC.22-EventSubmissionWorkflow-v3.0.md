@@ -289,6 +289,35 @@ validation des brouillons et le **tableau des événements de l'organisation** (
 de publication, archivage). Les événements y sont rattachés à l'organisation active (`organizationId`
 renseigné).
 
+### Origine « organisation » d'une soumission
+
+L'origine est figée dès la soumission : un import (document, texte, URL, fichier structuré) réalisé
+**depuis l'expérience Organizer** porte l'organisation active (`ImportJob.organizationId` renseigné) ;
+un import réalisé en Explorer reste **personnel** (`organizationId = null`), même si l'utilisateur
+appartient par ailleurs à une organisation. L'origine de l'`ImportJob` détermine dans quel inventaire
+la soumission — puis le brouillon qui en découle — apparaît.
+
+### Vue partagée d'équipe
+
+Tous les agents disposant d'un rôle de gestion des événements dans une organisation partagent la
+**même vue** sur les événements en cours de cette organisation, de l'analyse à l'archivage, et peuvent
+**agir dessus** (valider, corriger, rejeter, publier, archiver) — y compris sur l'élément d'un
+collègue absent ou parti. En conséquence, dans l'expérience Organizer, chaque inventaire (Soumissions,
+Validation, Nos événements) affiche le **pseudo de l'auteur** (`createdByName`) pour permettre à chacun
+de juger s'il est opportun d'agir sur l'événement d'un autre agent. La garde de propriété est élargie :
+un agent peut agir sur tout brouillon issu d'une soumission **de sa propre organisation active** ; un
+brouillon personnel (sans organisation) reste réservé à son auteur.
+
+Cette information n'est **pas** exposée dans l'expérience Explorer (espace personnel) ni en découverte
+publique : le pseudo de l'auteur n'apparaît que dans la vue d'organisation.
+
+### Pagination côté serveur (tableau « Nos événements »)
+
+Le tableau des événements de l'organisation est **paginé côté serveur** (`skip`/`take`, `total`
+retourné) avec **tri directionnel** (`sortBy` ∈ {`startsAt`, `title`, `status`}, `sortDir` ∈
+{`asc`, `desc`}) : une organisation active peut accumuler un grand nombre d'événements, au-delà de ce
+qu'une pagination purement cliente peut charger.
+
 ---
 
 # 16. Notification d'un Organizer
@@ -354,6 +383,9 @@ Les éléments suivants sont historisés :
 | ESUB-010 | Les événements publiés par un Organizer deviennent accessibles au catalogue public. |
 | ESUB-011 | Une notification à un Organizer ne transfère jamais la propriété d'un événement privé. |
 | ESUB-012 | Toutes les étapes du workflow sont historisées. |
+| ESUB-013 | L'origine d'une soumission est figée à la création : Organizer → organisation active ; Explorer → personnelle (`null`). |
+| ESUB-014 | Tout agent d'une organisation peut agir sur les soumissions, brouillons et événements issus de cette organisation ; un brouillon personnel reste réservé à son auteur. |
+| ESUB-015 | Dans l'expérience Organizer, chaque inventaire affiche le pseudo de l'auteur ; cette information n'est jamais exposée en Explorer ni en découverte publique. |
 
 ---
 

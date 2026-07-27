@@ -108,4 +108,12 @@ export class EventResponseDto {
       "Vrai si l'événement privé mentionne un organisateur enregistré, notifiable par le créateur (FSPEC.22 §16).",
   })
   canNotifyOrganizer?: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "Pseudo de l'auteur de l'événement. Exposé uniquement dans la vue d'organisation (FSPEC.22) " +
+      "pour permettre à l'équipe d'agir sur l'événement d'un collègue ; absent en découverte.",
+  })
+  createdByName?: string | null;
 }

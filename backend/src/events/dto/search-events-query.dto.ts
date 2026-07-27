@@ -109,6 +109,20 @@ export class SearchEventsQueryDto {
   @IsIn(['upcoming', 'newest', 'title'])
   sort?: 'upcoming' | 'newest' | 'title';
 
+  @ApiPropertyOptional({
+    enum: ['startsAt', 'title', 'status'],
+    description:
+      "Colonne de tri directionnel (espace Organizer, tableau paginé côté serveur). Prioritaire sur `sort`.",
+  })
+  @IsOptional()
+  @IsIn(['startsAt', 'title', 'status'])
+  sortBy?: 'startsAt' | 'title' | 'status';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], description: 'Sens du tri directionnel (défaut asc).' })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDir?: 'asc' | 'desc';
+
   @ApiPropertyOptional({ enum: PERIODS, description: 'Filtre temporel rapide.' })
   @IsOptional()
   @IsIn(PERIODS)

@@ -50,8 +50,12 @@ export class EventsController {
       query,
       user.activeOrganizationId,
     );
+    // Le pseudo de l'auteur n'est exposé que dans la vue d'organisation (FSPEC.22), jamais en découverte.
+    const includeCreator = Boolean(query.organizationScope);
     return {
-      items: items.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null)),
+      items: items.map((event) =>
+        EventMapper.toResponse(event, event.participations[0] ?? null, { includeCreator }),
+      ),
       total,
       skip,
       take,

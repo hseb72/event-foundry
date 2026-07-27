@@ -21,6 +21,12 @@ export class ImportResponseDto {
 
   @ApiProperty({ description: 'ISO 8601, UTC.' })
   createdAt!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: "Pseudo de l'auteur de la soumission (vue d'organisation, FSPEC.22). Absent en vue personnelle.",
+  })
+  createdByName?: string | null;
 }
 
 export class ImportAttachmentDto {

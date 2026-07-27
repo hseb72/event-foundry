@@ -6,3 +6,11 @@ export type { EventCandidate };
 export type EventCandidateWithImport = Prisma.EventCandidateGetPayload<{
   include: { importJob: { include: { attachment: true } } };
 }>;
+
+/**
+ * EventCandidate enrichi du pseudo de l'auteur de la soumission (FSPEC.22 — vue d'organisation).
+ * L'équipe voit qui a soumis chaque brouillon à qualifier.
+ */
+export type EventCandidateWithCreator = Prisma.EventCandidateGetPayload<{
+  include: { importJob: { include: { createdBy: { select: { displayName: true } } } } };
+}>;

@@ -34,6 +34,17 @@ function parseIntOrDefault(value: string | undefined, fallback: number): number 
   return Number.isNaN(parsed) || parsed < 0 ? fallback : parsed;
 }
 
+/**
+ * Organisation d'attribution durable d'un import (origine — cf. FSPEC.22). L'import n'est rattaché à
+ * l'organisation active que si l'utilisateur importe **dans l'expérience Organizer** ; en Explorer
+ * (ou toute autre expérience), il reste personnel (`null`). Ainsi tous les agents d'une organisation
+ * partagent la même vue sur les soumissions de l'organisation, sans capturer par erreur un import
+ * personnel réalisé par un membre de cette organisation.
+ */
+function importOrganizationId(user: AuthenticatedUser): string | null {
+  return user.activeExperience === 'ORGANIZER' ? user.activeOrganizationId : null;
+}
+
 @ApiTags('imports')
 @ApiBearerAuth()
 @Controller('imports')
@@ -57,7 +68,7 @@ export class ImportsController {
       throw new BadRequestException('Fichier manquant (champ « file »).');
     }
     return ImportMapper.toResponse(
-      await this.service.importFile(file, { userId: user.userId, organizationId: user.activeOrganizationId }),
+      await this.service.importFile(file, { userId: user.userId, organizationId: importOrganizationId(user) }),
     );
   }
 
@@ -66,7 +77,9 @@ export class ImportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateTextImportDto,
   ): Promise<ImportResponseDto> {
-    return ImportMapper.toResponse(await this.service.importText(dto.text, user.userId));
+    return ImportMapper.toResponse(
+      await this.service.importText(dto.text, user.userId, importOrganizationId(user)),
+    );
   }
 
   /**
@@ -82,7 +95,7 @@ export class ImportsController {
     return ImportMapper.toResponse(
       await this.aiExtraction.import(dto.text, {
         userId: user.userId,
-        organizationId: user.activeOrganizationId,
+        organizationId: importOrganizationId(user),
       }),
     );
   }
@@ -104,7 +117,7 @@ export class ImportsController {
     return ImportMapper.toResponse(
       await this.aiExtraction.importFile(file, {
         userId: user.userId,
-        organizationId: user.activeOrganizationId,
+        organizationId: importOrganizationId(user),
       }),
     );
   }
@@ -119,7 +132,9 @@ export class ImportsController {
     @Body() dto: CreateStructuredImportDto,
   ): Promise<ImportResponseDto> {
     const contentType = dto.format === 'json' ? 'application/json' : dto.format === 'csv' ? 'text/csv' : null;
-    return ImportMapper.toResponse(await this.structured.import(dto.content, contentType, user.userId));
+    return ImportMapper.toResponse(
+      await this.structured.import(dto.content, contentType, user.userId, importOrganizationId(user)),
+    );
   }
 
   /**
@@ -131,7 +146,9 @@ export class ImportsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateUrlImportDto,
   ): Promise<ImportResponseDto> {
-    return ImportMapper.toResponse(await this.urlImport.import(dto.url, user.userId));
+    return ImportMapper.toResponse(
+      await this.urlImport.import(dto.url, user.userId, importOrganizationId(user)),
+    );
   }
 
   /** Mes soumissions (FSPEC.22 §6) : la liste des imports créés par l'utilisateur courant. */
@@ -147,6 +164,30 @@ export class ImportsController {
       Math.min(parseIntOrDefault(take, 20) || 20, MAX_PAGE_SIZE),
     );
     return jobs.map(ImportMapper.toResponse);
+  }
+
+  /**
+   * Soumissions **en cours d'analyse de l'organisation active** (FSPEC.22 — vue partagée d'équipe).
+   * Tous les agents de l'organisation voient les mêmes soumissions, avec le pseudo de l'auteur, pour
+   * savoir s'il est opportun d'agir sur celle d'un collègue. Vide hors expérience Organizer.
+   */
+  @Get('organization')
+  @RequirePermissions('import.create')
+  async listOrganization(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ): Promise<ImportResponseDto[]> {
+    const organizationId = importOrganizationId(user);
+    if (!organizationId) {
+      return [];
+    }
+    const jobs = await this.service.listInAnalysisForOrganization(
+      organizationId,
+      parseIntOrDefault(skip, 0),
+      Math.min(parseIntOrDefault(take, 50) || 50, MAX_PAGE_SIZE),
+    );
+    return jobs.map(ImportMapper.toResponseWithCreator);
   }
 
   /** Détail d'une de mes soumissions (FSPEC.22 §6) : restreint à son auteur. */

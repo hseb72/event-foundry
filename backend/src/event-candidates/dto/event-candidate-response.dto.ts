@@ -25,6 +25,13 @@ export class EventCandidateResponseDto {
 
   @ApiProperty({ description: 'ISO 8601, UTC.' })
   createdAt!: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "Pseudo de l'auteur de la soumission. Exposé dans la vue d'organisation (FSPEC.22) ; absent en vue personnelle.",
+  })
+  createdByName?: string | null;
 }
 
 export class EventCandidateDetailResponseDto extends EventCandidateResponseDto {

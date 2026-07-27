@@ -120,6 +120,8 @@ export class EventsService {
       createdById: query.createdByMe && !query.organizationScope ? userId : undefined,
       ...orgScope,
       sort: query.sort,
+      sortBy: query.sortBy,
+      sortDir: query.sortDir,
       // Découverte : par défaut, seuls les événements publiés. L'espace Organizer liste tous statuts.
       status: query.status ?? (organizerView ? undefined : EventStatus.PUBLISHED),
       city: query.city,

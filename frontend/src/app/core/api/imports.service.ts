@@ -54,6 +54,14 @@ export class ImportsApi {
     return this.http.get<ImportResponse[]>(`${API_BASE}/imports/mine`);
   }
 
+  /**
+   * Soumissions en cours d'analyse de l'organisation active (FSPEC.22 — vue partagée d'équipe).
+   * Chaque soumission porte le pseudo de son auteur (`createdByName`).
+   */
+  listOrganization(): Observable<ImportResponse[]> {
+    return this.http.get<ImportResponse[]>(`${API_BASE}/imports/organization`);
+  }
+
   detail(id: string): Observable<ImportDetailDto> {
     return this.http.get<ImportDetailDto>(`${API_BASE}/imports/${id}`);
   }

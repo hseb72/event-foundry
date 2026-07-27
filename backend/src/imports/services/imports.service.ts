@@ -8,7 +8,7 @@ import { MinioService } from '../../infra/minio/minio.service';
 import { QueueService } from '../../infra/queue/queue.service';
 import { TechnicalConfigService } from '../../platform-config/technical-config.service';
 import type { OcrAssistant } from '@event-foundry/contracts';
-import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
+import type { ImportJobDetail, ImportJobWithAttachment, ImportJobWithCreator } from '../entities/import-job.entity';
 import { FileTooLargeException } from '../exceptions/file-too-large.exception';
 import { ImportJobNotFoundException } from '../exceptions/import-job-not-found.exception';
 import { ImportQuotaExceededException } from '../exceptions/import-quota-exceeded.exception';
@@ -39,6 +39,18 @@ export class ImportsService {
   /** Soumissions de l'utilisateur courant (FSPEC.22 §6 — espace personnel). */
   listForUser(userId: string, skip: number, take: number): Promise<ImportJobWithAttachment[]> {
     return this.repository.listForUser(userId, skip, take);
+  }
+
+  /**
+   * Soumissions en cours d'analyse de l'organisation active (FSPEC.22 — vue partagée d'équipe).
+   * Tous les agents de l'organisation voient les mêmes soumissions, avec le pseudo de l'auteur.
+   */
+  listInAnalysisForOrganization(
+    organizationId: string,
+    skip: number,
+    take: number,
+  ): Promise<ImportJobWithCreator[]> {
+    return this.repository.listInAnalysisForOrganization(organizationId, skip, take);
   }
 
   async getDetailOrThrow(id: string): Promise<ImportJobDetail> {
@@ -95,6 +107,7 @@ export class ImportsService {
       status: 'PENDING',
       correlationId,
       createdById: actor?.userId ?? null,
+      organizationId: actor?.organizationId ?? null,
     });
 
     // 1er cas d'usage IA (ADR.16) : si une IA « OCR » est configurée pour l'utilisateur/organisation,
@@ -153,7 +166,11 @@ export class ImportsService {
   }
 
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */
-  async importText(text: string, createdById?: string | null): Promise<ImportJobWithAttachment> {
+  async importText(
+    text: string,
+    createdById?: string | null,
+    organizationId?: string | null,
+  ): Promise<ImportJobWithAttachment> {
     await this.enforceDailyQuota((await this.technical.getLimits()).maxImportsPerDay);
     const correlationId = getCorrelationId() ?? generateCorrelationId();
     const attachmentId = randomUUID();
@@ -178,6 +195,7 @@ export class ImportsService {
       correlationId,
       ocrText: text,
       createdById: createdById ?? null,
+      organizationId: organizationId ?? null,
     });
 
     // Import texte : aucun OCR (RM-007). Le Backend fabrique un OCRResult de substitution

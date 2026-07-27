@@ -32,6 +32,7 @@ export class StructuredImportService {
     content: string,
     contentType?: string | null,
     createdById?: string | null,
+    organizationId?: string | null,
   ): Promise<ImportJobWithAttachment> {
     const trimmed = content?.trim() ?? '';
     if (!trimmed) {
@@ -41,7 +42,7 @@ export class StructuredImportService {
     const connector = this.resolveConnector(channel);
     const correlationId = getCorrelationId() ?? generateCorrelationId();
 
-    const job = await this.createJob(trimmed, contentType, channel, connector.providerId, correlationId, createdById ?? null);
+    const job = await this.createJob(trimmed, contentType, channel, connector.providerId, correlationId, createdById ?? null, organizationId ?? null);
 
     try {
       // Extract — le connecteur ne produit que des ébauches de Raw Event (fidèles, sans décision).
@@ -110,6 +111,7 @@ export class StructuredImportService {
     providerId: string,
     correlationId: string,
     createdById: string | null,
+    organizationId: string | null = null,
   ): Promise<ImportJobWithAttachment> {
     // Le contenu source est conservé dans MinIO (jamais en base) et référencé par un Attachment.
     const attachmentId = randomUUID();
@@ -136,6 +138,7 @@ export class StructuredImportService {
       channel,
       providerId,
       createdById,
+      organizationId,
     });
   }
 }

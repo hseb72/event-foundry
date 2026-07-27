@@ -19,13 +19,19 @@ import { FileDropComponent } from '../../shared/file-drop.component';
 import { formatDateTime } from '../../shared/date-format';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
-type SortKey = 'startsAt' | 'title' | 'category' | 'status';
+/** Colonnes triables côté serveur (le tri directionnel s'applique à la page courante paginée). */
+type SortKey = 'startsAt' | 'title' | 'status';
 
 /**
  * « Nos événements » (expérience Organizer) : point d'entrée unique regroupant la soumission
  * (documents, texte, URL, fichiers structurés, création manuelle), le suivi des imports en cours
  * d'analyse, la validation des brouillons issus de l'import et la gestion des événements de
  * l'organisation. Les événements créés ici sont rattachés à l'organisation active (FSPEC.22).
+ *
+ * Vue **partagée d'équipe** (FSPEC.22) : tous les agents de l'organisation voient les mêmes
+ * soumissions, brouillons et événements — chacun porte le **pseudo de son auteur** pour savoir s'il
+ * est opportun d'agir sur celui d'un collègue (absence, départ…). Le tableau des événements est
+ * **paginé côté serveur** (une organisation active peut accumuler beaucoup d'événements).
  */
 @Component({
   selector: 'app-our-events',
@@ -49,6 +55,8 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
       .sub { display: flex; justify-content: space-between; gap: 0.6rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; align-items: center; }
       .badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--surface-2); }
       .badge.running { color: #b45309; background: rgba(234, 179, 8, 0.15); }
+      .who { font-size: 0.78rem; color: var(--muted); }
+      .who strong { color: var(--text); font-weight: 600; }
       .draft-item { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; cursor: pointer; }
       .draft-item.on { border-color: var(--organizer); box-shadow: 0 0 0 1px var(--organizer); }
       .muted { color: var(--muted); }
@@ -58,7 +66,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
       table { width: 100%; border-collapse: collapse; }
       th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-      th { cursor: pointer; user-select: none; white-space: nowrap; }
+      th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
       th .arr { color: var(--organizer); }
       .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
       .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
@@ -75,6 +83,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
     <p class="intro">
       Soumettez (document, texte, URL, fichier structuré) ou créez un événement, suivez les analyses en
       cours, validez les brouillons, et gérez le cycle de publication — au nom de votre organisation.
+      Toute l'équipe partage la même vue : le créateur de chaque élément est indiqué.
     </p>
 
     @if (message()) { <div class="ok">✅ {{ message() }}</div> }
@@ -142,20 +151,23 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
         }
       </section>
 
-      <!-- Soumissions en cours d'analyse -->
+      <!-- Soumissions en cours d'analyse (de toute l'organisation) -->
       @if (inAnalysis().length) {
         <section class="card">
           <h2>Soumissions <span class="muted">(analyse en cours)</span></h2>
           @for (s of inAnalysis(); track s.id) {
             <div class="sub">
-              <span>{{ s.type }} · {{ s.createdAt | date: 'short' }}</span>
+              <span>
+                {{ s.type }} · {{ s.createdAt | date: 'short' }}
+                @if (s.createdByName) { <span class="who">— par <strong>{{ s.createdByName }}</strong></span> }
+              </span>
               <span class="badge running">{{ statusLabel(s.status) }}</span>
             </div>
           }
         </section>
       }
 
-      <!-- Validation des brouillons issus de l'import -->
+      <!-- Validation des brouillons issus de l'import (de toute l'organisation) -->
       @if (drafts().length || selected()) {
         <section class="card">
           <h2>Validation <span class="muted">(brouillons à qualifier)</span></h2>
@@ -163,6 +175,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
             <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
               <strong>{{ draftTitle(d) }}</strong>
               <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
+              @if (d.createdByName) { <span class="who"> — par <strong>{{ d.createdByName }}</strong></span> }
             </div>
           }
           @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
@@ -176,7 +189,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
         </section>
       }
 
-      <!-- Tableau des événements de l'organisation -->
+      <!-- Tableau des événements de l'organisation (paginé côté serveur) -->
       <section class="card">
         <h2>Nos événements</h2>
         @if (loading()) {
@@ -188,19 +201,21 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
             <table>
               <thead>
                 <tr>
-                  <th (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
-                  <th (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
-                  <th (click)="sort('category')">Catégorie <span class="arr">{{ arrow('category') }}</span></th>
-                  <th (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
+                  <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
+                  <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
+                  <th>Catégorie</th>
+                  <th>Créateur</th>
+                  <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
                   <th>Archivage</th>
                 </tr>
               </thead>
               <tbody>
-                @for (e of paged(); track e.id) {
+                @for (e of events(); track e.id) {
                   <tr>
                     <td>{{ date(e) }}</td>
                     <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
                     <td>{{ categoryOf(e) }}</td>
+                    <td>{{ e.createdByName || '—' }}</td>
                     <td>
                       <label class="switch" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
                         <input type="checkbox" [checked]="isPublished(e)" [disabled]="e.status === 'ARCHIVED' || busyRow() === e.id"
@@ -221,9 +236,9 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
             </table>
           </div>
           <div class="pager">
-            <span class="muted">{{ events().length }} événement(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
-            <button class="btn btn-sm" [disabled]="page() === 0" (click)="page.set(page() - 1)">‹</button>
-            <button class="btn btn-sm" [disabled]="page() >= pageCount() - 1" (click)="page.set(page() + 1)">›</button>
+            <span class="muted">{{ total() }} événement(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
+            <button class="btn btn-sm" [disabled]="page() === 0" (click)="goTo(page() - 1)">‹</button>
+            <button class="btn btn-sm" [disabled]="page() >= pageCount() - 1" (click)="goTo(page() + 1)">›</button>
           </div>
         }
         @if (error()) { <p class="err">{{ error() }}</p> }
@@ -238,9 +253,11 @@ export class OurEventsComponent implements OnInit {
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
-  readonly submissions = signal<ImportResponse[]>([]);
+  /** Soumissions en cours d'analyse de l'organisation (filtrées côté serveur). */
+  readonly inAnalysis = signal<ImportResponse[]>([]);
   readonly drafts = signal<EventCandidateDto[]>([]);
   readonly events = signal<EventDto[]>([]);
+  readonly total = signal(0);
   readonly selected = signal<EventCandidateDetailDto | null>(null);
   readonly draft = signal<EventDraft | null>(null);
   readonly busy = signal(false);
@@ -259,41 +276,43 @@ export class OurEventsComponent implements OnInit {
   url = '';
   structured = '';
 
-  // Tri + pagination du tableau.
+  // Tri + pagination du tableau (côté serveur).
   readonly sortKey = signal<SortKey>('startsAt');
   readonly sortDir = signal<'asc' | 'desc'>('asc');
   readonly page = signal(0);
   readonly pageSize = 10;
-
-  /** Imports encore dans le processus d'analyse (ni terminés, ni en échec, ni prêts à valider). */
-  readonly inAnalysis = computed(() =>
-    this.submissions().filter(
-      (s) => !['COMPLETED', 'FAILED', 'READY_FOR_VALIDATION'].includes(s.status),
-    ),
-  );
-
-  readonly sorted = computed(() => {
-    const key = this.sortKey();
-    const dir = this.sortDir() === 'asc' ? 1 : -1;
-    return [...this.events()].sort((a, b) => this.compare(a, b, key) * dir);
-  });
-  readonly pageCount = computed(() => Math.max(1, Math.ceil(this.events().length / this.pageSize)));
-  readonly paged = computed(() => this.sorted().slice(this.page() * this.pageSize, (this.page() + 1) * this.pageSize));
+  readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize)));
 
   ngOnInit(): void {
     this.refresh();
   }
 
+  /** Recharge les trois inventaires partagés de l'organisation (soumissions, brouillons, événements). */
   refresh(): void {
-    this.imports.listMine().subscribe({ next: (list) => this.submissions.set(list) });
-    this.candidates.listMine('PENDING').subscribe({ next: (list) => this.drafts.set(list) });
-    this.eventsApi.search({ organizationScope: 'true', take: '200' }).subscribe({
-      next: (result) => {
-        this.events.set(result.items);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.imports.listOrganization().subscribe({ next: (list) => this.inAnalysis.set(list) });
+    this.candidates.listOrganization('PENDING').subscribe({ next: (list) => this.drafts.set(list) });
+    this.loadEvents();
+  }
+
+  /** Charge une page du tableau des événements (pagination + tri côté serveur — FSPEC.04/22). */
+  private loadEvents(): void {
+    this.loading.set(true);
+    this.eventsApi
+      .search({
+        organizationScope: 'true',
+        skip: String(this.page() * this.pageSize),
+        take: String(this.pageSize),
+        sortBy: this.sortKey(),
+        sortDir: this.sortDir(),
+      })
+      .subscribe({
+        next: (result) => {
+          this.events.set(result.items);
+          this.total.set(result.total);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   // --- Soumission ---
@@ -443,6 +462,7 @@ export class OurEventsComponent implements OnInit {
     return e.status === 'PUBLISHED';
   }
 
+  /** Change la colonne / le sens de tri puis recharge la première page (tri côté serveur). */
   sort(key: SortKey): void {
     if (this.sortKey() === key) {
       this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
@@ -451,23 +471,16 @@ export class OurEventsComponent implements OnInit {
       this.sortDir.set('asc');
     }
     this.page.set(0);
+    this.loadEvents();
   }
 
   arrow(key: SortKey): string {
     return this.sortKey() === key ? (this.sortDir() === 'asc' ? '▲' : '▼') : '';
   }
 
-  private compare(a: EventDto, b: EventDto, key: SortKey): number {
-    switch (key) {
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'category':
-        return this.categoryOf(a).localeCompare(this.categoryOf(b));
-      case 'status':
-        return a.status.localeCompare(b.status);
-      default:
-        return a.startsAt.localeCompare(b.startsAt);
-    }
+  goTo(page: number): void {
+    this.page.set(page);
+    this.loadEvents();
   }
 
   /** Bascule la publication : publie un événement non publié, dépublie un événement publié. */
@@ -477,7 +490,7 @@ export class OurEventsComponent implements OnInit {
     const call = this.isPublished(e) ? this.eventsApi.unpublish(e.id) : this.eventsApi.publish(e.id);
     call.subscribe({
       next: (updated) => {
-        this.events.update((list) => list.map((x) => (x.id === updated.id ? updated : x)));
+        this.applyRowUpdate(updated);
         this.busyRow.set(null);
       },
       error: (err: { error?: { message?: string } }) => {
@@ -491,9 +504,21 @@ export class OurEventsComponent implements OnInit {
     this.error.set('');
     const call = action === 'archive' ? this.eventsApi.archive(e.id) : this.eventsApi.restore(e.id);
     call.subscribe({
-      next: (updated) => this.events.update((list) => list.map((x) => (x.id === updated.id ? updated : x))),
+      next: (updated) => this.applyRowUpdate(updated),
       error: (err: { error?: { message?: string } }) => this.error.set(err?.error?.message ?? "L'action a échoué."),
     });
+  }
+
+  /**
+   * Reporte la mise à jour d'une ligne. Le tri par statut peut déplacer l'événement hors de la page
+   * courante : dans ce cas on recharge la page pour rester cohérent avec la pagination serveur.
+   */
+  private applyRowUpdate(updated: EventDto): void {
+    if (this.sortKey() === 'status') {
+      this.loadEvents();
+      return;
+    }
+    this.events.update((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
   }
 }
 

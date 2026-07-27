@@ -3,7 +3,11 @@ import { EventCandidateStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { BaseRepository, CrudDelegate } from '../../infra/repositories/base.repository';
 import { EVENT_REFS_INCLUDE, type EventWithRefs } from '../../events/entities/event.entity';
-import type { EventCandidate, EventCandidateWithImport } from '../entities/event-candidate.entity';
+import type {
+  EventCandidate,
+  EventCandidateWithCreator,
+  EventCandidateWithImport,
+} from '../entities/event-candidate.entity';
 
 const IMPORT_INCLUDE = { importJob: { include: { attachment: true } } } as const;
 
@@ -51,6 +55,41 @@ export class EventCandidateRepository extends BaseRepository<EventCandidate> {
     return this.prisma.eventCandidate
       .findUnique({ where: { id: candidateId }, select: { importJob: { select: { createdById: true } } } })
       .then((row) => row?.importJob.createdById ?? null);
+  }
+
+  /**
+   * Provenance d'un candidat (auteur + organisation d'origine) — garde de propriété élargie à
+   * l'équipe (FSPEC.22 : tout agent de l'organisation d'origine peut agir sur le brouillon).
+   */
+  provenance(candidateId: string): Promise<{ createdById: string | null; organizationId: string | null } | null> {
+    return this.prisma.eventCandidate
+      .findUnique({
+        where: { id: candidateId },
+        select: { importJob: { select: { createdById: true, organizationId: true } } },
+      })
+      .then((row) =>
+        row
+          ? {
+              createdById: row.importJob.createdById,
+              organizationId: row.importJob.organizationId,
+            }
+          : null,
+      );
+  }
+
+  /**
+   * Brouillons issus des soumissions d'une **organisation** (FSPEC.22 — vue partagée d'équipe), avec
+   * le pseudo de l'auteur. Toute l'équipe qualifie les mêmes brouillons, les plus récents d'abord.
+   */
+  listForOrganization(
+    organizationId: string,
+    status?: EventCandidateStatus,
+  ): Promise<EventCandidateWithCreator[]> {
+    return this.prisma.eventCandidate.findMany({
+      where: { status, importJob: { organizationId } },
+      orderBy: { createdAt: 'desc' },
+      include: { importJob: { include: { createdBy: { select: { displayName: true } } } } },
+    });
   }
 
   findByIdWithImport(id: string): Promise<EventCandidateWithImport | null> {

@@ -54,7 +54,7 @@ export class AiExtractionImportService {
     }
     const assistant = await this.requireAssistant(actor);
     const buffer = Buffer.from(content, 'utf-8');
-    const job = await this.createJob(buffer, 'text/plain', ImportChannel.TEXT, 'txt', null, actor.userId);
+    const job = await this.createJob(buffer, 'text/plain', ImportChannel.TEXT, 'txt', null, actor.userId, actor.organizationId);
     return this.process(job, { content, assistant }, assistant);
   }
 
@@ -69,7 +69,7 @@ export class AiExtractionImportService {
       );
     }
     const assistant = await this.requireAssistant(actor);
-    const job = await this.createJob(file.buffer, file.mimetype, ImportChannel.IMAGE, 'img', file.originalname, actor.userId);
+    const job = await this.createJob(file.buffer, file.mimetype, ImportChannel.IMAGE, 'img', file.originalname, actor.userId, actor.organizationId);
     return this.process(
       job,
       { content: '', image: { base64: file.buffer.toString('base64'), mediaType: file.mimetype }, assistant },
@@ -193,6 +193,7 @@ export class AiExtractionImportService {
     ext: string,
     originalName: string | null,
     createdById: string | null,
+    organizationId: string | null = null,
   ): Promise<ImportJobWithAttachment> {
     const attachmentId = randomUUID();
     const checksum = createHash('sha256').update(buffer).digest('hex');
@@ -217,6 +218,7 @@ export class AiExtractionImportService {
       channel,
       providerId: AI_EXTRACTION_PROVIDER,
       createdById,
+      organizationId,
     });
   }
 }

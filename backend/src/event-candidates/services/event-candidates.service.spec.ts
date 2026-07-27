@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import type { CreateEventDto } from '../../events/dto/create-event.dto';
 import { CasesService } from '../../cases/cases.service';
 import { ModerationTermsService } from '../../moderation/moderation-terms.service';
@@ -14,7 +15,7 @@ describe('EventCandidatesService', () => {
     findById: jest.Mock;
     reject: jest.Mock;
     createEventAndValidate: jest.Mock;
-    ownerId: jest.Mock;
+    provenance: jest.Mock;
   };
   let eventsService: { buildValidatedEventData: jest.Mock; hasPublicDuplicate: jest.Mock };
   let cases: { open: jest.Mock };
@@ -27,7 +28,7 @@ describe('EventCandidatesService', () => {
       findById: jest.fn(),
       reject: jest.fn(),
       createEventAndValidate: jest.fn(),
-      ownerId: jest.fn().mockResolvedValue('user-1'),
+      provenance: jest.fn().mockResolvedValue({ createdById: 'user-1', organizationId: null }),
     };
     eventsService = {
       buildValidatedEventData: jest.fn(),
@@ -109,7 +110,7 @@ describe('EventCandidatesService', () => {
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e2' });
 
-    repo.ownerId.mockResolvedValue('user-2');
+    repo.provenance.mockResolvedValue({ createdById: 'user-2', organizationId: null });
     await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false, activeOrganizationId: null }, false);
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
@@ -117,6 +118,43 @@ describe('EventCandidatesService', () => {
       expect.objectContaining({ visibility: 'PRIVATE', createdById: 'user-2' }),
       'user-2',
     );
+  });
+
+  it("un agent de l'organisation d'origine peut qualifier le brouillon d'un collègue (FSPEC.22 — vue d'équipe)", async () => {
+    repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
+    eventsService.buildValidatedEventData.mockResolvedValue({
+      source: 'IMPORT',
+      activityId: 'a1',
+      title: 'T',
+      startsAt: '2024-07-12T00:00:00.000Z',
+    });
+    repo.createEventAndValidate.mockResolvedValue({ id: 'e3' });
+    // Brouillon soumis par le collègue user-A dans l'organisation org-9 ; l'agent user-B, actif dans
+    // la même organisation, doit pouvoir agir dessus (absence, départ…).
+    repo.provenance.mockResolvedValue({ createdById: 'user-A', organizationId: 'org-9' });
+
+    await service.validate(
+      'c1',
+      { activityId: 'a1' } as CreateEventDto,
+      { userId: 'user-B', isOperator: false, activeOrganizationId: 'org-9' },
+      true,
+    );
+
+    expect(repo.createEventAndValidate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ visibility: 'PUBLIC', createdById: 'user-B', organizationId: 'org-9' }),
+      'user-B',
+    );
+  });
+
+  it("refuse un brouillon d'une autre organisation (isolation — FSPEC.22)", async () => {
+    repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
+    repo.provenance.mockResolvedValue({ createdById: 'user-A', organizationId: 'org-9' });
+
+    await expect(
+      service.reject('c1', { userId: 'user-B', isOperator: false, activeOrganizationId: 'org-other' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(repo.reject).not.toHaveBeenCalled();
   });
 
   describe('contrôles automatiques §13 (FSPEC.22-B)', () => {

@@ -8,6 +8,7 @@ import { EventsService } from '../../events/services/events.service';
 import { UpdateEventCandidateDto } from '../dto/update-event-candidate.dto';
 import type {
   EventCandidate,
+  EventCandidateWithCreator,
   EventCandidateWithImport,
 } from '../entities/event-candidate.entity';
 import {
@@ -60,6 +61,17 @@ export class EventCandidatesService {
   /** Mes brouillons (FSPEC.22 §6) : les candidats issus de mes propres soumissions. */
   listMine(userId: string, status?: EventCandidateStatus): Promise<EventCandidate[]> {
     return this.repository.listForOwner(userId, status);
+  }
+
+  /**
+   * Brouillons de l'organisation à qualifier (FSPEC.22 — vue partagée d'équipe) : les candidats issus
+   * des soumissions de l'organisation, enrichis du pseudo de l'auteur.
+   */
+  listForOrganization(
+    organizationId: string,
+    status?: EventCandidateStatus,
+  ): Promise<EventCandidateWithCreator[]> {
+    return this.repository.listForOrganization(organizationId, status);
   }
 
   async getDetail(id: string, actor?: CandidateActor): Promise<EventCandidateWithImport> {
@@ -199,15 +211,24 @@ export class EventCandidatesService {
   }
 
   /**
-   * Garde de propriété (FSPEC.22 §6) : un Operator (`validation.review`) agit sur tout candidat ;
-   * un utilisateur ordinaire uniquement sur les candidats issus de ses propres soumissions.
+   * Garde de propriété (FSPEC.22 §6, vue d'équipe) : un Operator (`validation.review`) agit sur tout
+   * candidat ; l'auteur de la soumission agit sur les siens ; et **tout agent d'une organisation** peut
+   * agir sur les brouillons issus des soumissions de **cette même organisation** (vue partagée : agir
+   * sur l'événement d'un collègue absent/parti). Un brouillon personnel (sans organisation) reste réservé
+   * à son auteur.
    */
   private async assertOwnership(id: string, actor: CandidateActor): Promise<void> {
     if (actor.isOperator) {
       return;
     }
-    const ownerId = await this.repository.ownerId(id);
-    if (ownerId !== actor.userId) {
+    const provenance = await this.repository.provenance(id);
+    if (!provenance) {
+      throw new EventCandidateNotFoundException(id);
+    }
+    const isOwner = provenance.createdById === actor.userId;
+    const isOrgColleague =
+      provenance.organizationId !== null && provenance.organizationId === actor.activeOrganizationId;
+    if (!isOwner && !isOrgColleague) {
       throw new ForbiddenException("Ce brouillon n'est pas issu de vos soumissions.");
     }
   }

@@ -1,4 +1,8 @@
-import type { ImportJobDetail, ImportJobWithAttachment } from '../entities/import-job.entity';
+import type {
+  ImportJobDetail,
+  ImportJobWithAttachment,
+  ImportJobWithCreator,
+} from '../entities/import-job.entity';
 import { ImportDetailResponseDto, ImportResponseDto } from '../dto/import-response.dto';
 
 export class ImportMapper {
@@ -11,6 +15,14 @@ export class ImportMapper {
       startedAt: job.startedAt ? job.startedAt.toISOString() : null,
       finishedAt: job.finishedAt ? job.finishedAt.toISOString() : null,
       createdAt: job.createdAt.toISOString(),
+    };
+  }
+
+  /** Variante « vue d'organisation » : ajoute le pseudo de l'auteur (FSPEC.22). */
+  static toResponseWithCreator(job: ImportJobWithCreator): ImportResponseDto {
+    return {
+      ...this.toResponse(job),
+      createdByName: job.createdBy?.displayName ?? null,
     };
   }
 
