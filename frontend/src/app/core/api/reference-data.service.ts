@@ -32,8 +32,8 @@ export class ReferenceDataApi {
     return this.http.post<ReferentialItem>(`${API_BASE}/event-types`, { name, activityId });
   }
 
-  createEventFormat(name: string, activityId: string): Observable<ReferentialItem> {
-    return this.http.post<ReferentialItem>(`${API_BASE}/event-formats`, { name, activityId });
+  createEventFormat(name: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/event-formats`, { name });
   }
 
   createOrganizer(name: string): Observable<ReferentialItem> {
@@ -64,10 +64,9 @@ export class ReferenceDataApi {
     });
   }
 
-  eventFormats(activityId: string): Observable<ReferentialItem[]> {
-    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-formats`, {
-      params: { activityId },
-    });
+  /** Formats : référentiel transverse (DATA.01 §4), indépendant de l'Activité. */
+  eventFormats(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-formats`);
   }
 
   organizers(): Observable<ReferentialItem[]> {

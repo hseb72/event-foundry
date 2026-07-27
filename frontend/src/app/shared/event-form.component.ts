@@ -173,10 +173,8 @@ import {
 
       <div class="row">
         <div>
-          <label>Format</label>
-          <select class="select" [(ngModel)]="model.eventFormatId" name="eventFormatId"
-                  [disabled]="!model.activityId">
-            <option value="">— aucun —</option>
+          <label>Formats <span class="muted">(plusieurs possibles)</span></label>
+          <select class="select" multiple [(ngModel)]="model.eventFormatIds" name="eventFormatIds">
             @for (f of eventFormats; track f.id) {
               <option [value]="f.id">{{ f.name }}</option>
             }
@@ -184,14 +182,12 @@ import {
           @if (unresolved.eventFormat) {
             <div class="propose">
               <span>Format « <strong>{{ unresolved.eventFormat }}</strong> » non reconnu.</span>
-              @if (canManageRef && model.activityId) {
+              @if (canManageRef) {
                 <div class="propose-actions">
                   <button type="button" class="btn" [disabled]="busy" (click)="createEventFormatRef()">
                     Créer ce format
                   </button>
                 </div>
-              } @else if (canManageRef) {
-                <span class="muted">Choisissez d'abord une activité.</span>
               }
             </div>
           }
@@ -242,9 +238,8 @@ import {
           }
         </div>
         <div>
-          <label>Catégorie</label>
-          <select class="select" [(ngModel)]="model.categoryId" name="categoryId">
-            <option value="">— aucune —</option>
+          <label>Catégories <span class="muted">(plusieurs possibles)</span></label>
+          <select class="select" multiple [(ngModel)]="model.categoryIds" name="categoryIds">
             @for (c of categories; track c.id) {
               <option [value]="c.id">{{ c.name }}</option>
             }
@@ -402,8 +397,8 @@ export class EventFormComponent implements OnInit {
     description: '',
     activityId: '',
     eventTypeId: '',
-    eventFormatId: '',
-    categoryId: '',
+    eventFormatIds: [] as string[],
+    categoryIds: [] as string[],
     organizerId: '',
     venueId: '',
     countryId: '',
@@ -448,6 +443,11 @@ export class EventFormComponent implements OnInit {
       this.applyDraftVenue();
     });
     this.referenceData.categories().subscribe((items) => (this.categories = items));
+    // Formats : référentiel transverse (DATA.01 §4), chargé une fois, indépendamment de l'activité.
+    this.referenceData.eventFormats().subscribe((items) => {
+      this.eventFormats = items;
+      this.applyDraftEventFormat();
+    });
     this.referenceData.tags().subscribe((items) => (this.tags = items));
     this.referenceData.countries().subscribe((items) => (this.countries = items));
     this.referenceData.activities().subscribe((items) => {
@@ -471,7 +471,8 @@ export class EventFormComponent implements OnInit {
     this.model.title = value.title;
     this.model.description = value.description ?? '';
     this.model.activityId = value.activityId;
-    this.model.categoryId = value.categoryId ?? '';
+    this.model.categoryIds = [...(value.categoryIds ?? [])];
+    this.model.eventFormatIds = [...(value.eventFormatIds ?? [])];
     this.model.organizerId = value.organizerId ?? '';
     this.model.venueId = value.venueId ?? '';
     this.model.tagIds = [...value.tagIds];
@@ -484,10 +485,6 @@ export class EventFormComponent implements OnInit {
       this.referenceData.eventTypes(value.activityId).subscribe((items) => {
         this.eventTypes = items;
         this.model.eventTypeId = value.eventTypeId ?? '';
-      });
-      this.referenceData.eventFormats(value.activityId).subscribe((items) => {
-        this.eventFormats = items;
-        this.model.eventFormatId = value.eventFormatId ?? '';
       });
     }
     // Préremplissage de la localisation (édition) : la commune connue → pays + code postal +
@@ -577,20 +574,15 @@ export class EventFormComponent implements OnInit {
   }
 
   onActivityChange(): void {
+    // Le Type dépend de l'activité ; le Format est transverse (rechargé au chargement du formulaire).
     this.eventTypes = [];
-    this.eventFormats = [];
     this.model.eventTypeId = '';
-    this.model.eventFormatId = '';
     if (!this.model.activityId) {
       return;
     }
     this.referenceData.eventTypes(this.model.activityId).subscribe((items) => {
       this.eventTypes = items;
       this.applyDraftEventType();
-    });
-    this.referenceData.eventFormats(this.model.activityId).subscribe((items) => {
-      this.eventFormats = items;
-      this.applyDraftEventFormat();
     });
   }
 
@@ -607,8 +599,8 @@ export class EventFormComponent implements OnInit {
       startsAt: toIso(this.model.startsAt),
     };
     if (this.model.eventTypeId) input.eventTypeId = this.model.eventTypeId;
-    if (this.model.eventFormatId) input.eventFormatId = this.model.eventFormatId;
-    if (this.model.categoryId) input.categoryId = this.model.categoryId;
+    if (this.model.eventFormatIds.length) input.eventFormatIds = [...this.model.eventFormatIds];
+    if (this.model.categoryIds.length) input.categoryIds = [...this.model.categoryIds];
     if (this.model.organizerId) input.organizerId = this.model.organizerId;
     if (this.model.venueId) input.venueId = this.model.venueId;
     if (this.model.municipalityId) input.municipalityId = this.model.municipalityId;
@@ -655,8 +647,13 @@ export class EventFormComponent implements OnInit {
   private applyDraftEventFormat(): void {
     if (!this.draft?.eventFormatName) return;
     const match = byName(this.eventFormats, this.draft.eventFormatName);
-    if (match) this.model.eventFormatId = match.id;
-    else this.unresolved.eventFormat = this.draft.eventFormatName;
+    if (match) {
+      if (!this.model.eventFormatIds.includes(match.id)) {
+        this.model.eventFormatIds = [...this.model.eventFormatIds, match.id];
+      }
+    } else {
+      this.unresolved.eventFormat = this.draft.eventFormatName;
+    }
   }
 
   private applyDraftOrganizer(): void {
@@ -724,12 +721,13 @@ export class EventFormComponent implements OnInit {
 
   createEventFormatRef(): void {
     const name = this.unresolved.eventFormat?.trim();
-    if (!name || !this.model.activityId) return;
+    if (!name) return;
     this.refError = '';
-    this.referenceData.createEventFormat(name, this.model.activityId).subscribe({
+    // Format transverse (DATA.01 §4) : créé sans rattachement à l'activité, puis ajouté à la sélection.
+    this.referenceData.createEventFormat(name).subscribe({
       next: (created) => {
         this.eventFormats = [...this.eventFormats, created];
-        this.model.eventFormatId = created.id;
+        this.model.eventFormatIds = [...this.model.eventFormatIds, created.id];
         this.unresolved.eventFormat = undefined;
       },
       error: (err) => (this.refError = err?.error?.message ?? 'Création du format impossible.'),

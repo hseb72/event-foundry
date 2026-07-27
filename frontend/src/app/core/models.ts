@@ -119,12 +119,12 @@ export interface EventDto {
   description: string | null;
   activity: string;
   eventType: string | null;
-  eventFormat: string | null;
-  category: string | null;
+  eventFormats: string[];
+  categories: string[];
   organizer: string | null;
   venue: string | null;
   activityId: string;
-  categoryId: string | null;
+  categoryIds: string[];
   organizerId: string | null;
   venueId: string | null;
   municipality: string | null;
@@ -407,8 +407,8 @@ export interface EventEditValue {
   editable: boolean;
   activityId: string;
   eventTypeId: string | null;
-  eventFormatId: string | null;
-  categoryId: string | null;
+  eventFormatIds: string[];
+  categoryIds: string[];
   organizerId: string | null;
   venueId: string | null;
   countryId: string | null;
@@ -426,8 +426,8 @@ export interface EventEditValue {
 export interface CreateEventInput {
   activityId: string;
   eventTypeId?: string;
-  eventFormatId?: string;
-  categoryId?: string;
+  eventFormatIds?: string[];
+  categoryIds?: string[];
   organizerId?: string;
   venueId?: string;
   municipalityId?: string;
