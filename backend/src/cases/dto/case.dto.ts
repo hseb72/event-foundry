@@ -13,7 +13,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { CASE_TYPES } from '../case-catalog';
+import { CASE_DOMAINS, CASE_TYPES } from '../case-catalog';
 
 export class OpenCaseDto {
   @ApiProperty({ enum: CASE_TYPES })
@@ -59,11 +59,32 @@ export class ChangeStatusDto {
   @IsEnum(CaseStatus)
   status!: CaseStatus;
 
-  @ApiPropertyOptional({ description: 'Motif de clôture (quand le statut passe à CLOSED — §22).' })
-  @IsOptional()
+  @ApiProperty({ description: 'Commentaire de motivation, **obligatoire** pour tout changement de statut.' })
   @IsString()
-  @MaxLength(500)
-  closeReason?: string;
+  @MinLength(1)
+  @MaxLength(2000)
+  comment!: string;
+}
+
+export class RerouteCaseDto {
+  @ApiProperty({ enum: CASE_DOMAINS, description: 'Nouveau domaine (Work Queue dérivée).' })
+  @IsIn(CASE_DOMAINS as unknown as string[])
+  domain!: string;
+
+  @ApiProperty({ description: 'Motif du re-routage (routage incorrect), **obligatoire**.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(2000)
+  comment!: string;
+}
+
+/** Réponse d'un demandeur à sa propre demande (élément supplémentaire). */
+export class RequesterReplyDto {
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(5000)
+  body!: string;
 }
 
 export class RoutingRuleDto {

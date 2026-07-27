@@ -26,6 +26,8 @@ import {
   CommentDto,
   EscalateDto,
   OpenCaseDto,
+  RequesterReplyDto,
+  RerouteCaseDto,
   RoutingRuleDto,
 } from './dto/case.dto';
 
@@ -88,6 +90,19 @@ export class CasesController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<unknown> {
     return this.service.detailForRequester(id, user.userId);
+  }
+
+  /** Le demandeur apporte un élément supplémentaire à sa demande (§19). Relance une Case en attente. */
+  @Post('mine/:id/replies')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Élément ajouté à ma demande.' })
+  async reply(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RequesterReplyDto,
+  ): Promise<{ added: boolean }> {
+    await this.service.addRequesterComment(id, user.userId, dto.body);
+    return { added: true };
   }
 
   // --- Console Operator (case.manage) ---
@@ -192,7 +207,19 @@ export class CasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ChangeStatusDto,
   ): Promise<Case> {
-    return this.service.changeStatus(id, dto.status, user.userId, dto.closeReason);
+    return this.service.changeStatus(id, dto.status, user.userId, dto.comment);
+  }
+
+  @Post(':id/reroute')
+  @RequirePermissions('case.manage')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Case re-routée vers un autre domaine / file (routage incorrect).' })
+  reroute(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RerouteCaseDto,
+  ): Promise<Case> {
+    return this.service.reroute(id, dto.domain, user.userId, dto.comment);
   }
 
   @Patch(':id/priority')

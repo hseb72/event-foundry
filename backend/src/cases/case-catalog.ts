@@ -99,3 +99,23 @@ export const ALLOWED_TRANSITIONS: Record<CaseStatus, CaseStatus[]> = {
 export function canTransition(from: CaseStatus, to: CaseStatus): boolean {
   return ALLOWED_TRANSITIONS[from].includes(to);
 }
+
+/** États atteignables depuis l'état courant (pour ne proposer que des transitions valides — §11). */
+export function allowedTransitionsFor(status: CaseStatus): CaseStatus[] {
+  return ALLOWED_TRANSITIONS[status];
+}
+
+/** États d'attente : produisent une notification au demandeur (qui peut apporter des éléments). */
+export const WAITING_STATES: CaseStatus[] = [
+  CaseStatus.WAITING_FOR_USER,
+  CaseStatus.WAITING_FOR_ORGANIZER,
+];
+
+/** Un passage à cet état concerne le demandeur : le motif lui est rendu visible + notifié (§19). */
+export function isRequesterFacing(status: CaseStatus): boolean {
+  return (
+    WAITING_STATES.includes(status) ||
+    status === CaseStatus.RESOLVED ||
+    status === CaseStatus.CLOSED
+  );
+}

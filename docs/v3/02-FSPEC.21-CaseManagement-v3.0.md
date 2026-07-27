@@ -241,6 +241,15 @@ Closed --> Archived
 
 Chaque changement d'état est enregistré dans l'historique de la Case.
 
+## Règles d'explicitation du workflow (CASE-013..016)
+
+| Identifiant | Règle |
+|-------------|--------|
+| CASE-013 | La liste des états proposés à l'Operator ne contient **que** les états atteignables depuis l'état courant (transitions autorisées). Le détail d'une Case expose `allowedTransitions`. |
+| CASE-014 | **Tout** changement d'état doit être **motivé par un commentaire obligatoire**, journalisé dans l'historique. Pour les états concernant le demandeur, le motif lui est rendu visible. |
+| CASE-015 | Les états d'attente (`WAITING_FOR_USER`, `WAITING_FOR_ORGANIZER`) **notifient le demandeur**, motif joint. Celui-ci peut **répondre** (apporter un élément) ; sa réponse fait repasser la Case en `IN_PROGRESS`. |
+| CASE-016 | Une Case mal orientée peut être **re-routée** vers un autre Domain / Work Queue (motif obligatoire) ; l'affectation est réinitialisée et les Operators de la nouvelle file sont alertés. |
+
 # 12. Priorités
 
 Chaque Case possède une priorité.

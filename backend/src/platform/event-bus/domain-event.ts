@@ -82,6 +82,8 @@ export type CaseStatusChangedPayload = {
   subject: string;
   status: string;
   requesterId: string | null;
+  /** Motif du changement d'état (commentaire obligatoire), transmis au demandeur si l'état le concerne. */
+  message?: string | null;
 };
 
 /** La participation d'un utilisateur à un Event a changé (axes ou activation). */

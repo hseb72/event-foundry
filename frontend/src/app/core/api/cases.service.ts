@@ -30,6 +30,8 @@ export interface CaseDetail extends CaseSummary {
   description: string;
   origin: string;
   events: CaseEventEntry[];
+  /** États atteignables depuis l'état courant (§11) — pour ne proposer que des transitions valides. */
+  allowedTransitions?: string[];
 }
 
 export interface CaseCatalog {
@@ -91,8 +93,19 @@ export class CasesApi {
     return this.http.post<CaseSummary>(`${API_BASE}/cases/${id}/claim`, {});
   }
 
-  setStatus(id: string, status: string): Observable<CaseSummary> {
-    return this.http.patch<CaseSummary>(`${API_BASE}/cases/${id}/status`, { status });
+  /** Changement d'état motivé : le commentaire est obligatoire (§11). */
+  setStatus(id: string, status: string, comment: string): Observable<CaseSummary> {
+    return this.http.patch<CaseSummary>(`${API_BASE}/cases/${id}/status`, { status, comment });
+  }
+
+  /** Re-route la Case vers un autre domaine / file (routage incorrect). Motif obligatoire. */
+  reroute(id: string, domain: string, comment: string): Observable<CaseSummary> {
+    return this.http.post<CaseSummary>(`${API_BASE}/cases/${id}/reroute`, { domain, comment });
+  }
+
+  /** Réponse du demandeur à sa propre demande (élément supplémentaire). */
+  replyToMyCase(id: string, body: string): Observable<{ added: boolean }> {
+    return this.http.post<{ added: boolean }>(`${API_BASE}/cases/mine/${id}/replies`, { body });
   }
 
   setPriority(id: string, priority: string): Observable<CaseSummary> {
@@ -105,10 +118,6 @@ export class CasesApi {
 
   comment(id: string, body: string, internal: boolean): Observable<{ added: boolean }> {
     return this.http.post<{ added: boolean }>(`${API_BASE}/cases/${id}/comments`, { body, internal });
-  }
-
-  setStatusWithReason(id: string, status: string, closeReason?: string): Observable<CaseSummary> {
-    return this.http.patch<CaseSummary>(`${API_BASE}/cases/${id}/status`, { status, closeReason });
   }
 
   // Routing Rules (§14)

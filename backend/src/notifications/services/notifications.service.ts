@@ -215,17 +215,28 @@ export class NotificationsService {
     }
   }
 
-  /** Informe le demandeur d'une évolution de sa Case qui le concerne (§19). Best-effort. */
-  async notifyRequesterCaseUpdate(requesterId: string, reference: string, status: string): Promise<void> {
+  /**
+   * Informe le demandeur d'une évolution de sa Case qui le concerne (§19). Pour les états d'attente,
+   * le motif de l'Operator (`message`) est joint : il indique quels éléments apporter. Best-effort.
+   */
+  async notifyRequesterCaseUpdate(
+    requesterId: string,
+    reference: string,
+    status: string,
+    message?: string | null,
+  ): Promise<void> {
     const messages: Record<string, string> = {
       WAITING_FOR_USER: 'Votre demande attend une information de votre part.',
+      WAITING_FOR_ORGANIZER: 'Votre demande attend une information de votre organisation.',
       RESOLVED: 'Votre demande a été résolue.',
       CLOSED: 'Votre demande a été clôturée.',
     };
-    const body = messages[status];
-    if (!body) {
+    const base = messages[status];
+    if (!base) {
       return;
     }
+    // Le motif de l'Operator précise ce qui est attendu ; le demandeur peut répondre pour l'apporter.
+    const body = message?.trim() ? `${base}\n\n« ${message.trim()} »` : base;
     try {
       await this.emit(requesterId, { type: `CASE_${status}`, title: `Demande ${reference}`, body });
     } catch (error) {

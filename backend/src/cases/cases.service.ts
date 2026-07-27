@@ -15,7 +15,17 @@ import {
   type CaseStatusChangedPayload,
 } from '../platform/event-bus/domain-event';
 import { EVENT_BUS, makeDomainEvent, type EventBus } from '../platform/event-bus/event-bus';
-import { canTransition, CASE_TYPES, type CaseOrigin } from './case-catalog';
+import {
+  allowedTransitionsFor,
+  canTransition,
+  CASE_DOMAINS,
+  CASE_TYPES,
+  isRequesterFacing,
+  WAITING_STATES,
+  workQueueFor,
+  type CaseDomain,
+  type CaseOrigin,
+} from './case-catalog';
 import { decideRouting, type RoutingContext, type RoutingRuleDef } from './case-routing';
 import { CaseFilter, CasesRepository } from './cases.repository';
 
@@ -131,8 +141,10 @@ export class CasesService {
     return this.repository.dashboard();
   }
 
-  detail(id: string) {
-    return this.detailOrThrow(id);
+  /** Détail d'une Case + les transitions atteignables depuis son état courant (§11). */
+  async detail(id: string) {
+    const detail = await this.detailOrThrow(id);
+    return { ...detail, allowedTransitions: allowedTransitionsFor(detail.status) };
   }
 
   /** Les Cases dont l'utilisateur est le demandeur (suivi de ses propres demandes). */
@@ -174,24 +186,36 @@ export class CasesService {
     return this.assign(id, actorId, actorId);
   }
 
-  /** Change le statut en respectant les transitions autorisées (§11). Clôture → date + motif (§22). */
-  async changeStatus(id: string, to: CaseStatus, actorId: string, closeReason?: string): Promise<Case> {
+  /**
+   * Change le statut en respectant les transitions autorisées (§11). **Tout** changement d'état doit
+   * être motivé par un commentaire (obligatoire) : il est journalisé (audit) et, pour les états qui
+   * concernent le demandeur (attente / résolution / clôture), rendu visible et notifié (§19).
+   * Clôture → date + motif (§22).
+   */
+  async changeStatus(id: string, to: CaseStatus, actorId: string, comment: string): Promise<Case> {
+    const motivation = comment?.trim();
+    if (!motivation) {
+      throw new BadRequestException('Un commentaire est obligatoire pour tout changement de statut.');
+    }
     const current = await this.getOrThrow(id);
     if (current.status === to || !canTransition(current.status, to)) {
       throw new BadRequestException(`Transition de statut invalide : ${current.status} → ${to}.`);
     }
+    const requesterFacing = isRequesterFacing(to);
     const updated = await this.repository.update(id, {
       status: to,
-      ...(to === CaseStatus.CLOSED ? { closedAt: new Date(), closeReason: closeReason ?? null } : {}),
+      ...(to === CaseStatus.CLOSED ? { closedAt: new Date(), closeReason: motivation } : {}),
     });
     await this.repository.recordEvent({
       caseId: id,
       kind: 'STATUS_CHANGED',
       actorId,
-      body: to === CaseStatus.CLOSED ? (closeReason ?? null) : null,
+      body: motivation,
+      // Le motif est visible du demandeur quand l'état le concerne ; interne sinon.
+      visibility: requesterFacing ? 'PUBLIC' : 'INTERNAL',
       metadata: { from: current.status, to } as never,
     });
-    // Le demandeur est informé des étapes qui le concernent (§19). Le subscriber filtre les statuts.
+    // Le demandeur est informé des étapes qui le concernent (§19) ; le motif accompagne l'attente.
     this.bus.publish(
       makeDomainEvent<CaseStatusChangedPayload>(DOMAIN_EVENTS.CASE_STATUS_CHANGED, {
         caseId: id,
@@ -199,9 +223,86 @@ export class CasesService {
         subject: updated.subject,
         status: to,
         requesterId: updated.requesterId,
+        message: requesterFacing ? motivation : null,
       }),
     );
     return updated;
+  }
+
+  /**
+   * Re-route une Case vers un autre Domain / Work Queue (cas de routage incorrect — CASE-008/012).
+   * Réinitialise l'affectation (nouvelle file) et journalise le motif (obligatoire). Les Operators de
+   * la nouvelle file sont alertés (§19).
+   */
+  async reroute(id: string, domain: string, actorId: string, comment: string): Promise<Case> {
+    const motivation = comment?.trim();
+    if (!motivation) {
+      throw new BadRequestException('Un commentaire est obligatoire pour re-router une demande.');
+    }
+    if (!CASE_DOMAINS.includes(domain as CaseDomain)) {
+      throw new BadRequestException(`Domaine inconnu : ${domain}.`);
+    }
+    const current = await this.getOrThrow(id);
+    const workQueue = workQueueFor(domain as CaseDomain);
+    const updated = await this.repository.update(id, { domain, workQueue, assigneeId: null });
+    await this.repository.recordEvent({
+      caseId: id,
+      kind: 'REROUTED',
+      actorId,
+      body: motivation,
+      visibility: 'INTERNAL',
+      metadata: {
+        fromDomain: current.domain,
+        toDomain: domain,
+        fromWorkQueue: current.workQueue,
+        toWorkQueue: workQueue,
+      } as never,
+    });
+    // Alerte la nouvelle file (comme une arrivée de Case dans cette file).
+    this.bus.publish(
+      makeDomainEvent<CaseCreatedPayload>(DOMAIN_EVENTS.CASE_CREATED, {
+        caseId: id,
+        reference: updated.reference,
+        subject: updated.subject,
+        domain: updated.domain,
+        requesterId: updated.requesterId,
+      }),
+    );
+    return updated;
+  }
+
+  /**
+   * Réponse du **demandeur** (FSPEC.21 §19) : ajoute un élément (commentaire public) à sa demande. Si
+   * la Case est en attente, elle repasse **IN_PROGRESS** (l'élément fourni relance le traitement).
+   */
+  async addRequesterComment(id: string, userId: string, body: string): Promise<void> {
+    const text = body?.trim();
+    if (!text) {
+      throw new BadRequestException('Le message est obligatoire.');
+    }
+    const current = await this.getOrThrow(id);
+    if (current.requesterId !== userId) {
+      throw new ForbiddenException('Cette demande ne vous appartient pas.');
+    }
+    await this.repository.recordEvent({
+      caseId: id,
+      kind: 'COMMENT',
+      actorId: userId,
+      body: text,
+      visibility: 'PUBLIC',
+    });
+    // L'élément fourni relance le traitement : sortie de l'état d'attente.
+    if (WAITING_STATES.includes(current.status) && canTransition(current.status, CaseStatus.IN_PROGRESS)) {
+      await this.repository.update(id, { status: CaseStatus.IN_PROGRESS });
+      await this.repository.recordEvent({
+        caseId: id,
+        kind: 'STATUS_CHANGED',
+        actorId: userId,
+        body: 'Élément fourni par le demandeur.',
+        visibility: 'PUBLIC',
+        metadata: { from: current.status, to: CaseStatus.IN_PROGRESS } as never,
+      });
+    }
   }
 
   // --- Routing Rules configurables (§14) — administration Operator ---

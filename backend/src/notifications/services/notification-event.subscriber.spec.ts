@@ -110,7 +110,7 @@ describe('NotificationEventSubscriber — pilotage des notifications par le bus 
         requesterId: 'u-1',
       }),
     );
-    expect(notifications.notifyRequesterCaseUpdate).toHaveBeenCalledWith('u-1', 'C-1', 'RESOLVED');
+    expect(notifications.notifyRequesterCaseUpdate).toHaveBeenCalledWith('u-1', 'C-1', 'RESOLVED', undefined);
   });
 
   it('case.status_changed sans demandeur → aucune notification demandeur', async () => {

@@ -72,6 +72,17 @@ const USER_TYPES: { value: string; label: string }[] = [
                     @if (e.body) { <div>{{ e.body }}</div> }
                   </div>
                 } @empty { <span class="muted">Pas encore de réponse.</span> }
+
+                <div style="margin-top:0.5rem">
+                  @if (isWaiting(detail()!)) {
+                    <p style="margin:0 0 0.3rem">⏳ Une information est attendue de votre part — répondez ci-dessous.</p>
+                  }
+                  <textarea class="input" [(ngModel)]="replyBody" placeholder="Apporter un élément complémentaire…"></textarea>
+                  <div class="row" style="margin-top:0.3rem">
+                    <button class="btn btn-sm btn-primary" (click)="reply(c)" [disabled]="!replyBody.trim()">Envoyer</button>
+                  </div>
+                  @if (replyMsg()) { <p class="muted" style="margin:0.3rem 0 0">{{ replyMsg() }}</p> }
+                </div>
               </div>
             }
           </div>
@@ -86,10 +97,35 @@ export class SupportComponent implements OnInit {
   readonly cases = signal<CaseSummary[]>([]);
   readonly detail = signal<CaseDetail | null>(null);
   readonly sentRef = signal('');
+  readonly replyMsg = signal('');
   type = 'SUPPORT_REQUEST';
   subject = '';
   description = '';
+  replyBody = '';
   private catalog: CaseCatalog | null = null;
+
+  /** La demande attend une information du demandeur. */
+  isWaiting(d: CaseDetail): boolean {
+    return d.status === 'WAITING_FOR_USER' || d.status === 'WAITING_FOR_ORGANIZER';
+  }
+
+  /** Le demandeur apporte un élément supplémentaire (relance une demande en attente). */
+  reply(c: CaseSummary): void {
+    const body = this.replyBody.trim();
+    if (!body) {
+      return;
+    }
+    this.replyMsg.set('');
+    this.api.replyToMyCase(c.id, body).subscribe({
+      next: () => {
+        this.replyBody = '';
+        this.replyMsg.set('✅ Élément transmis.');
+        this.api.myCase(c.id).subscribe((d) => this.detail.set(d));
+        this.reload();
+      },
+      error: (err) => this.replyMsg.set(err?.error?.message ?? 'Envoi impossible.'),
+    });
+  }
 
   ngOnInit(): void {
     this.reload();

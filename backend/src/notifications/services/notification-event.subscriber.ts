@@ -50,7 +50,7 @@ export class NotificationEventSubscriber implements OnModuleInit {
     if (!p.requesterId) {
       return Promise.resolve();
     }
-    return this.notifications.notifyRequesterCaseUpdate(p.requesterId, p.reference, p.status);
+    return this.notifications.notifyRequesterCaseUpdate(p.requesterId, p.reference, p.status, p.message);
   }
 
   private onImportCompleted(event: DomainEvent): Promise<void> {

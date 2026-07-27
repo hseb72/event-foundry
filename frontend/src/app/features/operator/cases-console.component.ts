@@ -134,15 +134,51 @@ import { ModerationApi } from '../../core/api/moderation.service';
 
           <div class="row">
             <button class="btn btn-sm" (click)="claim(d)">Prendre en charge</button>
-            <select [ngModel]="d.status" (ngModelChange)="setStatus(d, $event)">
-              @for (s of catalog()?.statuses ?? []; track s) { <option [value]="s">{{ label(s) }}</option> }
-            </select>
+            <span class="badge">État : {{ label(d.status) }}</span>
             <select [ngModel]="d.priority" (ngModelChange)="setPriority(d, $event)">
               @for (p of catalog()?.priorities ?? []; track p) { <option [value]="p">{{ label(p) }}</option> }
             </select>
             <button class="btn btn-sm" (click)="escalate(d)">Escalader</button>
           </div>
           @if (actionMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ actionMsg() }}</p> }
+
+          <!-- Changement d'état : seulement les transitions possibles + commentaire obligatoire (§11) -->
+          <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+            <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Changer l'état</h3>
+            @if (d.allowedTransitions?.length) {
+              <div class="row">
+                <select [(ngModel)]="newStatus">
+                  <option value="">Nouvel état…</option>
+                  @for (s of d.allowedTransitions; track s) { <option [value]="s">{{ label(s) }}</option> }
+                </select>
+              </div>
+              <textarea class="input" [(ngModel)]="statusComment" style="margin-top:0.4rem"
+                        placeholder="Commentaire obligatoire : motif du changement d'état…"></textarea>
+              <div class="row" style="margin-top:0.4rem">
+                <button class="btn btn-sm btn-primary" (click)="applyStatus(d)"
+                        [disabled]="!newStatus || !statusComment.trim()">Appliquer le changement</button>
+              </div>
+            } @else {
+              <p class="muted" style="margin:0">Aucune transition possible depuis « {{ label(d.status) }} ».</p>
+            }
+          </div>
+
+          <!-- Re-router (destinataire / routage incorrect) : motif obligatoire -->
+          <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+            <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Re-router (destinataire incorrect)</h3>
+            <div class="row">
+              <select [(ngModel)]="rerouteDomain">
+                <option value="">Nouveau domaine…</option>
+                @for (dm of catalog()?.domains ?? []; track dm) { <option [value]="dm">{{ label(dm) }}</option> }
+              </select>
+            </div>
+            <textarea class="input" [(ngModel)]="rerouteComment" style="margin-top:0.4rem"
+                      placeholder="Commentaire obligatoire : motif du re-routage…"></textarea>
+            <div class="row" style="margin-top:0.4rem">
+              <button class="btn btn-sm" (click)="applyReroute(d)"
+                      [disabled]="!rerouteDomain || !rerouteComment.trim()">Re-router</button>
+            </div>
+          </div>
 
           @if (isModeration(d)) {
             <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
@@ -196,6 +232,11 @@ export class CasesConsoleComponent implements OnInit {
   fUnassigned = false;
   commentBody = '';
   commentInternal = true;
+  // Changement d'état motivé (§11) et re-routage.
+  newStatus = '';
+  statusComment = '';
+  rerouteDomain = '';
+  rerouteComment = '';
 
   // Routing Rules (§14)
   readonly showRules = signal(false);
@@ -270,13 +311,35 @@ export class CasesConsoleComponent implements OnInit {
     this.api.claim(d.id).subscribe(() => this.after());
   }
 
-  setStatus(d: CaseDetail, status: string): void {
-    if (status === d.status) {
+  /** Applique un changement d'état motivé (transition autorisée + commentaire obligatoire). */
+  applyStatus(d: CaseDetail): void {
+    if (!this.newStatus || !this.statusComment.trim()) {
       return;
     }
-    this.api.setStatus(d.id, status).subscribe({
-      next: () => this.after(),
+    this.actionMsg.set('');
+    this.api.setStatus(d.id, this.newStatus, this.statusComment.trim()).subscribe({
+      next: () => {
+        this.newStatus = '';
+        this.statusComment = '';
+        this.after();
+      },
       error: (err) => this.actionMsg.set(err?.error?.message ?? 'Transition refusée.'),
+    });
+  }
+
+  /** Re-route vers un autre domaine / file (routage incorrect), motivé. */
+  applyReroute(d: CaseDetail): void {
+    if (!this.rerouteDomain || !this.rerouteComment.trim()) {
+      return;
+    }
+    this.actionMsg.set('');
+    this.api.reroute(d.id, this.rerouteDomain, this.rerouteComment.trim()).subscribe({
+      next: () => {
+        this.rerouteDomain = '';
+        this.rerouteComment = '';
+        this.after();
+      },
+      error: (err) => this.actionMsg.set(err?.error?.message ?? 'Re-routage refusé.'),
     });
   }
 
