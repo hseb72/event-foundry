@@ -2,24 +2,18 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ImportsApi } from '../../core/api/imports.service';
 import { ImportResponse } from '../../core/models';
+import { FileDropComponent } from '../../shared/file-drop.component';
 
 @Component({
   selector: 'app-import',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, FileDropComponent],
   styles: [
     `
       .grid {
         display: grid;
         gap: 1.25rem;
         max-width: 640px;
-      }
-      .drop {
-        border: 2px dashed var(--border);
-        border-radius: var(--radius);
-        padding: 1.5rem;
-        text-align: center;
-        color: var(--muted);
       }
       textarea {
         min-height: 140px;
@@ -44,10 +38,11 @@ import { ImportResponse } from '../../core/models';
     <div class="grid">
       <div class="card">
         <h3>Depuis un document</h3>
-        <div class="drop">
-          <input type="file" accept="image/png,image/jpeg,application/pdf" (change)="onFile($event)" />
-          <p>JPG, PNG ou PDF (max ~20 Mo)</p>
-        </div>
+        <app-file-drop
+          accept="image/png,image/jpeg,application/pdf"
+          hint="JPG, PNG ou PDF (max ~20 Mo)"
+          (fileSelected)="onFile($event)"
+        />
         <label style="display:flex;gap:0.45rem;align-items:center;font-size:0.85rem;margin:0.2rem 0 0.6rem">
           <input type="checkbox" [(ngModel)]="fileUseAi" [disabled]="isPdf()" />
           Extraction assistée par IA <span class="muted">(image PNG/JPEG, si configurée)</span>
@@ -84,10 +79,11 @@ import { ImportResponse } from '../../core/models';
           <code>title, starts_at, activity, event_type, venue, city, price, url…</code> ·
           requis : <code>title</code>, <code>starts_at</code>. Chaque ligne devient un événement à valider.
         </p>
-        <div class="drop">
-          <input type="file" accept=".csv,.json,text/csv,application/json" (change)="onStructuredFile($event)" />
-          <p>Fichier CSV ou JSON — ou collez le contenu ci-dessous</p>
-        </div>
+        <app-file-drop
+          accept=".csv,.json,text/csv,application/json"
+          hint="Fichier CSV ou JSON — ou collez le contenu ci-dessous"
+          (fileSelected)="onStructuredFile($event)"
+        />
         <textarea
           class="input"
           placeholder="key,title,starts_at&#10;t1,Tournoi Magic,2026-08-01T18:00:00Z"
@@ -169,18 +165,12 @@ export class ImportComponent {
     this.errorMsg = err?.error?.message ?? "L'import a échoué.";
   }
 
-  onFile(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.file = input.files && input.files.length > 0 ? input.files[0] : null;
+  onFile(file: File): void {
+    this.file = file;
   }
 
   /** Charge le contenu texte d'un fichier CSV/JSON dans la zone (canal déterministe). */
-  onStructuredFile(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (!file) {
-      return;
-    }
+  onStructuredFile(file: File): void {
     void file.text().then((content) => (this.structured = content));
   }
 

@@ -13,6 +13,7 @@ import {
   ImportResponse,
 } from '../../core/models';
 import { EventFormComponent } from '../../shared/event-form.component';
+import { FileDropComponent } from '../../shared/file-drop.component';
 
 /**
  * Entonnoir de soumission Explorer (FSPEC.22 §5-6, §15). L'utilisateur soumet une source (texte, URL
@@ -23,7 +24,7 @@ import { EventFormComponent } from '../../shared/event-form.component';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, RouterLink, EventFormComponent, DatePipe],
+  imports: [FormsModule, RouterLink, EventFormComponent, DatePipe, FileDropComponent],
   styles: [
     `
       .intro {
@@ -164,7 +165,11 @@ import { EventFormComponent } from '../../shared/event-form.component';
             </button>
           </div>
         } @else {
-          <input type="file" accept="image/*" (change)="onFile($event)" />
+          <app-file-drop
+            accept="image/*"
+            hint="Image de l'affiche (JPG, PNG…) — glisser-déposer, parcourir ou coller"
+            (fileSelected)="onFile($event)"
+          />
           <div class="row">
             <button class="btn btn-primary" [disabled]="busy() || !file" (click)="submitImage()">
               {{ busy() ? 'Envoi…' : 'Analyser l\\'image' }}
@@ -255,8 +260,8 @@ export class SubmitEventComponent implements OnInit {
     this.candidates.listMine('PENDING').subscribe({ next: (list) => this.drafts.set(list) });
   }
 
-  onFile(event: Event): void {
-    this.file = (event.target as HTMLInputElement).files?.[0] ?? null;
+  onFile(file: File): void {
+    this.file = file;
   }
 
   submitText(): void {
