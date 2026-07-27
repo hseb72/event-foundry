@@ -19,6 +19,7 @@ import {
   ThemePreference,
 } from '../../core/models';
 import { toInitials } from '../../shared/initials';
+import { ExpandableCardComponent } from '../../shared/expandable-card.component';
 
 interface PermissionGroup {
   group: string;
@@ -40,7 +41,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
 @Component({
   selector: 'app-identity',
   standalone: true,
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, ExpandableCardComponent],
   styles: [
     `
       .head {
@@ -240,8 +241,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
       </div>
 
       <div class="grid">
-        <section class="card">
-          <h2>Données personnelles</h2>
+        <app-expandable-card cardTitle="Données personnelles">
           @if (editing()) {
             <div style="display:grid;gap:0.5rem;max-width:280px">
               <label class="muted" style="font-size:0.78rem">Nom affiché (nickname)</label>
@@ -258,10 +258,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             </p>
             <button class="btn" (click)="startEdit(m.displayName)">Modifier le nom affiché</button>
           }
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Sécurité</h2>
+        <app-expandable-card cardTitle="Sécurité">
           <div style="display:grid;gap:1rem;max-width:320px">
             <div style="display:grid;gap:0.4rem">
               <h3 style="font-size:0.85rem;margin:0">Changer le mot de passe</h3>
@@ -312,10 +311,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               <p style="margin:0;font-size:0.85rem">{{ securityMsg() }}</p>
             }
           </div>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Expériences disponibles</h2>
+        <app-expandable-card cardTitle="Expériences disponibles">
           <div class="chips">
             @for (exp of allExperiences; track exp) {
               @if (m.experiences.includes(exp)) {
@@ -333,10 +331,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             Le changement d'expérience se fait dans la barre latérale. Il ne modifie jamais les
             permissions.
           </p>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Devenir organisateur</h2>
+        <app-expandable-card cardTitle="Devenir organisateur">
           <p class="muted" style="margin:0 0 0.75rem;font-size:0.85rem">
             Activez le mode organisateur pour créer et publier vos propres événements, en toute
             autonomie (sans organisation). L'expérience Organizer devient alors accessible depuis la
@@ -354,10 +351,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           @if (organizerMsg()) {
             <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ organizerMsg() }}</p>
           }
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Mes données (RGPD)</h2>
+        <app-expandable-card cardTitle="Mes données (RGPD)">
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <button class="btn" (click)="exportData()" [disabled]="rgpdBusy()">
               Exporter mes données (JSON)
@@ -396,19 +392,17 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           @if (rgpdMsg()) {
             <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ rgpdMsg() }}</p>
           }
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Rôles</h2>
+        <app-expandable-card cardTitle="Rôles">
           <div class="chips">
             @for (role of m.roles; track role) {
               <span class="chip">{{ role }}</span>
             }
           </div>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Permissions effectives ({{ m.permissions.length }})</h2>
+        <app-expandable-card [cardTitle]="'Permissions effectives (' + m.permissions.length + ')'">
           @for (grp of permissionGroups(); track grp.group) {
             <div class="perm-group">
               <div class="g">{{ grp.group }}</div>
@@ -419,10 +413,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               </div>
             </div>
           }
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Organisations</h2>
+        <app-expandable-card cardTitle="Organisations">
           @if (!m.organizations.length) {
             <p class="muted" style="font-size:0.85rem">Aucune organisation.</p>
           }
@@ -448,11 +441,10 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               </div>
             </div>
           }
-        </section>
+        </app-expandable-card>
 
         @if (canManageOrg() && m.activeOrganizationId) {
-          <section class="card">
-            <h2>Adresses de l'organisation</h2>
+          <app-expandable-card cardTitle="Adresses de l'organisation">
             <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
               Adresses de « {{ activeOrgName(m) }} ». Proposées comme localisation à la création d'un
               événement. La région est dérivée de la commune.
@@ -522,10 +514,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
                 </div>
               </div>
             </div>
-          </section>
+          </app-expandable-card>
 
-          <section class="card">
-            <h2>IA de l'organisation</h2>
+          <app-expandable-card cardTitle="IA de l'organisation">
             <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
               IA appliquée aux imports réalisés au nom de « {{ activeOrgName(m) }} ». Prioritaire sur
               votre IA personnelle. La clé est stockée comme un secret.
@@ -571,11 +562,10 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
                 @if (orgAiStatus()) { <span class="sub">{{ aiStatusLabelOf(orgAiStatus()) }}</span> }
               </div>
             </div>
-          </section>
+          </app-expandable-card>
         }
 
-        <section class="card">
-          <h2>Configuration IA</h2>
+        <app-expandable-card cardTitle="Configuration IA">
           <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
             Branchez votre propre IA pour assister vos imports (OCR, traduction…). La clé est stockée
             comme un secret : jamais réaffichée. L'IA reste une assistance — la décision reste
@@ -631,10 +621,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
               }
             </div>
           </div>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Autres préférences</h2>
+        <app-expandable-card cardTitle="Autres préférences">
           <label class="muted" style="font-size:0.78rem;display:block;margin-bottom:0.4rem">Thème</label>
           <div class="theme-opts">
             @for (opt of themeOptions; track opt.value) {
@@ -651,10 +640,9 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
           <p class="muted" style="font-size:0.78rem;margin:0.6rem 0 0">
             « Système » suit le réglage clair/sombre de votre appareil.
           </p>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Préférences de notification</h2>
+        <app-expandable-card cardTitle="Préférences de notification">
           <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
             Choisissez les vecteurs de diffusion. L'application (in-app) reste toujours active :
             elle conserve l'historique consultable.
@@ -700,17 +688,16 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             Les fréquences (immédiat / récap quotidien / hebdomadaire) arriveront avec le moteur de
             notifications de la V3.
           </p>
-        </section>
+        </app-expandable-card>
 
-        <section class="card">
-          <h2>Session</h2>
+        <app-expandable-card cardTitle="Session">
           @if (m.subscription) {
             <p style="margin:0 0 0.6rem">
               Souscription : <span class="sub">{{ m.subscription }}</span>
             </p>
           }
           <button class="btn" (click)="logout()">Se déconnecter</button>
-        </section>
+        </app-expandable-card>
       </div>
     } @else {
       <p class="muted">Chargement de l'identité…</p>

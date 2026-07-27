@@ -162,8 +162,7 @@ import {
         </div>
       </app-expandable-card>
 
-      <section class="card">
-        <h2>IA plateforme</h2>
+      <app-expandable-card cardTitle="IA plateforme">
         <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">
           IA par défaut (repli quand aucune IA d'organisation/utilisateur). Décocher « Activer » coupe
           l'IA plateforme (repli déterministe).
@@ -210,13 +209,10 @@ import {
           <button class="btn" (click)="testAi()" [disabled]="!ai.secretMasked">Tester</button>
           @if (aiStatus()) { <span class="status">{{ statusLabel(aiStatus()) }}</span> }
         </div>
-      </section>
+      </app-expandable-card>
 
-      <section class="card full">
-        <div class="row" style="justify-content:space-between;margin-top:0">
-          <h2 style="margin:0">Supervision des appels IA</h2>
-          <button class="btn" (click)="loadStats()">Rafraîchir</button>
-        </div>
+      <app-expandable-card class="full" cardTitle="Supervision des appels IA">
+        <button card-actions class="btn" (click)="loadStats()">Rafraîchir</button>
         <p class="muted" style="font-size:0.78rem;margin:0.4rem 0 0.8rem">
           Métadonnées d'observabilité uniquement (volumes, durées, échecs). Aucun contenu ni clé.
         </p>
@@ -266,7 +262,7 @@ import {
         } @else {
           <p class="muted" style="font-size:0.82rem">Chargement…</p>
         }
-      </section>
+      </app-expandable-card>
 
       <app-expandable-card cardTitle="Limites techniques">
         <p class="muted" style="font-size:0.78rem;margin:0 0 0.8rem">
@@ -305,8 +301,7 @@ import {
       </app-expandable-card>
 
       @if (notifSettings) {
-        <section class="card">
-          <h2>Notifications</h2>
+        <app-expandable-card cardTitle="Notifications">
           <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">
             Active/désactive globalement les vecteurs et les pistes de fréquence. Le canal interne
             (in-app) reste toujours actif (historique). Le plus restrictif l'emporte : un vecteur
@@ -323,7 +318,7 @@ import {
             <button class="btn btn-primary" (click)="saveNotifSettings()">Enregistrer</button>
             @if (notifStatus()) { <span class="status">{{ notifStatus() }}</span> }
           </div>
-        </section>
+        </app-expandable-card>
       }
     </div>
   `,
