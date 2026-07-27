@@ -34,12 +34,13 @@ export class ReferentialProvisioningService {
           config.provisioningDefaultDomainId,
         );
       }
-      // Type / format : rattachés à l'activité — provisionnés seulement si l'activité est connue.
+      // Type : rattaché à l'activité — provisionné seulement si l'activité est connue.
       if (activityId && fields.eventType) {
         await this.repository.resolveOrCreateEventType(fields.eventType, activityId);
       }
-      if (activityId && fields.eventFormat) {
-        await this.repository.resolveOrCreateEventFormat(fields.eventFormat, activityId);
+      // Format : transverse (DATA.01 §4) — provisionné indépendamment de l'activité.
+      if (fields.eventFormat) {
+        await this.repository.resolveOrCreateEventFormat(fields.eventFormat);
       }
       if (fields.organizer) {
         await this.repository.resolveOrCreateOrganizer(fields.organizer);

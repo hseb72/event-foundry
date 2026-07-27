@@ -18,7 +18,7 @@ describe('NotificationsService — information Explorer (Follow → notification
     title: 'Tournoi Magic',
     organizerId: 'org-1',
     activityId: 'act-1',
-    categoryId: 'cat-1',
+    categoryIds: ['cat-1'],
     venueId: null,
   };
 

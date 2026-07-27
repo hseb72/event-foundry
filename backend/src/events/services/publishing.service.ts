@@ -99,7 +99,7 @@ export class PublishingService {
           firstPublish: isFirstPublish,
           organizerId: updated.organizerId,
           activityId: updated.activityId,
-          categoryId: updated.categoryId,
+          categoryIds: updated.categories.map((link) => link.categoryId),
           venueId: updated.venueId,
         }),
       );

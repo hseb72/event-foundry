@@ -92,7 +92,7 @@ describe('Discovery — facettes, surprise, tri (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .send({
         activityId: ref.activityId,
-        categoryId: ref.categoryId,
+        categoryIds: [ref.categoryId],
         municipalityId: ref.municipalityId,
         tagIds: [ref.tagId],
         title,

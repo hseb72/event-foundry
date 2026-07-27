@@ -6,7 +6,6 @@ export class EventFormatMapper {
     return {
       id: eventFormat.id,
       name: eventFormat.name,
-      activityId: eventFormat.activityId,
       isActive: eventFormat.isActive,
       createdAt: eventFormat.createdAt.toISOString(),
     };

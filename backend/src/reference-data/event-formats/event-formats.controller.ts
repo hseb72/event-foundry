@@ -30,9 +30,8 @@ export class EventFormatsController {
   @Get()
   async list(
     @Query('includeInactive') includeInactive?: string,
-    @Query('activityId') activityId?: string,
   ): Promise<EventFormatResponseDto[]> {
-    const eventFormats = await this.service.list(includeInactive === 'true', activityId);
+    const eventFormats = await this.service.list(includeInactive === 'true');
     return eventFormats.map(EventFormatMapper.toResponse);
   }
 

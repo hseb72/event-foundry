@@ -47,13 +47,13 @@ export class ReferentialProvisioningRepository {
     }
   }
 
-  async resolveOrCreateEventFormat(label: string, activityId: string): Promise<void> {
+  async resolveOrCreateEventFormat(label: string): Promise<void> {
     const existing = await this.prisma.eventFormat.findFirst({
-      where: { activityId, name: { equals: label, mode: 'insensitive' } },
+      where: { name: { equals: label, mode: 'insensitive' } },
       select: { id: true },
     });
     if (!existing) {
-      await this.prisma.eventFormat.create({ data: { name: label, activityId, provisional: true } });
+      await this.prisma.eventFormat.create({ data: { name: label, provisional: true } });
     }
   }
 

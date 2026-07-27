@@ -114,7 +114,7 @@ describe('Recommendation — moteur déterministe, explicable (E2E)', () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/events')
       .set('Authorization', `Bearer ${organizerToken}`)
-      .send({ activityId, categoryId: ref.category, municipalityId: ref.municipality, title, startsAt })
+      .send({ activityId, categoryIds: [ref.category], municipalityId: ref.municipality, title, startsAt })
       .expect(201);
     await request(app.getHttpServer())
       .post(`/api/v1/events/${created.body.id}/publish`)

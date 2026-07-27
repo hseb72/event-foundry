@@ -12,6 +12,12 @@ export interface ReferenceNamed {
   activityId: string;
 }
 
+/** Format d'événement : référentiel **transverse** (DATA.01 §4), sans rattachement à une Activité. */
+export interface ReferenceFormat {
+  id: string;
+  name: string;
+}
+
 export interface ReferenceOrganizer {
   id: string;
   name: string;
@@ -26,7 +32,7 @@ export interface ReferenceVenue {
 export interface ReferenceSnapshot {
   activities: ReferenceActivity[];
   eventTypes: ReferenceNamed[];
-  eventFormats: ReferenceNamed[];
+  eventFormats: ReferenceFormat[];
   organizers: ReferenceOrganizer[];
   venues: ReferenceVenue[];
 }

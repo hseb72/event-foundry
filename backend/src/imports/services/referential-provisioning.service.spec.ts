@@ -41,20 +41,22 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
     expect(repo.resolveOrCreateActivity).not.toHaveBeenCalled();
   });
 
-  it('provisionne activité (+ type/format rattachés) et référentiels indépendants', async () => {
+  it('provisionne activité (+ type rattaché), format transverse et référentiels indépendants', async () => {
     await service.provision(fields, { autoProvisionReferentials: true, provisioningDefaultDomainId: 'dom-1' });
     expect(repo.resolveOrCreateActivity).toHaveBeenCalledWith('Riftbound', 'dom-1');
     expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi', 'act-1');
-    expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed', 'act-1');
+    // Format transverse (DATA.01 §4) : provisionné sans rattachement à l'activité.
+    expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');
     expect(repo.resolveOrCreateVenue).toHaveBeenCalledWith('Le Repaire');
   });
 
-  it('n’attache pas type/format quand l’activité n’a pu être créée (domaine absent)', async () => {
+  it('n’attache pas le type quand l’activité n’a pu être créée, mais provisionne le format transverse', async () => {
     repo.resolveOrCreateActivity.mockResolvedValue(null);
     await service.provision(fields, { autoProvisionReferentials: true, provisioningDefaultDomainId: null });
     expect(repo.resolveOrCreateEventType).not.toHaveBeenCalled();
-    expect(repo.resolveOrCreateEventFormat).not.toHaveBeenCalled();
+    // Le format est transverse : provisionné indépendamment de l'activité.
+    expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     // Les référentiels indépendants sont tout de même provisionnés.
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');
   });

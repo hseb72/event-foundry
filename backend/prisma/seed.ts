@@ -242,6 +242,57 @@ const TCG_ACTIVITIES = [
   'Riftbound',
 ];
 
+// --- Taxonomie généraliste DATA.01 v1.1 (Domain « Général ») ---
+// §3 : chaque Activité porte ses Types (mapping réconcilié ; un nom de Type peut se répéter
+// entre Activités — TAX-011). Source de vérité : docs/v3/09-DATA.01-EventAttributes.
+const GENERAL_TAXONOMY: Record<string, string[]> = {
+  Arts: ['Exposition', 'Vernissage', 'Performance artistique', 'Happening', 'Biennale', 'Atelier'],
+  Culture: ['Conférence', 'Lecture publique', 'Rencontre', 'Débat', 'Exposition'],
+  Patrimoine: [
+    'Musée', "Galerie d'art", 'Monument', 'Site touristique', 'Site historique', 'Château',
+    'Jardin', 'Parc', 'Réserve naturelle', 'Aquarium', 'Zoo',
+  ],
+  Musique: ['Concert', 'Festival', 'Récital', 'Jam session', 'DJ set'],
+  'Spectacle vivant': [
+    'Concert', 'Festival', 'Théâtre', 'Comédie musicale', 'Opéra', 'Ballet', 'Danse', 'Cirque',
+    'Cabaret', 'One-man-show', 'Improvisation', 'Humour', 'Performance artistique', 'Happening',
+  ],
+  Cinéma: ['Projection', 'Avant-première', 'Festival', 'Ciné-débat'],
+  Jeux: [
+    'Jeux de société', 'Jeu de rôle', 'Escape Game', 'Murder Party', 'TCG', 'WarGame',
+    'Jeux vidéo', 'LAN', 'Quiz', 'Tournoi',
+  ],
+  Sport: [
+    'Compétition', 'Match', 'Course', 'Trail', 'Marathon', 'Cyclisme', 'Triathlon', 'Randonnée',
+    'Tournoi', 'Stage',
+  ],
+  Esport: ['LAN', 'Championnat', 'Tournoi', 'Showmatch', 'Viewing Party', 'Meetup'],
+  Technologie: ['Conférence', 'Meetup', 'Hackathon', 'Atelier', 'Workshop', 'Bootcamp', 'Salon professionnel'],
+  Sciences: ['Conférence', 'Atelier', 'Démonstration', 'Séminaire', 'Exposition'],
+  Éducation: ['Conférence', 'Atelier', 'Cours', 'Masterclass', 'Formation', 'Séminaire', 'Workshop', 'Bootcamp'],
+  Business: ['Networking', 'Meetup', 'Forum', 'Salon professionnel', 'Pitch', 'Hackathon', 'Job Dating'],
+  Lifestyle: ['Atelier', 'Salon', 'Marché', 'Défilé', 'Rencontre'],
+  Gastronomie: ['Dégustation', 'Marché gourmand', 'Festival culinaire', 'Cours de cuisine', 'Repas'],
+  Tourisme: ['Visite guidée', 'Visite libre', 'Circuit', 'Balade', 'Randonnée découverte', 'Parcours'],
+  Nature: ['Randonnée', 'Balade', 'Sortie nature', 'Observation', 'Atelier'],
+  Solidarité: ['Collecte', 'Bénévolat', 'Gala caritatif', 'Sensibilisation', 'Repas solidaire'],
+  Famille: ['Animation', 'Spectacle enfant', 'Atelier enfant', 'Chasse au trésor'],
+  Communauté: ['Rencontre', 'Meetup', 'Assemblée', 'Vide-grenier', 'Marché artisanal', 'Fête de quartier'],
+};
+
+// §4 : Formats transverses (indépendants de l'Activité — TAX-009).
+const EVENT_FORMATS = [
+  'Présentiel', 'En ligne', 'Hybride',
+  'Libre', 'Sur inscription', 'Sur invitation',
+  'Gratuit', 'Payant',
+  'Compétitif', 'Coopératif',
+  'Permanent', 'Temporaire', 'Ponctuel', 'Récurrent',
+  'Intérieur', 'Extérieur',
+  'Solo', 'Équipe',
+  'Avec réservation', 'Sans réservation',
+  'Ouvert', 'Privé',
+];
+
 async function seedPermissions(): Promise<void> {
   for (const [key, description] of Object.entries(PERMISSIONS)) {
     await prisma.permission.upsert({
@@ -399,16 +450,76 @@ const GEOGRAPHY: { country: string; code: string; regions: { name: string; citie
   ],
 };
 
-// Référentiels transverses de démonstration (EPIC 02/03).
-const CATEGORIES = ['Compétition', 'Découverte', 'Famille', 'Communautaire'];
-const TAGS = ['débutant', 'compétitif', 'famille', 'gratuit', 'nouveauté'];
+// Référentiels transverses DATA.01 §5 (Catégories) et §6 (Tags).
+const CATEGORIES = [
+  // Public
+  'Tout public', 'Famille', 'Enfant', 'Adolescent', 'Étudiant', 'Senior', 'Professionnel', 'Expert', 'Débutant',
+  // Accessibilité
+  'PMR', 'Langue des signes', 'Audiodescription', 'Sous-titré',
+  // Ambiance
+  'Festif', 'Culturel', 'Compétitif', 'Éducatif', 'Caritatif', 'Convivial',
+  // Rayonnement
+  'Local', 'Régional', 'National', 'International',
+  // Organisateur
+  'Association', 'Collectivité', 'Entreprise', 'Particulier', 'Institution',
+];
+const TAGS = [
+  // Jeux de cartes
+  'Magic', 'Pokémon', 'Lorcana', 'Altered', 'Star Wars Unlimited', 'Yu-Gi-Oh', 'Flesh and Blood', 'KeyForge',
+  // Jeux de société
+  'Catane', 'Terraforming Mars', 'Brass', 'Ark Nova', 'Carcassonne', '7 Wonders', 'Azul',
+  // Sports
+  'Football', 'Rugby', 'Basket', 'Handball', 'Tennis', 'Natation', 'Escalade', 'Judo',
+  // Esport
+  'League of Legends', 'Valorant', 'Counter Strike', 'Rocket League', 'Fortnite', 'Dota 2', 'Overwatch',
+  // Musique
+  'Rock', 'Metal', 'Jazz', 'Classique', 'Pop', 'Rap', 'Électro', 'Blues', 'Reggae', 'Country',
+  // Culture
+  'Impressionnisme', 'Art moderne', 'Photographie', 'Street Art', 'Architecture', 'Histoire', 'Archéologie',
+  // Tourisme
+  'UNESCO', 'Médiéval', 'Antiquité', 'Nature', 'Panorama',
+  // Gastronomie
+  'Vin', 'Bière', 'Fromage', 'Chocolat', 'Cuisine italienne', 'Cuisine japonaise', 'Cuisine française',
+];
 
 async function seedCatalogReferentials(): Promise<void> {
+  // Formats transverses (DATA.01 §4).
+  for (const name of EVENT_FORMATS) {
+    await prisma.eventFormat.upsert({ where: { name }, update: {}, create: { name } });
+  }
   for (const name of CATEGORIES) {
     await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
   }
   for (const name of TAGS) {
     await prisma.tag.upsert({ where: { name }, update: {}, create: { name } });
+  }
+}
+
+/**
+ * Taxonomie généraliste DATA.01 v1.1 : Domain « Général » + 20 Activités et leurs Types.
+ * Les EventType sont uniques par Activité (`@@unique([activityId, name])`), un même nom pouvant
+ * exister sous plusieurs Activités (TAX-011).
+ */
+async function seedGeneralTaxonomy(): Promise<void> {
+  const general = await prisma.domain.upsert({
+    where: { name: 'Général' },
+    update: {},
+    create: { name: 'Général' },
+  });
+
+  for (const [activityName, types] of Object.entries(GENERAL_TAXONOMY)) {
+    const activity = await prisma.activity.upsert({
+      where: { domainId_name: { domainId: general.id, name: activityName } },
+      update: {},
+      create: { name: activityName, domainId: general.id },
+    });
+    for (const typeName of types) {
+      await prisma.eventType.upsert({
+        where: { activityId_name: { activityId: activity.id, name: typeName } },
+        update: {},
+        create: { name: typeName, activityId: activity.id },
+      });
+    }
   }
 }
 
@@ -441,10 +552,12 @@ async function main(): Promise<void> {
   await seedSubscriptionPlans();
   await seedAdminAndDemoOrg();
   await seedReferenceData();
+  await seedGeneralTaxonomy();
   await seedCatalogReferentials();
   await seedGeography();
   console.log(
-    'Seed terminé : permissions + rôles V2 + abonnements + admin + organisation démo + référentiels TCG + catégories/tags + géographie FR.',
+    'Seed terminé : permissions + rôles V2 + abonnements + admin + organisation démo + ' +
+      'référentiels TCG + taxonomie généraliste DATA.01 (activités/types/formats/catégories/tags) + géographie FR.',
   );
 }
 

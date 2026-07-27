@@ -70,7 +70,7 @@ export class NotificationEventSubscriber implements OnModuleInit {
         title: payload.title,
         organizerId: payload.organizerId,
         activityId: payload.activityId,
-        categoryId: payload.categoryId,
+        categoryIds: payload.categoryIds,
         venueId: payload.venueId,
       },
       payload.actorId ?? undefined,

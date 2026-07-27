@@ -12,11 +12,4 @@ export class EventFormatRepository extends ReferentialRepository<EventFormat> {
   protected get refDelegate(): ReferentialDelegate<EventFormat> {
     return this.prisma.eventFormat as unknown as ReferentialDelegate<EventFormat>;
   }
-
-  listByActivity(activityId: string, includeInactive: boolean): Promise<EventFormat[]> {
-    return this.prisma.eventFormat.findMany({
-      where: { activityId, ...(includeInactive ? {} : { isActive: true }) },
-      orderBy: { name: 'asc' },
-    });
-  }
 }

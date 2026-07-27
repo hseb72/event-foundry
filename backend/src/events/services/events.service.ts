@@ -164,12 +164,19 @@ export class EventsService {
     const built = await this.buildValidatedEventData(dto, event.source);
     const tagIds =
       (built.tags?.create as { tagId: string }[] | undefined)?.map((tag) => tag.tagId) ?? [];
+    const eventFormatIds =
+      (built.formats?.create as { eventFormatId: string }[] | undefined)?.map(
+        (link) => link.eventFormatId,
+      ) ?? [];
+    const categoryIds =
+      (built.categories?.create as { categoryId: string }[] | undefined)?.map(
+        (link) => link.categoryId,
+      ) ?? [];
     // Ne met à jour que les champs éditables : source, statut et créateur restent inchangés.
+    // Les relations transverses (formats, catégories, tags) sont remplacées intégralement.
     const data: Prisma.EventUncheckedUpdateInput = {
       activityId: built.activityId,
       eventTypeId: built.eventTypeId,
-      eventFormatId: built.eventFormatId,
-      categoryId: built.categoryId,
       organizerId: built.organizerId,
       venueId: built.venueId,
       municipalityId: built.municipalityId,
@@ -180,7 +187,7 @@ export class EventsService {
       price: built.price,
       currency: built.currency,
     };
-    return this.repository.updateWithRefs(id, data, tagIds);
+    return this.repository.updateWithRefs(id, data, tagIds, eventFormatIds, categoryIds);
   }
 
   /**
@@ -209,21 +216,15 @@ export class EventsService {
         throw new InvalidEventTypeException(dto.eventTypeId);
       }
     }
-    if (dto.eventFormatId) {
-      const eventFormat = await this.eventFormatRepository.findById(dto.eventFormatId);
-      if (!eventFormat || eventFormat.activityId !== dto.activityId) {
-        throw new InvalidEventFormatException(dto.eventFormatId);
-      }
-    }
+    // Formats transverses (DATA.01 §4 / TAX-009) : existence seule, aucun rattachement à l'Activité.
+    const eventFormatIds = await this.validateEventFormats(dto.eventFormatIds);
     if (dto.organizerId && !(await this.organizerRepository.findById(dto.organizerId))) {
       throw new OrganizerNotFoundException(dto.organizerId);
     }
     if (dto.venueId && !(await this.venueRepository.findById(dto.venueId))) {
       throw new VenueNotFoundException(dto.venueId);
     }
-    if (dto.categoryId && !(await this.categoryRepository.findById(dto.categoryId))) {
-      throw new CategoryNotFoundException(dto.categoryId);
-    }
+    const categoryIds = await this.validateCategories(dto.categoryIds);
     if (dto.municipalityId && !(await this.municipalityRepository.findById(dto.municipalityId))) {
       throw new MunicipalityNotFoundException(dto.municipalityId);
     }
@@ -233,8 +234,6 @@ export class EventsService {
       source,
       activityId: dto.activityId,
       eventTypeId: dto.eventTypeId ?? null,
-      eventFormatId: dto.eventFormatId ?? null,
-      categoryId: dto.categoryId ?? null,
       organizerId: dto.organizerId ?? null,
       venueId: dto.venueId ?? null,
       municipalityId: dto.municipalityId ?? null,
@@ -244,8 +243,42 @@ export class EventsService {
       endsAt: dto.endsAt ?? null,
       price: dto.price ?? null,
       currency: dto.currency ?? null,
+      formats: eventFormatIds.length
+        ? { create: eventFormatIds.map((eventFormatId) => ({ eventFormatId })) }
+        : undefined,
+      categories: categoryIds.length
+        ? { create: categoryIds.map((categoryId) => ({ categoryId })) }
+        : undefined,
       tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
     };
+  }
+
+  /** Vérifie l'existence de chaque Format (transverse) ; renvoie la liste dédoublonnée. */
+  private async validateEventFormats(ids: string[] | undefined): Promise<string[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(ids)];
+    for (const id of unique) {
+      if (!(await this.eventFormatRepository.findById(id))) {
+        throw new InvalidEventFormatException(id);
+      }
+    }
+    return unique;
+  }
+
+  /** Vérifie l'existence de chaque Catégorie (transverse) ; renvoie la liste dédoublonnée. */
+  private async validateCategories(ids: string[] | undefined): Promise<string[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(ids)];
+    for (const id of unique) {
+      if (!(await this.categoryRepository.findById(id))) {
+        throw new CategoryNotFoundException(id);
+      }
+    }
+    return unique;
   }
 
   /** Vérifie que tous les tags existent ; renvoie la liste dédoublonnée. */

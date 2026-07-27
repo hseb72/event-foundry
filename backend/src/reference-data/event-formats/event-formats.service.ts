@@ -1,22 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import type { EventFormat } from '@prisma/client';
-import { ActivityRepository } from '../activities/activity.repository';
-import { ActivityNotFoundException, EventFormatNotFoundException } from '../common/exceptions';
+import { EventFormatNotFoundException } from '../common/exceptions';
 import { rethrowAsConflict } from '../common/prisma-error';
 import { CreateEventFormatDto, UpdateEventFormatDto } from './event-format.dto';
 import { EventFormatRepository } from './event-format.repository';
 
+/** Format d'événement : référentiel **transverse** (DATA.01 §4), indépendant de l'Activité. */
 @Injectable()
 export class EventFormatsService {
-  constructor(
-    private readonly repository: EventFormatRepository,
-    private readonly activityRepository: ActivityRepository,
-  ) {}
+  constructor(private readonly repository: EventFormatRepository) {}
 
-  list(includeInactive: boolean, activityId?: string): Promise<EventFormat[]> {
-    return activityId
-      ? this.repository.listByActivity(activityId, includeInactive)
-      : this.repository.list(includeInactive);
+  list(includeInactive: boolean): Promise<EventFormat[]> {
+    return this.repository.list(includeInactive);
   }
 
   async getOrThrow(id: string): Promise<EventFormat> {
@@ -28,14 +23,10 @@ export class EventFormatsService {
   }
 
   async create(dto: CreateEventFormatDto): Promise<EventFormat> {
-    const activity = await this.activityRepository.findById(dto.activityId);
-    if (!activity) {
-      throw new ActivityNotFoundException(dto.activityId);
-    }
     try {
-      return await this.repository.create({ name: dto.name, activityId: dto.activityId });
+      return await this.repository.create({ name: dto.name });
     } catch (error) {
-      rethrowAsConflict(error, `Un EventFormat « ${dto.name} » existe déjà pour cette Activity.`);
+      rethrowAsConflict(error, `Un EventFormat « ${dto.name} » existe déjà.`);
     }
   }
 
@@ -44,7 +35,7 @@ export class EventFormatsService {
     try {
       return await this.repository.update(id, dto);
     } catch (error) {
-      rethrowAsConflict(error, `Un EventFormat « ${dto.name} » existe déjà pour cette Activity.`);
+      rethrowAsConflict(error, `Un EventFormat « ${dto.name} » existe déjà.`);
     }
   }
 

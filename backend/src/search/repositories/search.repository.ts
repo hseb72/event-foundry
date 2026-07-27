@@ -14,8 +14,10 @@ export interface IndexableDocument {
   description: string | null;
   activityId: string;
   activityName: string;
-  categoryId: string | null;
-  categoryName: string | null;
+  categoryIds: string[];
+  categoryNames: string[];
+  formatIds: string[];
+  formatNames: string[];
   municipalityId: string | null;
   municipalityName: string | null;
   organizerName: string | null;
@@ -81,8 +83,10 @@ export class SearchRepository {
       description: event.description,
       activityId: event.activityId,
       activityName: event.activity.name,
-      categoryId: event.categoryId,
-      categoryName: event.category?.name ?? null,
+      categoryIds: event.categories.map((link) => link.categoryId),
+      categoryNames: event.categories.map((link) => link.category.name),
+      formatIds: event.formats.map((link) => link.eventFormatId),
+      formatNames: event.formats.map((link) => link.eventFormat.name),
       municipalityId: event.municipalityId,
       municipalityName: event.municipality?.name ?? null,
       organizerName: event.organizer?.name ?? null,
@@ -105,8 +109,10 @@ export class SearchRepository {
         description: doc.description,
         activityId: doc.activityId,
         activityName: doc.activityName,
-        categoryId: doc.categoryId,
-        categoryName: doc.categoryName,
+        categoryIds: doc.categoryIds,
+        categoryNames: doc.categoryNames,
+        formatIds: doc.formatIds,
+        formatNames: doc.formatNames,
         municipalityId: doc.municipalityId,
         municipalityName: doc.municipalityName,
         organizerName: doc.organizerName,
@@ -152,11 +158,12 @@ export class SearchRepository {
       UPDATE search_documents SET search_vector =
         setweight(to_tsvector('french', coalesce(title, '')), 'A') ||
         setweight(to_tsvector('french',
-          coalesce(activity_name, '') || ' ' || coalesce(category_name, '') || ' ' ||
+          coalesce(activity_name, '') || ' ' || array_to_string(category_names, ' ') || ' ' ||
           array_to_string(tag_names, ' ')), 'B') ||
         setweight(to_tsvector('french',
           coalesce(description, '') || ' ' || coalesce(organizer_name, '') || ' ' ||
-          coalesce(venue_name, '') || ' ' || coalesce(municipality_name, '')), 'C')
+          coalesce(venue_name, '') || ' ' || coalesce(municipality_name, '') || ' ' ||
+          array_to_string(format_names, ' ')), 'C')
       ${scope}
     `;
   }
@@ -204,9 +211,11 @@ export class SearchRepository {
       ORDER BY count DESC, name ASC
     `;
     const categories = await this.prisma.$queryRaw<SearchFacet[]>`
-      SELECT d.category_id AS id, d.category_name AS name, count(*)::int AS count
-      FROM search_documents d ${from} ${where} ${this.and(where, Prisma.sql`d.category_id IS NOT NULL`)}
-      GROUP BY d.category_id, d.category_name
+      SELECT ct.id, ct.name, count(*)::int AS count FROM (
+        SELECT unnest(d.category_ids) AS id, unnest(d.category_names) AS name
+        FROM search_documents d ${from} ${where}
+      ) ct
+      GROUP BY ct.id, ct.name
       ORDER BY count DESC, name ASC
     `;
     const municipalities = await this.prisma.$queryRaw<SearchFacet[]>`
@@ -284,7 +293,7 @@ export class SearchRepository {
       conditions.push(Prisma.sql`d.activity_id = ${filter.activityId}::uuid`);
     }
     if (filter.categoryId) {
-      conditions.push(Prisma.sql`d.category_id = ${filter.categoryId}::uuid`);
+      conditions.push(Prisma.sql`${filter.categoryId}::uuid = ANY(d.category_ids)`);
     }
     if (filter.municipalityId) {
       conditions.push(Prisma.sql`d.municipality_id = ${filter.municipalityId}::uuid`);

@@ -1,16 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateEventFormatDto {
-  @ApiProperty({ example: 'Draft' })
+  @ApiProperty({ example: 'Présentiel' })
   @IsString()
   @MinLength(1)
   @MaxLength(80)
   name!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
-  activityId!: string;
 }
 
 export class UpdateEventFormatDto {
@@ -33,9 +29,6 @@ export class EventFormatResponseDto {
 
   @ApiProperty()
   name!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  activityId!: string;
 
   @ApiProperty()
   isActive!: boolean;

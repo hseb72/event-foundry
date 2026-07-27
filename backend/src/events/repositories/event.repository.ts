@@ -81,12 +81,19 @@ export class EventRepository extends BaseRepository<Event> {
     id: string,
     data: Prisma.EventUncheckedUpdateInput,
     tagIds: string[],
+    eventFormatIds: string[],
+    categoryIds: string[],
   ): Promise<EventWithRefs> {
     return this.prisma.event.update({
       where: { id },
       data: {
         ...data,
         tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) },
+        formats: {
+          deleteMany: {},
+          create: eventFormatIds.map((eventFormatId) => ({ eventFormatId })),
+        },
+        categories: { deleteMany: {}, create: categoryIds.map((categoryId) => ({ categoryId })) },
       },
       include: EVENT_REFS_INCLUDE,
     });
@@ -220,13 +227,15 @@ export class EventRepository extends BaseRepository<Event> {
       visibility: EventVisibility.PUBLIC,
       activityId: filter.activityId,
       eventTypeId: filter.eventTypeId,
-      eventFormatId: filter.eventFormatId,
       organizerId: filter.organizerId,
       venueId: filter.venueId,
-      categoryId: filter.categoryId,
       municipalityId: filter.municipalityId,
       createdById: filter.createdById,
       ...(filter.status ? { status: filter.status } : {}),
+      ...(filter.eventFormatId
+        ? { formats: { some: { eventFormatId: filter.eventFormatId } } }
+        : {}),
+      ...(filter.categoryId ? { categories: { some: { categoryId: filter.categoryId } } } : {}),
       ...(filter.tagId ? { tags: { some: { tagId: filter.tagId } } } : {}),
       ...(startsAt ? { startsAt } : {}),
       ...(filter.city

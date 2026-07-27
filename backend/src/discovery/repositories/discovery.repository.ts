@@ -31,9 +31,10 @@ export class DiscoveryRepository {
   async facets(): Promise<Facets> {
     const [activities, categories, municipalities, tags] = await Promise.all([
       this.prisma.event.groupBy({ by: ['activityId'], where: PUBLISHED, _count: { _all: true } }),
-      this.prisma.event.groupBy({
+      // Catégories transverses en N-N (DATA.01 §5) : comptage via la table de liaison.
+      this.prisma.eventCategoryLink.groupBy({
         by: ['categoryId'],
-        where: { ...PUBLISHED, categoryId: { not: null } },
+        where: { event: PUBLISHED },
         _count: { _all: true },
       }),
       this.prisma.event.groupBy({
@@ -54,7 +55,7 @@ export class DiscoveryRepository {
         (ids) => this.prisma.activity.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
       ),
       categories: await this.resolve(
-        categories.map((row) => ({ id: row.categoryId as string, count: row._count._all })),
+        categories.map((row) => ({ id: row.categoryId, count: row._count._all })),
         (ids) => this.prisma.category.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
       ),
       municipalities: await this.resolve(

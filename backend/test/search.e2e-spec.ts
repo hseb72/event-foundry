@@ -137,7 +137,7 @@ describe('Search — index plein texte, facettes, reconstruction (E2E)', () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/events')
       .set('Authorization', `Bearer ${organizerToken}`)
-      .send({ activityId: ref.activityId, categoryId, municipalityId: ref.municipalityId, tagIds, title, description, startsAt })
+      .send({ activityId: ref.activityId, categoryIds: [categoryId], municipalityId: ref.municipalityId, tagIds, title, description, startsAt })
       .expect(201);
     await request(app.getHttpServer())
       .post(`/api/v1/events/${created.body.id}/publish`)

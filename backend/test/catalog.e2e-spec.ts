@@ -69,7 +69,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .send({
         activityId: refs.activityId,
-        categoryId: refs.categoryId,
+        categoryIds: [refs.categoryId],
         municipalityId: refs.municipalityId,
         tagIds: [refs.tagId],
         title: 'Grand tournoi',
@@ -78,7 +78,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .expect(201);
 
     expect(created.body.status).toBe('DRAFT'); // création = brouillon (workflow Publishing)
-    expect(created.body.category).toBeTruthy();
+    expect(created.body.categories).toEqual([expect.any(String)]);
     expect(created.body.municipality).toBeTruthy();
     expect(created.body.tags).toHaveLength(1);
     const id = created.body.id as string;
@@ -113,7 +113,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .send({
         activityId: refs.activityId,
-        categoryId: refs.categoryId,
+        categoryIds: [refs.categoryId],
         municipalityId: refs.municipalityId,
         tagIds: [refs.tagId],
         title: 'Événement filtrable',
@@ -298,7 +298,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .send({
         activityId: refs.activityId,
-        categoryId: refs.categoryId,
+        categoryIds: [refs.categoryId],
         tagIds: [refs.tagId],
         title: 'Tournoi corrigé',
         startsAt: '2027-02-10T10:00:00.000Z',
@@ -307,7 +307,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .expect(200);
     expect(corrected.body.title).toBe('Tournoi corrigé');
     expect(corrected.body.status).toBe('DRAFT');
-    expect(corrected.body.category).toBeTruthy();
+    expect(corrected.body.categories).toEqual([expect.any(String)]);
     expect(corrected.body.tags).toContain((await tagName(refs.tagId)));
 
     // La vue d'édition expose les référentiels par identifiant (préremplissage du formulaire).
@@ -316,7 +316,7 @@ describe('Catalog — Event enrichi (E2E)', () => {
       .set('Authorization', `Bearer ${organizerToken}`)
       .expect(200);
     expect(editView.body.editable).toBe(true);
-    expect(editView.body.categoryId).toBe(refs.categoryId);
+    expect(editView.body.categoryIds).toEqual([refs.categoryId]);
     expect(editView.body.tagIds).toContain(refs.tagId);
 
     // La publication passe désormais.

@@ -34,7 +34,7 @@ export class ProvisionalCurationRepository {
       }),
       this.prisma.eventFormat.findMany({
         where: { provisional: true },
-        select: { id: true, name: true, createdAt: true, activity: { select: { name: true } } },
+        select: { id: true, name: true, createdAt: true },
       }),
       this.prisma.organizer.findMany({
         where: { provisional: true },
@@ -49,7 +49,7 @@ export class ProvisionalCurationRepository {
     const entries: ProvisionalEntry[] = [
       ...activities.map((a) => this.entry('activity', a.id, a.name, a.domain.name, a.createdAt)),
       ...eventTypes.map((t) => this.entry('eventType', t.id, t.name, t.activity.name, t.createdAt)),
-      ...eventFormats.map((f) => this.entry('eventFormat', f.id, f.name, f.activity.name, f.createdAt)),
+      ...eventFormats.map((f) => this.entry('eventFormat', f.id, f.name, null, f.createdAt)),
       ...organizers.map((o) => this.entry('organizer', o.id, o.name, null, o.createdAt)),
       ...venues.map((v) => this.entry('venue', v.id, v.name, null, v.createdAt)),
     ];

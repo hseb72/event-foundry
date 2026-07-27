@@ -27,7 +27,14 @@ export class RecommendationRepository {
       where: { userId },
       select: {
         event: {
-          select: { id: true, activityId: true, categoryId: true, municipalityId: true, startsAt: true, endsAt: true },
+          select: {
+            id: true,
+            activityId: true,
+            municipalityId: true,
+            startsAt: true,
+            endsAt: true,
+            categories: { select: { categoryId: true } },
+          },
         },
       },
     });
@@ -39,8 +46,8 @@ export class RecommendationRepository {
     };
     for (const { event } of participations) {
       signals.activityIds.add(event.activityId);
-      if (event.categoryId) {
-        signals.categoryIds.add(event.categoryId);
+      for (const link of event.categories) {
+        signals.categoryIds.add(link.categoryId);
       }
       if (event.municipalityId) {
         signals.municipalityIds.add(event.municipalityId);

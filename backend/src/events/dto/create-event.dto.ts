@@ -27,10 +27,16 @@ export class CreateEventDto {
   @IsUUID()
   eventTypeId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Formats (transverses, cardinalité N — DATA.01 §4 / TAX-003).',
+  })
   @IsOptional()
-  @IsUUID()
-  eventFormatId?: string;
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  eventFormatIds?: string[];
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
@@ -42,10 +48,16 @@ export class CreateEventDto {
   @IsUUID()
   venueId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid', description: 'Catégorie (classification transverse).' })
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Catégories (transverses, cardinalité N — DATA.01 §5 / TAX-004).',
+  })
   @IsOptional()
-  @IsUUID()
-  categoryId?: string;
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  categoryIds?: string[];
 
   @ApiPropertyOptional({ format: 'uuid', description: 'Commune (localisation géographique).' })
   @IsOptional()

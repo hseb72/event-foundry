@@ -4,6 +4,7 @@ import type { ReferenceDataProvider } from './reference-data-provider.interface'
 import {
   EMPTY_SNAPSHOT,
   type ReferenceActivity,
+  type ReferenceFormat,
   type ReferenceNamed,
   type ReferenceOrganizer,
   type ReferenceSnapshot,
@@ -22,6 +23,10 @@ interface NamedDto {
   id: string;
   name: string;
   activityId: string;
+}
+interface FormatDto {
+  id: string;
+  name: string;
 }
 interface OrganizerDto {
   id: string;
@@ -73,7 +78,7 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
     const [activities, eventTypes, eventFormats, organizers, venues] = await Promise.all([
       this.getJson<ActivityDto[]>('/activities', token),
       this.getJson<NamedDto[]>('/event-types', token),
-      this.getJson<NamedDto[]>('/event-formats', token),
+      this.getJson<FormatDto[]>('/event-formats', token),
       this.getJson<OrganizerDto[]>('/organizers', token),
       this.getJson<VenueDto[]>('/venues', token),
     ]);
@@ -95,13 +100,14 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
 
     const named = (items: NamedDto[]): ReferenceNamed[] =>
       items.map((item) => ({ id: item.id, name: item.name, activityId: item.activityId }));
+    const formats: ReferenceFormat[] = eventFormats.map((f) => ({ id: f.id, name: f.name }));
     const orgs: ReferenceOrganizer[] = organizers.map((o) => ({ id: o.id, name: o.name }));
     const places: ReferenceVenue[] = venues.map((v) => ({ id: v.id, name: v.name, city: v.city }));
 
     return {
       activities: activitiesWithAliases,
       eventTypes: named(eventTypes),
-      eventFormats: named(eventFormats),
+      eventFormats: formats,
       organizers: orgs,
       venues: places,
     };

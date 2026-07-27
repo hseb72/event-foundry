@@ -16,12 +16,13 @@ function event(overrides: Partial<EventWithRefs> = {}): EventWithRefs {
   return {
     id: 'e1',
     activityId: 'act-magic',
-    categoryId: 'cat-compet',
     municipalityId: 'mun-toulouse',
     startsAt: new Date('2026-08-01T10:00:00.000Z'),
     endsAt: new Date('2026-08-01T12:00:00.000Z'),
     publishedAt: new Date('2026-07-18T10:00:00.000Z'),
     activity: { name: 'Magic' },
+    formats: [],
+    categories: [{ categoryId: 'cat-compet', category: { name: 'Compétition' } }],
     ...overrides,
   } as unknown as EventWithRefs;
 }

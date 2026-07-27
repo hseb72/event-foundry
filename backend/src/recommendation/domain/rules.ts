@@ -26,7 +26,8 @@ export class CategoryAffinityRule implements RecommendationRule {
   readonly name = 'category-affinity';
 
   evaluate(event: EventWithRefs, context: RecommendationContext): RuleContribution | null {
-    if (!event.categoryId || !context.categoryIds.has(event.categoryId)) {
+    // Cardinalité N (DATA.01 §5) : une seule catégorie partagée suffit.
+    if (!event.categories.some((link) => context.categoryIds.has(link.categoryId))) {
       return null;
     }
     return { points: context.surprise ? 5 : 25, reason: 'Catégorie qui vous intéresse' };
@@ -76,8 +77,14 @@ export class FollowedAffinityRule implements RecommendationRule {
     if (context.followedActivityIds.has(event.activityId)) {
       return { points: strong, reason: `Vous suivez cette activité : ${event.activity.name}` };
     }
-    if (event.categoryId && context.followedCategoryIds.has(event.categoryId)) {
-      return { points: medium, reason: `Vous suivez cette catégorie : ${event.category?.name ?? ''}`.trim() };
+    const followedCategory = event.categories.find((link) =>
+      context.followedCategoryIds.has(link.categoryId),
+    );
+    if (followedCategory) {
+      return {
+        points: medium,
+        reason: `Vous suivez cette catégorie : ${followedCategory.category.name}`.trim(),
+      };
     }
     if (event.venueId && context.followedVenueIds.has(event.venueId)) {
       return { points: medium, reason: `Vous suivez ce lieu : ${event.venue?.name ?? ''}`.trim() };
