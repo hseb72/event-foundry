@@ -38,6 +38,9 @@ import { TagsService } from './tags/tags.service';
 import { VenueRepository } from './venues/venue.repository';
 import { VenuesController } from './venues/venues.controller';
 import { VenuesService } from './venues/venues.service';
+import { GeoImportController } from './geo-import/geo-import.controller';
+import { GeoImportRepository } from './geo-import/geo-import.repository';
+import { GeoImportService } from './geo-import/geo-import.service';
 
 /**
  * Administration des référentiels métier (TSPEC.08) : Domain, Activity (+ Alias), EventType,
@@ -60,6 +63,7 @@ import { VenuesService } from './venues/venues.service';
     CategoriesController,
     TagsController,
     ProvisionalCurationController,
+    GeoImportController,
   ],
   providers: [
     DomainRepository,
@@ -88,6 +92,8 @@ import { VenuesService } from './venues/venues.service';
     TagsService,
     ProvisionalCurationRepository,
     ProvisionalCurationService,
+    GeoImportRepository,
+    GeoImportService,
   ],
   exports: [
     DomainRepository,
