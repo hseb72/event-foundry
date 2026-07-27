@@ -46,6 +46,7 @@ const NAV: NavItem[] = [
   { label: 'Organisations', path: '/organizer/organizations', experiences: ['ORGANIZER'] },
   { label: 'Validation', path: '/validation', experiences: ['OPERATOR'], permission: 'validation.review' },
   { label: 'Dossiers', path: '/operator/cases', experiences: ['OPERATOR'], permission: 'case.manage' },
+  { label: 'Termes de modération', path: '/operator/moderation-terms', experiences: ['OPERATOR'], permission: 'case.manage' },
   { label: 'Utilisateurs & organisations', path: '/operator/admin', experiences: ['OPERATOR'], permission: 'user.manage' },
   { label: 'Administration', path: '/admin', experiences: ['OPERATOR'], permission: 'reference.manage' },
   { label: 'Configuration', path: '/operator/config', experiences: ['OPERATOR'], permission: 'pipeline.manage' },

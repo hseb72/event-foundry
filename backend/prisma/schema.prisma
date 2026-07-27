@@ -1251,6 +1251,27 @@ model ModerationLog {
   @@map("moderation_logs")
 }
 
+/// Nature d'un terme de modération (FSPEC.20 / FSPEC.22 §13).
+enum ModerationTermKind {
+  BANNED
+  SPAM
+}
+
+/// Référentiel des termes de modération (FSPEC.22 §13). Alimente les contrôles automatiques
+/// **déterministes** de soumission : aucune liste métier codée en dur (règle d'or n°1) — les
+/// Operators gèrent ce référentiel. Un terme actif détecté dans un brouillon ouvre une Case.
+model ModerationTerm {
+  id        String             @id @default(uuid()) @db.Uuid
+  term      String             @unique
+  kind      ModerationTermKind @default(BANNED)
+  isActive  Boolean            @default(true) @map("is_active")
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isActive])
+  @@map("moderation_terms")
+}
+
 /// Invitation à devenir Operator (FSPEC.17 §5). Portée PLATEFORME (rôle Operator), distincte des
 /// invitations d'organisation. Jeton à usage unique haché ; expire (comme les invitations d'org).
 model OperatorInvitation {

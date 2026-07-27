@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { EventCandidateStatus, EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import { CasesService } from '../../cases/cases.service';
+import { ModerationTermsService } from '../../moderation/moderation-terms.service';
 import { CreateEventDto } from '../../events/dto/create-event.dto';
 import type { EventWithRefs } from '../../events/entities/event.entity';
 import { EventsService } from '../../events/services/events.service';
@@ -38,6 +39,7 @@ export class EventCandidatesService {
     private readonly repository: EventCandidateRepository,
     private readonly eventsService: EventsService,
     private readonly cases: CasesService,
+    private readonly moderationTerms: ModerationTermsService,
   ) {}
 
   list(params: {
@@ -127,6 +129,8 @@ export class EventCandidatesService {
     const title = base.title;
     const hasPublicDuplicate =
       canPublish && (await this.eventsService.hasPublicDuplicate(title, startsAt));
+    // Contenu interdit / spam (§13) : contrôle déterministe sur le référentiel de modération.
+    const prohibited = await this.moderationTerms.firstMatch(`${title} ${base.description ?? ''}`);
 
     const anomalies = detectSubmissionAnomalies({
       title,
@@ -134,14 +138,20 @@ export class EventCandidatesService {
       endsAt,
       hasPublicDuplicate,
       checkDuplicate: canPublish,
+      prohibited,
     });
     if (anomalies.length === 0) {
       return;
     }
 
+    // Contenu interdit → abus (priorité haute) ; doublon → modération de contenu ; sinon correction.
+    const caseType = anomalies.some((a) => a.kind === 'PROHIBITED_CONTENT')
+      ? 'ABUSE_REPORT'
+      : anomalies.some((a) => a.kind === 'DUPLICATE')
+        ? 'CONTENT_REPORT'
+        : 'DATA_CORRECTION';
     const opened = await this.cases.open({
-      // Un doublon relève de la modération de contenu ; une incohérence, d'une correction de données.
-      type: anomalies.some((a) => a.kind === 'DUPLICATE') ? 'CONTENT_REPORT' : 'DATA_CORRECTION',
+      type: caseType,
       subject: `Soumission à vérifier : ${title}`,
       description: anomalies.map((a) => a.message).join(' '),
       origin: canPublish ? 'ORGANIZER' : 'EXPLORER',

@@ -10,7 +10,7 @@
  */
 
 /** Nature d'une anomalie détectée (oriente le type de Case et le message). */
-export type SubmissionAnomalyKind = 'DATE_COHERENCE' | 'DUPLICATE';
+export type SubmissionAnomalyKind = 'DATE_COHERENCE' | 'DUPLICATE' | 'PROHIBITED_CONTENT';
 
 export interface SubmissionAnomaly {
   kind: SubmissionAnomalyKind;
@@ -27,6 +27,8 @@ export interface SubmissionControlContext {
   hasPublicDuplicate: boolean;
   /** Le contrôle de doublon ne s'applique qu'aux événements destinés au catalogue public. */
   checkDuplicate: boolean;
+  /** Terme de modération détecté dans le contenu (référentiel FSPEC.22 §13), ou null. */
+  prohibited: { term: string; kind: 'BANNED' | 'SPAM' } | null;
 }
 
 type SubmissionControl = (context: SubmissionControlContext) => SubmissionAnomaly | null;
@@ -54,8 +56,24 @@ const duplicateControl: SubmissionControl = (context) => {
   return null;
 };
 
+/**
+ * Contenu interdit / spam : un terme actif du **référentiel de modération** (FSPEC.22 §13) apparaît
+ * dans le contenu du brouillon. Déterministe (aucune liste codée en dur — la détection est faite en
+ * amont sur le référentiel). S'applique à tous les chemins.
+ */
+const prohibitedContentControl: SubmissionControl = (context) => {
+  if (!context.prohibited) {
+    return null;
+  }
+  const label = context.prohibited.kind === 'SPAM' ? 'du spam présumé' : 'un contenu interdit';
+  return {
+    kind: 'PROHIBITED_CONTENT',
+    message: `Le contenu contient ${label} (terme « ${context.prohibited.term} »).`,
+  };
+};
+
 /** Chaîne de contrôles, activables / réordonnables sans modifier l'appelant. */
-const CONTROLS: SubmissionControl[] = [dateCoherenceControl, duplicateControl];
+const CONTROLS: SubmissionControl[] = [dateCoherenceControl, duplicateControl, prohibitedContentControl];
 
 /** Exécute la chaîne et retourne toutes les anomalies détectées (vide si le Draft est conforme). */
 export function detectSubmissionAnomalies(context: SubmissionControlContext): SubmissionAnomaly[] {

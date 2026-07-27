@@ -21,6 +21,7 @@ import { IdentityComponent } from './features/identity/identity.component';
 import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
 import { CasesConsoleComponent } from './features/operator/cases-console.component';
+import { ModerationTermsComponent } from './features/operator/moderation-terms.component';
 import { OperatorConfigComponent } from './features/operator/operator-config.component';
 import { SupportComponent } from './features/support/support.component';
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
@@ -85,6 +86,11 @@ export const routes: Routes = [
       {
         path: 'operator/cases',
         component: CasesConsoleComponent,
+        canActivate: [permissionGuard('case.manage')],
+      },
+      {
+        path: 'operator/moderation-terms',
+        component: ModerationTermsComponent,
         canActivate: [permissionGuard('case.manage')],
       },
       { path: 'discover', component: CatalogueComponent },

@@ -7,6 +7,7 @@ describe('detectSubmissionAnomalies (FSPEC.22 §13 — contrôles déterministes
     endsAt: null as Date | null,
     hasPublicDuplicate: false,
     checkDuplicate: false,
+    prohibited: null as { term: string; kind: 'BANNED' | 'SPAM' } | null,
   };
 
   it('Draft conforme → aucune anomalie', () => {
@@ -45,6 +46,14 @@ describe('detectSubmissionAnomalies (FSPEC.22 §13 — contrôles déterministes
       checkDuplicate: false,
     });
     expect(anomalies).toEqual([]);
+  });
+
+  it('terme de modération détecté → anomalie PROHIBITED_CONTENT', () => {
+    const anomalies = detectSubmissionAnomalies({
+      ...base,
+      prohibited: { term: 'arnaque', kind: 'BANNED' },
+    });
+    expect(anomalies.map((a) => a.kind)).toEqual(['PROHIBITED_CONTENT']);
   });
 
   it('cumul possible : incohérence de dates + doublon', () => {

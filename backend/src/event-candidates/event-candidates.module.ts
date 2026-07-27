@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CasesModule } from '../cases/cases.module';
 import { EventsModule } from '../events/events.module';
 import { ImportsModule } from '../imports/imports.module';
+import { ModerationModule } from '../moderation/moderation.module';
 import { ImportResultConsumer } from './consumers/import-result.consumer';
 import { EventCandidatesController } from './controllers/event-candidates.controller';
 import { EventCandidateRepository } from './repositories/event-candidate.repository';
@@ -12,7 +13,7 @@ import { EventCandidatesService } from './services/event-candidates.service';
  * leur consultation, correction, validation (-> Event) et rejet.
  */
 @Module({
-  imports: [EventsModule, ImportsModule, CasesModule],
+  imports: [EventsModule, ImportsModule, CasesModule, ModerationModule],
   controllers: [EventCandidatesController],
   providers: [EventCandidatesService, EventCandidateRepository, ImportResultConsumer],
 })

@@ -1,5 +1,6 @@
 import type { CreateEventDto } from '../../events/dto/create-event.dto';
 import { CasesService } from '../../cases/cases.service';
+import { ModerationTermsService } from '../../moderation/moderation-terms.service';
 import { EventsService } from '../../events/services/events.service';
 import {
   InvalidCandidateTransitionException,
@@ -17,6 +18,7 @@ describe('EventCandidatesService', () => {
   };
   let eventsService: { buildValidatedEventData: jest.Mock; hasPublicDuplicate: jest.Mock };
   let cases: { open: jest.Mock };
+  let moderationTerms: { firstMatch: jest.Mock };
   let service: EventCandidatesService;
   const operator = { userId: 'user-1', isOperator: true };
 
@@ -32,10 +34,12 @@ describe('EventCandidatesService', () => {
       hasPublicDuplicate: jest.fn().mockResolvedValue(false),
     };
     cases = { open: jest.fn().mockResolvedValue({ id: 'case-1', reference: 'C-ABCD1234' }) };
+    moderationTerms = { firstMatch: jest.fn().mockResolvedValue(null) };
     service = new EventCandidatesService(
       repo as unknown as EventCandidateRepository,
       eventsService as unknown as EventsService,
       cases as unknown as CasesService,
+      moderationTerms as unknown as ModerationTermsService,
     );
   });
 
@@ -132,6 +136,23 @@ describe('EventCandidatesService', () => {
       expect(cases.open).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'CONTENT_REPORT', origin: 'ORGANIZER' }),
       );
+      expect(repo.createEventAndValidate).not.toHaveBeenCalled();
+    });
+
+    it('contenu interdit (référentiel §13) → Case ABUSE_REPORT + validation retenue', async () => {
+      eventsService.buildValidatedEventData.mockResolvedValue({
+        source: 'IMPORT',
+        activityId: 'a1',
+        title: 'Vente arnaque',
+        startsAt: '2024-07-12T18:00:00.000Z',
+      });
+      moderationTerms.firstMatch.mockResolvedValue({ term: 'arnaque', kind: 'BANNED' });
+
+      await expect(
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false),
+      ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
+
+      expect(cases.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'ABUSE_REPORT' }));
       expect(repo.createEventAndValidate).not.toHaveBeenCalled();
     });
 
