@@ -89,6 +89,8 @@ const ROLES: RoleSeed[] = [
       'planning.manage',
       'reservation.manage',
       'recommendation.view',
+      // FSPEC.22 §5 : l'Explorer peut soumettre un document/texte/URL (→ événements privés).
+      'import.create',
     ],
   },
   {

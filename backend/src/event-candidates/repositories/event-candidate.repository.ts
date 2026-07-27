@@ -38,6 +38,21 @@ export class EventCandidateRepository extends BaseRepository<EventCandidate> {
     });
   }
 
+  /** Candidats issus des soumissions de l'utilisateur (FSPEC.22 §6 — espace personnel de qualification). */
+  listForOwner(userId: string, status?: EventCandidateStatus): Promise<EventCandidate[]> {
+    return this.prisma.eventCandidate.findMany({
+      where: { status, importJob: { createdById: userId } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Auteur de la soumission dont est issu un candidat (garde de propriété — FSPEC.22 §6). */
+  ownerId(candidateId: string): Promise<string | null> {
+    return this.prisma.eventCandidate
+      .findUnique({ where: { id: candidateId }, select: { importJob: { select: { createdById: true } } } })
+      .then((row) => row?.importJob.createdById ?? null);
+  }
+
   findByIdWithImport(id: string): Promise<EventCandidateWithImport | null> {
     return this.prisma.eventCandidate.findUnique({ where: { id }, include: IMPORT_INCLUDE });
   }

@@ -47,6 +47,29 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     });
   }
 
+  /** Soumissions d'un utilisateur (FSPEC.22 §6 — « Mes soumissions »), les plus récentes d'abord. */
+  listForUser(userId: string, skip: number, take: number): Promise<ImportJobWithAttachment[]> {
+    return this.prisma.importJob.findMany({
+      where: { createdById: userId },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: { attachment: true, _count: { select: { candidates: true } } },
+    });
+  }
+
+  /** Détail d'une soumission restreinte à son auteur (garde de propriété pour l'espace personnel). */
+  findDetailByIdForUser(id: string, userId: string): Promise<ImportJobDetail | null> {
+    return this.prisma.importJob.findFirst({
+      where: { id, createdById: userId },
+      include: {
+        attachment: true,
+        _count: { select: { candidates: true } },
+        events: { orderBy: { occurredAt: 'asc' } },
+      },
+    });
+  }
+
   /**
    * Crée l'Attachment puis l'ImportJob dans une transaction (écriture multi-cohérente,
    * CLAUDE.md §6). Aucun traitement asynchrone n'est inclus dans la transaction.
@@ -58,6 +81,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
     ocrText?: string | null;
     channel?: Prisma.ImportJobCreateInput['channel'];
     providerId?: string | null;
+    createdById?: string | null;
   }): Promise<ImportJobWithAttachment> {
     return this.prisma.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({ data: input.attachment });
@@ -69,6 +93,7 @@ export class ImportJobRepository extends BaseRepository<ImportJob> {
           ocrText: input.ocrText ?? null,
           channel: input.channel ?? null,
           providerId: input.providerId ?? null,
+          createdById: input.createdById ?? null,
         },
         include: { attachment: true, _count: { select: { candidates: true } } },
       });

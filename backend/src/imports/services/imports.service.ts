@@ -36,8 +36,22 @@ export class ImportsService {
     return this.repository.list(skip, take);
   }
 
+  /** Soumissions de l'utilisateur courant (FSPEC.22 §6 — espace personnel). */
+  listForUser(userId: string, skip: number, take: number): Promise<ImportJobWithAttachment[]> {
+    return this.repository.listForUser(userId, skip, take);
+  }
+
   async getDetailOrThrow(id: string): Promise<ImportJobDetail> {
     const job = await this.repository.findDetailById(id);
+    if (!job) {
+      throw new ImportJobNotFoundException(id);
+    }
+    return job;
+  }
+
+  /** Détail d'une soumission restreinte à son auteur (FSPEC.22 §6). */
+  async getDetailForUserOrThrow(id: string, userId: string): Promise<ImportJobDetail> {
+    const job = await this.repository.findDetailByIdForUser(id, userId);
     if (!job) {
       throw new ImportJobNotFoundException(id);
     }
@@ -80,6 +94,7 @@ export class ImportsService {
       },
       status: 'PENDING',
       correlationId,
+      createdById: actor?.userId ?? null,
     });
 
     // 1er cas d'usage IA (ADR.16) : si une IA « OCR » est configurée pour l'utilisateur/organisation,
@@ -138,7 +153,7 @@ export class ImportsService {
   }
 
   /** Import de texte : aucun OCR, classification directe (FSPEC.01 RM-007). */
-  async importText(text: string): Promise<ImportJobWithAttachment> {
+  async importText(text: string, createdById?: string | null): Promise<ImportJobWithAttachment> {
     await this.enforceDailyQuota((await this.technical.getLimits()).maxImportsPerDay);
     const correlationId = getCorrelationId() ?? generateCorrelationId();
     const attachmentId = randomUUID();
@@ -162,6 +177,7 @@ export class ImportsService {
       status: 'PENDING',
       correlationId,
       ocrText: text,
+      createdById: createdById ?? null,
     });
 
     // Import texte : aucun OCR (RM-007). Le Backend fabrique un OCRResult de substitution

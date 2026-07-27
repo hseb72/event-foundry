@@ -62,8 +62,11 @@ export class ImportsController {
   }
 
   @Post('text')
-  async importText(@Body() dto: CreateTextImportDto): Promise<ImportResponseDto> {
-    return ImportMapper.toResponse(await this.service.importText(dto.text));
+  async importText(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateTextImportDto,
+  ): Promise<ImportResponseDto> {
+    return ImportMapper.toResponse(await this.service.importText(dto.text, user.userId));
   }
 
   /**
@@ -111,9 +114,12 @@ export class ImportsController {
    * parsing d'un schéma documenté → Raw Events → pipeline → EventCandidates (validation humaine).
    */
   @Post('structured')
-  async importStructured(@Body() dto: CreateStructuredImportDto): Promise<ImportResponseDto> {
+  async importStructured(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateStructuredImportDto,
+  ): Promise<ImportResponseDto> {
     const contentType = dto.format === 'json' ? 'application/json' : dto.format === 'csv' ? 'text/csv' : null;
-    return ImportMapper.toResponse(await this.structured.import(dto.content, contentType));
+    return ImportMapper.toResponse(await this.structured.import(dto.content, contentType, user.userId));
   }
 
   /**
@@ -121,8 +127,35 @@ export class ImportsController {
    * événements balisés schema.org (JSON-LD) → pipeline → EventCandidates (validation humaine).
    */
   @Post('url')
-  async importUrl(@Body() dto: CreateUrlImportDto): Promise<ImportResponseDto> {
-    return ImportMapper.toResponse(await this.urlImport.import(dto.url));
+  async importUrl(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateUrlImportDto,
+  ): Promise<ImportResponseDto> {
+    return ImportMapper.toResponse(await this.urlImport.import(dto.url, user.userId));
+  }
+
+  /** Mes soumissions (FSPEC.22 §6) : la liste des imports créés par l'utilisateur courant. */
+  @Get('mine')
+  async listMine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ): Promise<ImportResponseDto[]> {
+    const jobs = await this.service.listForUser(
+      user.userId,
+      parseIntOrDefault(skip, 0),
+      Math.min(parseIntOrDefault(take, 20) || 20, MAX_PAGE_SIZE),
+    );
+    return jobs.map(ImportMapper.toResponse);
+  }
+
+  /** Détail d'une de mes soumissions (FSPEC.22 §6) : restreint à son auteur. */
+  @Get('mine/:id')
+  async detailMine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ImportDetailResponseDto> {
+    return ImportMapper.toDetail(await this.service.getDetailForUserOrThrow(id, user.userId));
   }
 
   /**

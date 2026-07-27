@@ -13,6 +13,15 @@ import {
 export class EventCandidatesApi {
   constructor(private readonly http: HttpClient) {}
 
+  /** Mes brouillons (FSPEC.22 §6) : candidats issus de mes propres soumissions. */
+  listMine(status?: string): Observable<EventCandidateDto[]> {
+    const params: Record<string, string> = {};
+    if (status) {
+      params['status'] = status;
+    }
+    return this.http.get<EventCandidateDto[]>(`${API_BASE}/me/event-candidates`, { params });
+  }
+
   list(status?: string): Observable<EventCandidateDto[]> {
     const params: Record<string, string> = {};
     if (status) {

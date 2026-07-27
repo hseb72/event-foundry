@@ -344,6 +344,8 @@ model User {
   mfaSecret            String?                  @map("mfa_secret")
   mfaEnabledAt         DateTime?                @map("mfa_enabled_at") @db.Timestamptz(6)
   mfaRecoveryCodes     String[]                 @map("mfa_recovery_codes")
+  // Soumissions d'import de l'utilisateur (FSPEC.22 §5-6 — « Mes soumissions »).
+  importJobs           ImportJob[]              @relation("UserImportJobs")
   createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -824,6 +826,10 @@ model ImportJob {
   ocrPageCount        Int?             @map("ocr_page_count")
   ocrProcessingTimeMs Int?             @map("ocr_processing_time_ms")
   correlationId       String           @map("correlation_id")
+  // Auteur de la soumission (FSPEC.22 §5-6) : permet à chacun de suivre ses propres soumissions.
+  // Nullable : jobs système / connecteurs automatiques sans utilisateur, et survie à la suppression.
+  createdById         String?          @map("created_by_id") @db.Uuid
+  createdBy           User?            @relation("UserImportJobs", fields: [createdById], references: [id], onDelete: SetNull)
   // Framework d'import unifié V3 (ADR.13/14) — nullables pour compatibilité avec les jobs OCR V2.
   channel             ImportChannel?
   providerId          String?          @map("provider_id")
@@ -848,6 +854,7 @@ model ImportJob {
   @@index([status])
   @@index([createdAt])
   @@index([providerId])
+  @@index([createdById])
   @@map("import_jobs")
 }
 

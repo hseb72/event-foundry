@@ -29,7 +29,7 @@ export class UrlImportService {
     @Inject(IMPORT_CONNECTORS) private readonly connectors: ImportConnector[],
   ) {}
 
-  async import(url: string): Promise<ImportJobWithAttachment> {
+  async import(url: string, createdById?: string | null): Promise<ImportJobWithAttachment> {
     const target = url?.trim() ?? '';
     if (!target) {
       throw new BadRequestException('URL manquante.');
@@ -39,7 +39,7 @@ export class UrlImportService {
 
     // Fetch (I/O) avant matérialisation du job : le job porte la page source acquise.
     const fetched = await this.fetcher.fetch(target);
-    const job = await this.createJob(fetched.content, fetched.finalUrl, connector.providerId, correlationId);
+    const job = await this.createJob(fetched.content, fetched.finalUrl, connector.providerId, correlationId, createdById ?? null);
 
     try {
       await this.jobs.transition(job.id, ImportJobStatus.EXTRACTING, correlationId, {
@@ -93,6 +93,7 @@ export class UrlImportService {
     sourceUrl: string,
     providerId: string,
     correlationId: string,
+    createdById: string | null,
   ): Promise<ImportJobWithAttachment> {
     const attachmentId = randomUUID();
     const buffer = Buffer.from(html, 'utf-8');
@@ -116,6 +117,7 @@ export class UrlImportService {
       correlationId,
       channel: ImportChannel.URL,
       providerId,
+      createdById,
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { EventCandidateStatus, EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import { CasesService } from '../../cases/cases.service';
 import { CreateEventDto } from '../../events/dto/create-event.dto';
@@ -19,6 +19,16 @@ import {
   detectSubmissionAnomalies,
   type SubmissionAnomaly,
 } from '../submission/submission-controls';
+
+/**
+ * Contexte de l'acteur agissant sur un candidat. Un **Operator** (droit `validation.review`) peut
+ * qualifier n'importe quel candidat du pipeline ; tout autre utilisateur (Explorer soumettant ses
+ * propres imports — FSPEC.22 §6) ne peut agir que sur **ses** candidats.
+ */
+export interface CandidateActor {
+  userId: string;
+  isOperator: boolean;
+}
 
 @Injectable()
 export class EventCandidatesService {
@@ -43,17 +53,26 @@ export class EventCandidatesService {
     return this.repository.listByImportJob(importJobId);
   }
 
-  async getDetail(id: string): Promise<EventCandidateWithImport> {
+  /** Mes brouillons (FSPEC.22 §6) : les candidats issus de mes propres soumissions. */
+  listMine(userId: string, status?: EventCandidateStatus): Promise<EventCandidate[]> {
+    return this.repository.listForOwner(userId, status);
+  }
+
+  async getDetail(id: string, actor?: CandidateActor): Promise<EventCandidateWithImport> {
     const candidate = await this.repository.findByIdWithImport(id);
     if (!candidate) {
       throw new EventCandidateNotFoundException(id);
     }
+    if (actor) {
+      await this.assertOwnership(id, actor);
+    }
     return candidate;
   }
 
-  async correct(id: string, dto: UpdateEventCandidateDto, userId: string): Promise<EventCandidate> {
+  async correct(id: string, dto: UpdateEventCandidateDto, actor: CandidateActor): Promise<EventCandidate> {
     await this.assertMutable(id);
-    return this.repository.correct(id, dto.payload as Prisma.InputJsonValue, userId);
+    await this.assertOwnership(id, actor);
+    return this.repository.correct(id, dto.payload as Prisma.InputJsonValue, actor.userId);
   }
 
   /** Validation : crée l'Event (source = IMPORT) et fige le candidate (transaction). */
@@ -71,22 +90,23 @@ export class EventCandidatesService {
   async validate(
     id: string,
     dto: CreateEventDto,
-    userId: string,
+    actor: CandidateActor,
     canPublish: boolean,
   ): Promise<EventWithRefs> {
     await this.assertMutable(id);
+    await this.assertOwnership(id, actor);
     const base = await this.eventsService.buildValidatedEventData(dto, EventSource.IMPORT);
 
     // Contrôles automatiques (§13) : toute anomalie retient la validation et ouvre une Case.
-    await this.runSubmissionControls(id, base, userId, canPublish);
+    await this.runSubmissionControls(id, base, actor.userId, canPublish);
 
     const eventData: Prisma.EventUncheckedCreateInput = {
       ...base,
       status: EventStatus.DRAFT,
       visibility: canPublish ? EventVisibility.PUBLIC : EventVisibility.PRIVATE,
-      createdById: userId,
+      createdById: actor.userId,
     };
-    return this.repository.createEventAndValidate(id, eventData, userId);
+    return this.repository.createEventAndValidate(id, eventData, actor.userId);
   }
 
   /**
@@ -142,8 +162,9 @@ export class EventCandidatesService {
     return new SubmissionHeldForReviewException(reference, anomalies);
   }
 
-  async reject(id: string): Promise<EventCandidate> {
+  async reject(id: string, actor: CandidateActor): Promise<EventCandidate> {
     await this.assertMutable(id);
+    await this.assertOwnership(id, actor);
     return this.repository.reject(id);
   }
 
@@ -160,5 +181,19 @@ export class EventCandidatesService {
       throw new InvalidCandidateTransitionException(candidate.status);
     }
     return candidate;
+  }
+
+  /**
+   * Garde de propriété (FSPEC.22 §6) : un Operator (`validation.review`) agit sur tout candidat ;
+   * un utilisateur ordinaire uniquement sur les candidats issus de ses propres soumissions.
+   */
+  private async assertOwnership(id: string, actor: CandidateActor): Promise<void> {
+    if (actor.isOperator) {
+      return;
+    }
+    const ownerId = await this.repository.ownerId(id);
+    if (ownerId !== actor.userId) {
+      throw new ForbiddenException("Ce brouillon n'est pas issu de vos soumissions.");
+    }
   }
 }

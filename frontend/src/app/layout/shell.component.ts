@@ -35,6 +35,7 @@ const NAV: NavItem[] = [
   { label: 'Rechercher', path: '/search', experiences: ['EXPLORER'], permission: 'catalog.read' },
   { label: 'Pour vous', path: '/recommendations', experiences: ['EXPLORER'], permission: 'recommendation.view' },
   { label: 'Mon planning', path: '/calendar', experiences: ['EXPLORER'], permission: 'planning.manage' },
+  { label: 'Soumettre un événement', path: '/submit', experiences: ['EXPLORER'], permission: 'import.create' },
   { label: 'Mes événements privés', path: '/my-events', experiences: ['EXPLORER'], permission: 'planning.manage' },
   { label: 'Mes suivis', path: '/follows', experiences: ['EXPLORER'] },
   { label: 'Aide & demandes', path: '/support', experiences: ['EXPLORER'] },

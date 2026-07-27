@@ -28,7 +28,11 @@ export class StructuredImportService {
   ) {}
 
   /** Import structuré à la demande (upload ou copier-coller). Rend la main après COMPLETED/FAILED. */
-  async import(content: string, contentType?: string | null): Promise<ImportJobWithAttachment> {
+  async import(
+    content: string,
+    contentType?: string | null,
+    createdById?: string | null,
+  ): Promise<ImportJobWithAttachment> {
     const trimmed = content?.trim() ?? '';
     if (!trimmed) {
       throw new BadRequestException('Contenu vide : fournissez un fichier CSV/JSON ou collez son contenu.');
@@ -37,7 +41,7 @@ export class StructuredImportService {
     const connector = this.resolveConnector(channel);
     const correlationId = getCorrelationId() ?? generateCorrelationId();
 
-    const job = await this.createJob(trimmed, contentType, channel, connector.providerId, correlationId);
+    const job = await this.createJob(trimmed, contentType, channel, connector.providerId, correlationId, createdById ?? null);
 
     try {
       // Extract — le connecteur ne produit que des ébauches de Raw Event (fidèles, sans décision).
@@ -105,6 +109,7 @@ export class StructuredImportService {
     channel: ImportChannel,
     providerId: string,
     correlationId: string,
+    createdById: string | null,
   ): Promise<ImportJobWithAttachment> {
     // Le contenu source est conservé dans MinIO (jamais en base) et référencé par un Attachment.
     const attachmentId = randomUUID();
@@ -130,6 +135,7 @@ export class StructuredImportService {
       correlationId,
       channel,
       providerId,
+      createdById,
     });
   }
 }

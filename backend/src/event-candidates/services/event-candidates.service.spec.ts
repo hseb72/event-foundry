@@ -13,13 +13,20 @@ describe('EventCandidatesService', () => {
     findById: jest.Mock;
     reject: jest.Mock;
     createEventAndValidate: jest.Mock;
+    ownerId: jest.Mock;
   };
   let eventsService: { buildValidatedEventData: jest.Mock; hasPublicDuplicate: jest.Mock };
   let cases: { open: jest.Mock };
   let service: EventCandidatesService;
+  const operator = { userId: 'user-1', isOperator: true };
 
   beforeEach(() => {
-    repo = { findById: jest.fn(), reject: jest.fn(), createEventAndValidate: jest.fn() };
+    repo = {
+      findById: jest.fn(),
+      reject: jest.fn(),
+      createEventAndValidate: jest.fn(),
+      ownerId: jest.fn().mockResolvedValue('user-1'),
+    };
     eventsService = {
       buildValidatedEventData: jest.fn(),
       hasPublicDuplicate: jest.fn().mockResolvedValue(false),
@@ -34,7 +41,7 @@ describe('EventCandidatesService', () => {
 
   it('refuse toute action sur un candidate VALIDATED', async () => {
     repo.findById.mockResolvedValue({ id: 'c1', status: 'VALIDATED' });
-    await expect(service.reject('c1')).rejects.toBeInstanceOf(InvalidCandidateTransitionException);
+    await expect(service.reject('c1', operator)).rejects.toBeInstanceOf(InvalidCandidateTransitionException);
     expect(repo.reject).not.toHaveBeenCalled();
   });
 
@@ -48,7 +55,7 @@ describe('EventCandidatesService', () => {
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e1' });
 
-    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'user-1', true);
+    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, true);
 
     expect(event.id).toBe('e1');
     // Valideur Organizer (canPublish) : Event PUBLIC en DRAFT, rattaché au valideur (createdById).
@@ -74,7 +81,8 @@ describe('EventCandidatesService', () => {
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e2' });
 
-    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'user-2', false);
+    repo.ownerId.mockResolvedValue('user-2');
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false }, false);
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
       'c1',
@@ -99,7 +107,7 @@ describe('EventCandidatesService', () => {
       });
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'user-1', false),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(
@@ -118,7 +126,7 @@ describe('EventCandidatesService', () => {
       eventsService.hasPublicDuplicate.mockResolvedValue(true);
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'org-1', true),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'org-1', isOperator: true }, true),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(
@@ -136,7 +144,7 @@ describe('EventCandidatesService', () => {
       });
       eventsService.hasPublicDuplicate.mockResolvedValue(true);
 
-      await service.validate('c1', { activityId: 'a1' } as CreateEventDto, 'user-1', false);
+      await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false);
 
       // Le contrôle de doublon n'est pas exécuté pour un Explorer : pas de Case, Event privé créé.
       expect(eventsService.hasPublicDuplicate).not.toHaveBeenCalled();

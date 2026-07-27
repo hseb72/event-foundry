@@ -49,6 +49,11 @@ export class ImportsApi {
     return this.http.get<ImportResponse[]>(`${API_BASE}/imports`);
   }
 
+  /** Mes soumissions (FSPEC.22 §6 — espace personnel Explorer). */
+  listMine(): Observable<ImportResponse[]> {
+    return this.http.get<ImportResponse[]>(`${API_BASE}/imports/mine`);
+  }
+
   detail(id: string): Observable<ImportDetailDto> {
     return this.http.get<ImportDetailDto>(`${API_BASE}/imports/${id}`);
   }
