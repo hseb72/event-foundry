@@ -66,8 +66,16 @@ Principaux objets :
 - Venue
 - Organizer
 - Activity
+- EventType
+- EventFormat
 - Category
+- Tag
 - EventMedia
+
+La classification d'un Event suit la taxonomie **DATA.01** (voir `09-DATA.01-EventAttributes`) :
+une Activité et un Type (rattaché à l'Activité), puis des Formats, Catégories et Tags en
+cardinalité **0..N**. Le Format et la Catégorie sont **transverses** (indépendants de
+l'Activité) et rattachés à l'Event par des relations **N-N**.
 
 ---
 

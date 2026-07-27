@@ -179,9 +179,16 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
 
 ## 8. Modèle métier (ARCHI.02 / ARCHI.03)
 
-Hiérarchie référentielle : `Domain → Activity → EventType / EventFormat(optionnel)`.
-- Une Activity appartient à un Domain ; un EventType/EventFormat appartient à une Activity.
-- Un Event peut ne pas avoir de EventFormat.
+Hiérarchie référentielle : `Domain → Activity → EventType`.
+- Une Activity appartient à un Domain ; un EventType appartient à une Activity.
+- **Taxonomie DATA.01 v1.1** (référence : `docs/v3/09-DATA.01-EventAttributes`) :
+  Activité (1) → Type (1, rattaché à l'Activité) → Format (0..N, **transverse**) →
+  Catégorie (0..N, **transverse**) → Tags (0..N). Format et Catégorie sont des relations
+  **N-N** portées par des tables de liaison ; l'EventFormat n'est **plus** rattaché à une
+  Activity (référentiel transverse au même titre que Category/Tag). Un même nom de Type peut
+  exister sous plusieurs Activités (unicité par Activité — TAX-011).
+- Format et Catégorie ne se substituent jamais aux champs techniques (`price`, `visibility`)
+  ni à la Participation : ce sont des qualificatifs de recherche, jamais des règles métier (TAX-012).
 
 Entités : `User`, `Attachment`, `ImportJob`, `ImportJobEvent`, `EventCandidate`, `Event`,
 `Domain`, `Activity`, `EventType`, `EventFormat`, `Organizer`, `Venue`, `UserParticipation`.
