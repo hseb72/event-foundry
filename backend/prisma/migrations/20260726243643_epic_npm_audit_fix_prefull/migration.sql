@@ -1,0 +1,2 @@
+ALTER TABLE "users"
+ALTER COLUMN "mfa_recovery_codes" DROP DEFAULT;
