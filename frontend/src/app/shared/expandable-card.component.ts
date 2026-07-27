@@ -117,8 +117,9 @@ import {
 export class ExpandableCardComponent implements AfterViewInit, OnDestroy {
   /** Titre affiché dans l'entête de la carte. */
   @Input() cardTitle = '';
-  /** Hauteur (px) du corps en mode compact. */
-  @Input() compactHeight = 210;
+  /** Hauteur (px) du corps en mode compact. Le corps + l'entête + le footer donnent une carte
+   *  repliée d'environ 240px. */
+  @Input() compactHeight = 160;
 
   @ViewChild('body') private bodyRef?: ElementRef<HTMLDivElement>;
 
