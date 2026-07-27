@@ -1,7 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -27,7 +26,7 @@ import { EventCardComponent } from '../../shared/event-card.component';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, RouterLink, EventFormComponent, DatePipe, FileDropComponent, EventCardComponent],
+  imports: [FormsModule, EventFormComponent, DatePipe, FileDropComponent, EventCardComponent],
   styles: [
     `
       .intro {
