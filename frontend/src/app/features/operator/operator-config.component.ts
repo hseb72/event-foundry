@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ExpandableCardComponent } from '../../shared/expandable-card.component';
 import { PlatformConfigApi, PlatformGeneralInfo } from '../../core/api/platform-config.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
 import { NotificationsApi } from '../../core/api/notifications.service';
@@ -21,7 +22,7 @@ import {
 @Component({
   selector: 'app-operator-config',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ExpandableCardComponent],
   styles: [
     `
       .grid {
@@ -126,8 +127,7 @@ import {
     <p class="muted">Paramètres de la plateforme : mail et intelligence artificielle.</p>
 
     <div class="grid">
-      <section class="card">
-        <h2>Informations générales</h2>
+      <app-expandable-card cardTitle="Informations générales">
         <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">Identité publique de la plateforme.</p>
         <div class="two">
           <div class="field"><label class="muted">Nom de la plateforme</label><input class="input" [(ngModel)]="general.platformName" /></div>
@@ -139,10 +139,9 @@ import {
           <input class="input" [(ngModel)]="general.publicInfo" placeholder="Données institutionnelles (facultatif)" /></div>
         <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="saveGeneral()">Enregistrer</button>
           @if (generalSaved()) { <span class="status">Enregistré</span> }</div>
-      </section>
+      </app-expandable-card>
 
-      <section class="card">
-        <h2>Configuration mail (SMTP)</h2>
+      <app-expandable-card cardTitle="Configuration mail (SMTP)">
         <div class="two">
           <div class="field"><label class="muted">Hôte</label><input class="input" [(ngModel)]="mail.host" placeholder="smtp.example.com" /></div>
           <div class="field"><label class="muted">Port</label><input class="input" type="number" [(ngModel)]="mail.port" /></div>
@@ -161,7 +160,7 @@ import {
           <button class="btn" (click)="testMail()" [disabled]="!mail.passwordMasked">Tester l'envoi</button>
           @if (mailStatus()) { <span class="status">{{ statusLabel(mailStatus()) }}</span> }
         </div>
-      </section>
+      </app-expandable-card>
 
       <section class="card">
         <h2>IA plateforme</h2>
@@ -269,8 +268,7 @@ import {
         }
       </section>
 
-      <section class="card">
-        <h2>Limites techniques</h2>
+      <app-expandable-card cardTitle="Limites techniques">
         <p class="muted" style="font-size:0.78rem;margin:0 0 0.8rem">
           Bornes appliquées à l'acquisition. La taille d'upload ne peut dépasser le plafond dur
           ({{ techHardMax() }} Mo).
@@ -304,7 +302,7 @@ import {
           <button class="btn btn-primary" (click)="saveTechnical()">Enregistrer</button>
           @if (techStatus()) { <span class="status">{{ techStatus() }}</span> }
         </div>
-      </section>
+      </app-expandable-card>
 
       @if (notifSettings) {
         <section class="card">
