@@ -80,22 +80,32 @@ export class EventsService {
   async search(
     userId: string,
     query: SearchEventsQueryDto,
+    activeOrganizationId: string | null = null,
   ): Promise<{
     items: EventWithRefsAndParticipation[];
     total: number;
     skip: number;
     take: number;
   }> {
-    // Découverte : par défaut, événements à venir. Espace Organizer (createdByMe) : aucune borne
-    // temporelle par défaut — l'organisateur voit tous ses événements (passés, archivés compris),
-    // sauf s'il applique explicitement un filtre de période.
+    // Vue « espace Organizer » : liste des événements gérés (createdByMe ou périmètre organisation).
+    const organizerView = Boolean(query.createdByMe || query.organizationScope);
+    // Découverte : par défaut, événements à venir. Espace Organizer : aucune borne temporelle par
+    // défaut — l'organisateur voit tous ses événements (passés, archivés compris), sauf filtre explicite.
     const hasExplicitRange = Boolean(query.period || query.from || query.to);
     const range =
-      hasExplicitRange || !query.createdByMe
+      hasExplicitRange || !organizerView
         ? computeDateRange({ period: query.period, from: query.from, to: query.to })
         : {};
     const skip = query.skip ?? 0;
     const take = query.take ?? 20;
+
+    // Périmètre organisation (FSPEC.22) : les événements de l'organisation active ; en mode autonome
+    // (aucune organisation active), mes propres événements sans organisation.
+    const orgScope = query.organizationScope
+      ? activeOrganizationId
+        ? { organizationId: activeOrganizationId }
+        : { autonomousCreatorId: userId }
+      : {};
 
     const { items, total } = await this.repository.searchPaginated({
       userId,
@@ -107,11 +117,11 @@ export class EventsService {
       categoryId: query.categoryId,
       municipalityId: query.municipalityId,
       tagId: query.tagId,
-      createdById: query.createdByMe ? userId : undefined,
+      createdById: query.createdByMe && !query.organizationScope ? userId : undefined,
+      ...orgScope,
       sort: query.sort,
-      // Découverte : par défaut, seuls les événements publiés. Mais l'espace Organizer
-      // (createdByMe) liste ses propres événements tous statuts confondus (sauf filtre explicite).
-      status: query.status ?? (query.createdByMe ? undefined : EventStatus.PUBLISHED),
+      // Découverte : par défaut, seuls les événements publiés. L'espace Organizer liste tous statuts.
+      status: query.status ?? (organizerView ? undefined : EventStatus.PUBLISHED),
       city: query.city,
       text: query.q,
       participationScope: query.participation ?? 'all',

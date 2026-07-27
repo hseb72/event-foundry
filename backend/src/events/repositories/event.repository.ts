@@ -23,6 +23,10 @@ export interface SearchEventsFilter {
   municipalityId?: string;
   tagId?: string;
   createdById?: string;
+  /** Périmètre organisation (espace Organizer) : événements de cette organisation. */
+  organizationId?: string;
+  /** Mode autonome : événements sans organisation créés par cet utilisateur. */
+  autonomousCreatorId?: string;
   status?: Prisma.EventWhereInput['status'];
   sort?: 'upcoming' | 'newest' | 'title';
   city?: string;
@@ -231,6 +235,12 @@ export class EventRepository extends BaseRepository<Event> {
       venueId: filter.venueId,
       municipalityId: filter.municipalityId,
       createdById: filter.createdById,
+      // Périmètre organisation : soit les événements de l'organisation, soit (mode autonome) les
+      // événements personnels sans organisation du créateur.
+      ...(filter.organizationId ? { organizationId: filter.organizationId } : {}),
+      ...(filter.autonomousCreatorId
+        ? { organizationId: null, createdById: filter.autonomousCreatorId }
+        : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.eventFormatId
         ? { formats: { some: { eventFormatId: filter.eventFormatId } } }

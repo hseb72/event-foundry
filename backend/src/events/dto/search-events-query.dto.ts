@@ -73,6 +73,16 @@ export class SearchEventsQueryDto {
   @IsBoolean()
   createdByMe?: boolean;
 
+  @ApiPropertyOptional({
+    description:
+      "Espace Organizer : ne retourner que les événements de l'organisation active (ou, en mode " +
+      'autonome, mes propres événements sans organisation). Tous statuts par défaut.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  organizationScope?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -207,7 +207,9 @@ export class OrganizerEventsComponent implements OnInit {
 
   private reload(): void {
     this.loading.set(true);
-    this.eventsApi.search({ createdByMe: 'true', take: '100' }).subscribe({
+    // Périmètre organisation active (FSPEC.22) : les événements de l'organisation courante (ou, en
+    // mode autonome, mes propres événements sans organisation) — jamais les événements privés.
+    this.eventsApi.search({ organizationScope: 'true', take: '100' }).subscribe({
       next: (result) => {
         this.events.set(result.items);
         this.loading.set(false);

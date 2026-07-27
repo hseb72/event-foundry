@@ -45,7 +45,11 @@ export class EventsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: SearchEventsQueryDto,
   ): Promise<PaginatedEventsResponseDto> {
-    const { items, total, skip, take } = await this.service.search(user.userId, query);
+    const { items, total, skip, take } = await this.service.search(
+      user.userId,
+      query,
+      user.activeOrganizationId,
+    );
     return {
       items: items.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null)),
       total,

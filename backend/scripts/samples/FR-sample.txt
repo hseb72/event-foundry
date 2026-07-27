@@ -1,0 +1,10 @@
+FR	75001	Paris 1er Arrondissement	Île-de-France	11	Paris	75	Paris	751	48.8592	2.3417	4
+FR	75002	Paris 2e Arrondissement	Île-de-France	11	Paris	75	Paris	752	48.8655	2.3426	4
+FR	69001	Lyon 1er Arrondissement	Auvergne-Rhône-Alpes	84	Rhône	69	Lyon	691	45.7702	4.8267	4
+FR	69002	Lyon 2e Arrondissement	Auvergne-Rhône-Alpes	84	Rhône	69	Lyon	692	45.7485	4.8267	4
+FR	31000	Toulouse	Occitanie	76	Haute-Garonne	31	Toulouse	315	43.6045	1.4440	4
+FR	33000	Bordeaux	Nouvelle-Aquitaine	75	Gironde	33	Bordeaux	335	44.8404	-0.5805	4
+FR	44000	Nantes	Pays de la Loire	52	Loire-Atlantique	44	Nantes	441	47.2181	-1.5528	4
+FR	59000	Lille	Hauts-de-France	32	Nord	59	Lille	595	50.6365	3.0635	4
+FR	13001	Marseille 1er Arrondissement	Provence-Alpes-Côte d'Azur	93	Bouches-du-Rhône	13	Marseille	131	43.3	5.375	4
+FR	67000	Strasbourg	Grand Est	44	Bas-Rhin	67	Strasbourg	675	48.5839	7.7455	4

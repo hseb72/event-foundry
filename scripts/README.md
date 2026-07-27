@@ -9,7 +9,10 @@ Les communes sont un **référentiel local** alimenté par une ingestion **batch
 GeoNames (TSPEC.03). Script : `backend/scripts/import-geonames.ts`.
 
 ```bash
-# Depuis un fichier déjà téléchargé (100 % hors ligne) — .txt, .zip ou .gz
+# Échantillon de test versionné (10 communes FR) — hors ligne, sans réseau
+npm run geonames:import --workspace backend -- --file scripts/samples/FR-sample.txt
+
+# Depuis un fichier complet déjà téléchargé (100 % hors ligne) — .txt, .zip ou .gz
 npm run geonames:import --workspace backend -- --file ./FR.txt
 
 # Téléchargement automatique depuis GeoNames (nécessite un accès réseau sortant)

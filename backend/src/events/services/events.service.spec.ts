@@ -22,7 +22,7 @@ describe('EventsService', () => {
   let categoryRepo: { findById: jest.Mock };
   let municipalityRepo: { findById: jest.Mock };
   let tagRepo: { findExistingIds: jest.Mock };
-  let eventRepo: { createWithRefs: jest.Mock; findByIdWithRefs: jest.Mock };
+  let eventRepo: { createWithRefs: jest.Mock; findByIdWithRefs: jest.Mock; searchPaginated: jest.Mock };
   let service: EventsService;
 
   beforeEach(() => {
@@ -31,7 +31,11 @@ describe('EventsService', () => {
     categoryRepo = { findById: jest.fn() };
     municipalityRepo = { findById: jest.fn() };
     tagRepo = { findExistingIds: jest.fn().mockResolvedValue([]) };
-    eventRepo = { createWithRefs: jest.fn(), findByIdWithRefs: jest.fn() };
+    eventRepo = {
+      createWithRefs: jest.fn(),
+      findByIdWithRefs: jest.fn(),
+      searchPaginated: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+    };
     const noop = { findById: jest.fn() };
     service = new EventsService(
       eventRepo as unknown as EventRepository,
@@ -93,6 +97,24 @@ describe('EventsService', () => {
     it('un tiers ne peut pas lire un événement privé (traité comme inexistant)', async () => {
       eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });
       await expect(service.getForReader('e1', 'intrus')).rejects.toBeInstanceOf(EventNotFoundException);
+    });
+  });
+
+  describe('search — périmètre organisation (espace Organizer)', () => {
+    it('organizationScope + organisation active → filtre par organisation, tous statuts', async () => {
+      await service.search('u1', { organizationScope: true } as never, 'org-9');
+      const filter = eventRepo.searchPaginated.mock.calls[0][0];
+      expect(filter.organizationId).toBe('org-9');
+      expect(filter.autonomousCreatorId).toBeUndefined();
+      expect(filter.createdById).toBeUndefined();
+      expect(filter.status).toBeUndefined();
+    });
+
+    it('organizationScope sans organisation active → mode autonome (mes événements sans organisation)', async () => {
+      await service.search('u1', { organizationScope: true } as never, null);
+      const filter = eventRepo.searchPaginated.mock.calls[0][0];
+      expect(filter.autonomousCreatorId).toBe('u1');
+      expect(filter.organizationId).toBeUndefined();
     });
   });
 
