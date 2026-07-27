@@ -283,6 +283,12 @@ la soumission (box « Nouvelle soumission » repliable), les soumissions en cour
 brouillons et la **liste des événements privés**. Une fois qualifiés, les événements privés
 apparaissent **ici**, jamais dans l'expérience Organizer (`organizationId` reste `null`).
 
+Symétriquement (expérience Organizer) : une **seule** entrée « Nos événements » regroupe la soumission
+(onglets Documents, Texte, URL, Fichiers structurés, Création), les soumissions en cours d'analyse, la
+validation des brouillons et le **tableau des événements de l'organisation** (tri, pagination, bascule
+de publication, archivage). Les événements y sont rattachés à l'organisation active (`organizationId`
+renseigné).
+
 ---
 
 # 16. Notification d'un Organizer

@@ -12,19 +12,17 @@ import { HomeComponent } from './features/home/home.component';
 import { CalendarComponent } from './features/calendar/calendar.component';
 import { SubmitEventComponent } from './features/submit/submit-event.component';
 import { CatalogueComponent } from './features/catalogue/catalogue.component';
-import { CreateEventComponent } from './features/create-event/create-event.component';
 import { EditEventComponent } from './features/edit-event/edit-event.component';
 import { EventDetailComponent } from './features/event-detail/event-detail.component';
 import { FollowsComponent } from './features/follows/follows.component';
 import { IdentityComponent } from './features/identity/identity.component';
-import { ImportComponent } from './features/import/import.component';
 import { OperatorAdminComponent } from './features/operator/operator-admin.component';
 import { CasesConsoleComponent } from './features/operator/cases-console.component';
 import { ModerationTermsComponent } from './features/operator/moderation-terms.component';
 import { OperatorConfigComponent } from './features/operator/operator-config.component';
 import { SupportComponent } from './features/support/support.component';
 import { OrganizerDashboardComponent } from './features/organizer/organizer-dashboard.component';
-import { OrganizerEventsComponent } from './features/organizer/organizer-events.component';
+import { OurEventsComponent } from './features/organizer/our-events.component';
 import { AcceptInvitationComponent } from './features/organizer/accept-invitation.component';
 import { OrganizationsComponent } from './features/organizer/organizations.component';
 import { LoginComponent } from './features/login/login.component';
@@ -77,9 +75,12 @@ export const routes: Routes = [
       },
       {
         path: 'organizer/events',
-        component: OrganizerEventsComponent,
+        component: OurEventsComponent,
         canActivate: [permissionGuard('event.create')],
       },
+      // Menu Organizer unifié : création et import sont regroupés dans « Nos événements ».
+      { path: 'create', redirectTo: 'organizer/events', pathMatch: 'full' },
+      { path: 'import', redirectTo: 'organizer/events', pathMatch: 'full' },
       { path: 'organizer/organizations', component: OrganizationsComponent },
       { path: 'support', component: SupportComponent },
       {
@@ -104,9 +105,7 @@ export const routes: Routes = [
       { path: 'my-events', component: SubmitEventComponent },
       { path: 'submit', redirectTo: 'my-events', pathMatch: 'full' },
       { path: 'follows', component: FollowsComponent },
-      { path: 'import', component: ImportComponent },
       { path: 'validation', component: ValidationComponent },
-      { path: 'create', component: CreateEventComponent },
       {
         path: 'events/:id/edit',
         component: EditEventComponent,

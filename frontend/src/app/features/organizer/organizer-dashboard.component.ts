@@ -122,8 +122,7 @@ const STATS: StatCard[] = [
         <p class="muted" style="margin:0">Bonjour {{ orgName() }} — voici l'activité de vos événements.</p>
       </div>
       <div class="actions">
-        <a class="btn btn-primary" routerLink="/create">Créer un événement</a>
-        <a class="btn" routerLink="/import">Importer</a>
+        <a class="btn btn-primary" routerLink="/organizer/events">Créer / importer un événement</a>
       </div>
     </div>
 

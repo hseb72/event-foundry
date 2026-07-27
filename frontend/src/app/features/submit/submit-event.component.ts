@@ -129,6 +129,14 @@ import { EventCardComponent } from '../../shared/event-card.component';
         padding: 0.6rem 0.9rem;
       }
       .err { color: var(--red); }
+      .disclaimer {
+        background: rgba(234, 179, 8, 0.14);
+        border: 1px solid rgba(234, 179, 8, 0.4);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.82rem;
+        margin: 0.5rem 0;
+      }
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
       .box-head {
         display: flex;
@@ -192,6 +200,10 @@ import { EventCardComponent } from '../../shared/event-card.component';
           </div>
         } @else if (tab() === 'url') {
           <input type="url" [(ngModel)]="url" placeholder="https://…" />
+          <div class="disclaimer">
+            ⚠️ Les pages nécessitant une authentification (connexion, espace privé) peuvent ne pas
+            donner de bons résultats : la capture ne voit que le contenu public de la page.
+          </div>
           <div class="row">
             <button class="btn btn-primary" [disabled]="busy() || !url.trim()" (click)="submitUrl()">
               {{ busy() ? 'Envoi…' : 'Capturer la page' }}
