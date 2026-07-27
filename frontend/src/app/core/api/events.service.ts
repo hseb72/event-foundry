@@ -79,6 +79,14 @@ export class EventsApi {
     return this.http.get<EventStatusEventDto[]>(`${API_BASE}/events/${id}/history`);
   }
 
+  /** Notifie l'organisateur enregistré qu'un événement privé le mentionne (FSPEC.22 §16). */
+  notifyOrganizer(id: string): Observable<{ notified: number; organizationName: string }> {
+    return this.http.post<{ notified: number; organizationName: string }>(
+      `${API_BASE}/events/${id}/notify-organizer`,
+      {},
+    );
+  }
+
   uploadMedia(id: string, file: File): Observable<EventMediaDto> {
     const form = new FormData();
     form.append('file', file);

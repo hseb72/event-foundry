@@ -19,6 +19,8 @@ describe('OrganizationsService (FSPEC.19)', () => {
     updateGeneralInfo: jest.Mock;
     setCoveredActivities: jest.Mock;
     activitiesExist: jest.Mock;
+    findByOrganizerId: jest.Mock;
+    setOrganizerLink: jest.Mock;
   };
   let audit: { record: jest.Mock };
   let service: OrganizationsService;
@@ -39,6 +41,8 @@ describe('OrganizationsService (FSPEC.19)', () => {
       updateGeneralInfo: jest.fn().mockResolvedValue(undefined),
       setCoveredActivities: jest.fn().mockResolvedValue(undefined),
       activitiesExist: jest.fn().mockResolvedValue(true),
+      findByOrganizerId: jest.fn().mockResolvedValue(null),
+      setOrganizerLink: jest.fn().mockResolvedValue(undefined),
     };
     audit = { record: jest.fn().mockResolvedValue(undefined) };
     service = new OrganizationsService(
@@ -157,6 +161,38 @@ describe('OrganizationsService (FSPEC.19)', () => {
       await service.setCoveredActivities('u-1', 'org-1', ['a']);
       expect(repository.setCoveredActivities).toHaveBeenCalledWith('org-1', ['a']);
       expect(audit.record).toHaveBeenCalledWith('organization.activities_updated', 'u-1', expect.any(Object));
+    });
+  });
+
+  describe('lien Organizer (FSPEC.22 §16)', () => {
+    it('Owner déclare la fiche Organizer représentée → enregistré + audit', async () => {
+      repository.memberFunctions.mockResolvedValue(['Owner']);
+      await service.setOrganizerLink('u-1', 'org-1', 'ref-1');
+      expect(repository.setOrganizerLink).toHaveBeenCalledWith('org-1', 'ref-1');
+      expect(audit.record).toHaveBeenCalledWith('organization.organizer_linked', 'u-1', expect.any(Object));
+    });
+
+    it('fiche déjà revendiquée par une autre organisation → conflit', async () => {
+      repository.memberFunctions.mockResolvedValue(['Owner']);
+      repository.findByOrganizerId.mockResolvedValue({ id: 'autre-org', name: 'X' });
+      await expect(service.setOrganizerLink('u-1', 'org-1', 'ref-1')).rejects.toThrow(
+        /déjà revendiquée/,
+      );
+      expect(repository.setOrganizerLink).not.toHaveBeenCalled();
+    });
+
+    it('retrait du lien (null) autorisé sans vérification d’unicité', async () => {
+      repository.memberFunctions.mockResolvedValue(['Administrator']);
+      await service.setOrganizerLink('u-1', 'org-1', null);
+      expect(repository.findByOrganizerId).not.toHaveBeenCalled();
+      expect(repository.setOrganizerLink).toHaveBeenCalledWith('org-1', null);
+    });
+
+    it('un Event Manager ne peut pas déclarer le lien (Forbidden)', async () => {
+      repository.memberFunctions.mockResolvedValue(['Event Manager']);
+      await expect(service.setOrganizerLink('u-1', 'org-1', 'ref-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
     });
   });
 });

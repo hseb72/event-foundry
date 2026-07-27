@@ -48,6 +48,27 @@ import { participationColor, participationLabel } from '../../shared/participati
         background: rgba(37, 99, 235, 0.14);
         color: var(--exp, #2563eb);
       }
+      .notify-org {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.6rem 0.9rem;
+        margin: 0.6rem 0 0;
+        font-size: 0.88rem;
+      }
+      .notify-org span {
+        flex: 1;
+        min-width: 12rem;
+      }
+      .notify-org .done {
+        color: var(--green, #16a34a);
+        font-weight: 600;
+        flex: 0 0 auto;
+      }
       .chip {
         display: inline-block;
         padding: 0.1rem 0.5rem;
@@ -194,6 +215,22 @@ import { participationColor, participationLabel } from '../../shared/participati
             <span class="badge private" title="Événement personnel, visible de vous seul">🔒 Privé</span>
           }
         </h1>
+
+        @if (event.visibility === 'PRIVATE' && event.canNotifyOrganizer) {
+          <div class="notify-org">
+            <span>
+              Cet événement mentionne un organisateur enregistré. Vous pouvez l'informer qu'un
+              événement le concernant existe (sans lui céder cet événement privé).
+            </span>
+            @if (notifyDone) {
+              <span class="done">✓ Organisateur notifié{{ notifyOrgName ? ' — ' + notifyOrgName : '' }}</span>
+            } @else {
+              <button class="btn" [disabled]="notifyBusy" (click)="notifyOrganizer()">
+                {{ notifyBusy ? 'Envoi…' : "Notifier l'organisateur" }}
+              </button>
+            }
+          </div>
+        }
 
         <dl>
           <dt>Date</dt>
@@ -399,6 +436,26 @@ export class EventDetailComponent implements OnInit {
   readonly reportRef = signal('');
   reportReason = 'INCORRECT_INFO';
   reportDetails = '';
+
+  // Notification d'un Organizer enregistré (FSPEC.22 §16)
+  notifyBusy = false;
+  notifyDone = false;
+  notifyOrgName = '';
+
+  notifyOrganizer(): void {
+    if (!this.event || this.notifyBusy) {
+      return;
+    }
+    this.notifyBusy = true;
+    this.eventsApi.notifyOrganizer(this.event.id).subscribe({
+      next: (res) => {
+        this.notifyBusy = false;
+        this.notifyDone = true;
+        this.notifyOrgName = res.organizationName;
+      },
+      error: () => (this.notifyBusy = false),
+    });
+  }
 
   submitReport(): void {
     if (!this.event) {

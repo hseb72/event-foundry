@@ -77,3 +77,13 @@ export class SetCoveredActivitiesDto {
   @IsUUID('4', { each: true })
   activityIds!: string[];
 }
+
+export class SetOrganizerLinkDto {
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Fiche Organizer représentée (FSPEC.22 §16), ou null pour retirer le lien.',
+  })
+  @IsOptional()
+  @IsUUID()
+  organizerId?: string | null;
+}

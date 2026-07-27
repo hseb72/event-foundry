@@ -468,6 +468,11 @@ model Organization {
   logoUrl            String?                  @map("logo_url")
   description        String?
   createdById        String?                  @map("created_by_id") @db.Uuid
+  // Fiche Organizer du référentiel que cette organisation déclare représenter (FSPEC.22 §16).
+  // Auto-déclaré (non vérifié), unique : sert à notifier l'organisation qu'un événement privé la
+  // mentionne. N'accorde aucun droit sur les événements privés (informational — ESUB-011).
+  organizerId        String?                  @unique @map("organizer_id") @db.Uuid
+  organizer          Organizer?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
   subscriptionPlanId String?                  @map("subscription_plan_id") @db.Uuid
   subscriptionPlan   SubscriptionPlan?        @relation(fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
   memberships        OrganizationMembership[]
@@ -680,6 +685,8 @@ model Organizer {
   provisional Boolean  @default(false)
   venues    Venue[]
   events    Event[]
+  /// Organisation (compte plateforme) déclarant représenter cette fiche Organizer (FSPEC.22 §16).
+  organization Organization?
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { OrganizationsModule } from '../organizations/organizations.module';
 import { ReferenceDataModule } from '../reference-data/reference-data.module';
 import { SearchModule } from '../search/search.module';
 import { EventMediaController } from './controllers/event-media.controller';
@@ -8,6 +9,7 @@ import { EventMediaRepository } from './repositories/event-media.repository';
 import { EventRepository } from './repositories/event.repository';
 import { EventMediaService } from './services/event-media.service';
 import { EventsService } from './services/events.service';
+import { OrganizerNotifyService } from './services/organizer-notify.service';
 import { PublishingService } from './services/publishing.service';
 
 /**
@@ -16,7 +18,7 @@ import { PublishingService } from './services/publishing.service';
  * via EventsService.
  */
 @Module({
-  imports: [ReferenceDataModule, SearchModule, NotificationsModule],
+  imports: [ReferenceDataModule, SearchModule, NotificationsModule, OrganizationsModule],
   controllers: [EventsController, EventMediaController],
   providers: [
     EventsService,
@@ -24,6 +26,7 @@ import { PublishingService } from './services/publishing.service';
     EventMediaService,
     EventMediaRepository,
     PublishingService,
+    OrganizerNotifyService,
   ],
   exports: [EventsService],
 })

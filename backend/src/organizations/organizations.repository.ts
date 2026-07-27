@@ -157,6 +157,37 @@ export class OrganizationsRepository {
       .then((org) => org?.name ?? null);
   }
 
+  // --- Lien Organization ↔ Organizer (FSPEC.22 §16) ---
+
+  /** L'organisation déclarant représenter une fiche Organizer donnée, ou null si aucune. */
+  findByOrganizerId(organizerId: string): Promise<{ id: string; name: string } | null> {
+    return this.prisma.organization.findUnique({
+      where: { organizerId },
+      select: { id: true, name: true },
+    });
+  }
+
+  /** Fiche Organizer actuellement liée à l'organisation (null si aucune). */
+  linkedOrganizerId(organizationId: string): Promise<string | null> {
+    return this.prisma.organization
+      .findUnique({ where: { id: organizationId }, select: { organizerId: true } })
+      .then((org) => org?.organizerId ?? null);
+  }
+
+  /** Déclare (ou retire) la fiche Organizer représentée. Auto-déclaré ; l'unicité est garantie en base. */
+  async setOrganizerLink(organizationId: string, organizerId: string | null): Promise<void> {
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { organizerId } });
+  }
+
+  /** Identifiants des membres d'une organisation (destinataires d'une notification interne). */
+  async memberUserIds(organizationId: string): Promise<string[]> {
+    const memberships = await this.prisma.organizationMembership.findMany({
+      where: { organizationId },
+      select: { userId: true },
+    });
+    return memberships.map((m) => m.userId);
+  }
+
   /** Remplace l'unique fonction d'un membre (une fonction par appartenance — modèle simple FSPEC.19). */
   async setMemberFunction(userId: string, organizationId: string, roleId: string): Promise<void> {
     const membership = await this.prisma.organizationMembership.findUniqueOrThrow({
@@ -248,7 +279,8 @@ export class OrganizationsRepository {
       where: { id: organizationId },
       select: {
         id: true, name: true, slug: true, contactEmail: true, website: true, logoUrl: true,
-        description: true, createdById: true, isActive: true,
+        description: true, createdById: true, isActive: true, organizerId: true,
+        organizer: { select: { id: true, name: true } },
         subscriptionPlan: { select: { key: true, name: true } },
         coveredActivities: { select: { activity: { select: { id: true, name: true } } } },
       },

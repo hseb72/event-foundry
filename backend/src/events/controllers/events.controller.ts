@@ -24,6 +24,7 @@ import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
 import { EventMapper } from '../mappers/event.mapper';
 import { EventMediaService } from '../services/event-media.service';
 import { EventsService } from '../services/events.service';
+import { OrganizerNotifyService } from '../services/organizer-notify.service';
 import { PublishingService } from '../services/publishing.service';
 
 @ApiTags('events')
@@ -34,6 +35,7 @@ export class EventsController {
     private readonly service: EventsService,
     private readonly mediaService: EventMediaService,
     private readonly publishing: PublishingService,
+    private readonly organizerNotify: OrganizerNotifyService,
   ) {}
 
   /** Recherche / catalogue (FSPEC.04). L'état de participation de l'utilisateur est inclus. */
@@ -88,9 +90,28 @@ export class EventsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<EventResponseDto> {
-    const dto = EventMapper.toResponse(await this.service.getForReader(id, user.userId));
+    const event = await this.service.getForReader(id, user.userId);
+    const dto = EventMapper.toResponse(event);
     dto.media = await this.mediaService.listWithUrls(id);
+    // §16 : proposer la notification de l'organisateur uniquement pour un événement privé qui mentionne
+    // une fiche organisateur adossée à une organisation enregistrée.
+    if (event.visibility === 'PRIVATE') {
+      dto.canNotifyOrganizer = (await this.organizerNotify.notifiableOrganization(event.organizerId)) !== null;
+    }
     return dto;
+  }
+
+  /**
+   * Notifie l'organisateur enregistré qu'un événement privé le mentionne (FSPEC.22 §16). Réservé au
+   * créateur de l'événement privé ; purement informatif, ne transfère jamais la propriété (ESUB-011).
+   */
+  @Post(':id/notify-organizer')
+  @HttpCode(HttpStatus.OK)
+  async notifyOrganizer(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ notified: number; organizationName: string }> {
+    return this.organizerNotify.notify(id, user.userId);
   }
 
   /**

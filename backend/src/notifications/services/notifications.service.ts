@@ -230,6 +230,33 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Notification **information** (FSPEC.22 §16) : un Explorer signale à une organisation qu'un
+   * événement privé mentionnant sa fiche organisateur existe. Purement informatif — ne transfère
+   * jamais la propriété (ESUB-011). Best-effort ; retourne le nombre de membres notifiés.
+   */
+  async notifyOrganizationOfPrivateEvent(
+    memberIds: string[],
+    eventTitle: string,
+  ): Promise<number> {
+    let notified = 0;
+    for (const userId of memberIds) {
+      try {
+        await this.emit(userId, {
+          type: 'PRIVATE_EVENT_MENTIONS_ORGANIZER',
+          title: 'Un événement vous mentionne',
+          body: `Un utilisateur a enregistré « ${eventTitle} » comme événement privé vous concernant. ` +
+            'Vous pouvez publier votre propre version officielle.',
+          priority: NotificationPriority.INFORMATION,
+        });
+        notified += 1;
+      } catch (error) {
+        this.logger.error(`Notification « événement privé mentionne l'organisation » échouée (user ${userId})`, error as Error);
+      }
+    }
+    return notified;
+  }
+
   list(userId: string, status?: NotificationStatus): Promise<Notification[]> {
     return this.repository.listForUser(userId, status);
   }

@@ -105,6 +105,13 @@ export class OrganizationsApi {
       activityIds,
     });
   }
+
+  /** Déclare (ou retire) la fiche Organizer représentée par l'organisation (FSPEC.22 §16). */
+  setOrganizerLink(id: string, organizerId: string | null): Observable<{ updated: boolean }> {
+    return this.http.put<{ updated: boolean }>(`${API_BASE}/organizations/${id}/organizer-link`, {
+      organizerId,
+    });
+  }
 }
 
 /** Informations générales d'une organisation (FSPEC.16 §4/§6). */
@@ -117,6 +124,8 @@ export interface OrganizationGeneralInfo {
   logoUrl: string | null;
   description: string | null;
   createdById: string | null;
+  organizerId: string | null;
+  organizer: { id: string; name: string } | null;
   subscriptionPlan: { key: string; name: string } | null;
   coveredActivities: { activity: { id: string; name: string } }[];
 }

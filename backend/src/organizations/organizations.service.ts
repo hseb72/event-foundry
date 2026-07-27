@@ -174,6 +174,38 @@ export class OrganizationsService {
     return this.repository.generalInfo(organizationId);
   }
 
+  /**
+   * Déclare (ou retire, `organizerId=null`) la fiche Organizer du référentiel que l'organisation
+   * représente (FSPEC.22 §16). Réservé au Owner/Administrator. Auto-déclaré (non vérifié) et **unique**
+   * : une fiche déjà revendiquée par une autre organisation est refusée. N'accorde aucun droit sur les
+   * événements privés (ESUB-011).
+   */
+  async setOrganizerLink(
+    userId: string,
+    organizationId: string,
+    organizerId: string | null,
+  ): Promise<void> {
+    await this.assertCanManage(userId, organizationId);
+    if (organizerId) {
+      const claimed = await this.repository.findByOrganizerId(organizerId);
+      if (claimed && claimed.id !== organizationId) {
+        throw new ConflictException('Cette fiche organisateur est déjà revendiquée par une autre organisation.');
+      }
+    }
+    await this.repository.setOrganizerLink(organizationId, organizerId);
+    await this.audit.record('organization.organizer_linked', userId, { organizationId, organizerId });
+  }
+
+  /** L'organisation déclarant représenter une fiche Organizer donnée (FSPEC.22 §16), ou null. */
+  linkedOrganization(organizerId: string): Promise<{ id: string; name: string } | null> {
+    return this.repository.findByOrganizerId(organizerId);
+  }
+
+  /** Identifiants des membres d'une organisation (destinataires d'une notification §16). */
+  memberIds(organizationId: string): Promise<string[]> {
+    return this.repository.memberUserIds(organizationId);
+  }
+
   /** Déclare les activités couvertes (Owner/Administrator). Remplace la liste (validation explicite). */
   async setCoveredActivities(userId: string, organizationId: string, activityIds: string[]): Promise<void> {
     await this.assertCanManage(userId, organizationId);

@@ -98,6 +98,20 @@ import { ActivityDto } from '../../core/models';
               @if (canManage(org)) {
                 <div><button class="btn btn-sm" (click)="saveActivities(org)">Enregistrer les activités</button></div>
               }
+
+              <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Fiche organisateur représentée</h3>
+              <p class="muted" style="margin:0">
+                Déclarez la fiche organisateur du référentiel que représente votre organisation : les
+                utilisateurs qui enregistrent un événement privé vous mentionnant pourront vous en informer (FSPEC.22 §16).
+              </p>
+              <div class="row">
+                <select class="input" [ngModel]="gi.organizerId ?? ''" (ngModelChange)="linkOrganizer(org, $event)" [disabled]="!canManage(org)">
+                  <option value="">— Aucune —</option>
+                  @for (o of organizers(); track o.id) {
+                    <option [value]="o.id">{{ o.name }}</option>
+                  }
+                </select>
+              </div>
             </div>
           }
 
@@ -185,6 +199,7 @@ export class OrganizationsComponent implements OnInit {
   readonly info = signal<OrganizationGeneralInfo | null>(null);
   readonly activities = signal<ActivityDto[]>([]);
   readonly selected = signal<Set<string>>(new Set());
+  readonly organizers = signal<{ id: string; name: string }[]>([]);
 
   readonly orgs = signal<MyOrganization[]>([]);
   readonly members = signal<OrganizationMember[] | null>(null);
@@ -348,6 +363,9 @@ export class OrganizationsComponent implements OnInit {
     if (this.activities().length === 0) {
       this.refData.activities().subscribe((list) => this.activities.set(list));
     }
+    if (this.organizers().length === 0) {
+      this.refData.organizers().subscribe((list) => this.organizers.set(list));
+    }
     this.api.generalInfo(org.id).subscribe({
       next: (gi) => {
         this.info.set(gi);
@@ -361,6 +379,18 @@ export class OrganizationsComponent implements OnInit {
     const next = new Set(this.selected());
     next.has(id) ? next.delete(id) : next.add(id);
     this.selected.set(next);
+  }
+
+  /** Déclare (ou retire, valeur vide) la fiche Organizer représentée par l'organisation (§16). */
+  linkOrganizer(org: MyOrganization, organizerId: string): void {
+    const value = organizerId || null;
+    this.api.setOrganizerLink(org.id, value).subscribe({
+      next: () => {
+        this.info.update((gi) => (gi ? { ...gi, organizerId: value } : gi));
+        this.message.set('✅ Fiche organisateur mise à jour.');
+      },
+      error: (err) => this.message.set(err?.error?.message ?? 'Mise à jour impossible.'),
+    });
   }
 
   saveGeneral(org: MyOrganization, gi: OrganizationGeneralInfo): void {

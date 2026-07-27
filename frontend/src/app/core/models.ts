@@ -138,6 +138,8 @@ export interface EventDto {
   price: number | null;
   currency: string | null;
   participation: ParticipationState | null;
+  /** Vrai si cet événement privé mentionne un organisateur enregistré, notifiable (FSPEC.22 §16). */
+  canNotifyOrganizer?: boolean;
 }
 
 export interface PaginatedEvents {

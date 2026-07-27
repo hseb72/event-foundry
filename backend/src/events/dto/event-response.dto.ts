@@ -102,4 +102,10 @@ export class EventResponseDto {
     description: "Participation de l'utilisateur courant (null si aucune ou non contextualisé).",
   })
   participation!: ParticipationStateDto | null;
+
+  @ApiPropertyOptional({
+    description:
+      "Vrai si l'événement privé mentionne un organisateur enregistré, notifiable par le créateur (FSPEC.22 §16).",
+  })
+  canNotifyOrganizer?: boolean;
 }

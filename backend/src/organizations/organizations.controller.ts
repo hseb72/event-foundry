@@ -20,6 +20,7 @@ import {
   CreateOrganizationDto,
   InviteMemberDto,
   SetCoveredActivitiesDto,
+  SetOrganizerLinkDto,
   TransferOwnershipDto,
   UpdateGeneralInfoDto,
 } from './dto/organization.dto';
@@ -85,6 +86,18 @@ export class OrganizationsController {
     @Body() dto: SetCoveredActivitiesDto,
   ): Promise<{ updated: boolean }> {
     await this.service.setCoveredActivities(user.userId, id, dto.activityIds);
+    return { updated: true };
+  }
+
+  @Put(':id/organizer-link')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Fiche Organizer représentée déclarée/retirée (FSPEC.22 §16).' })
+  async setOrganizerLink(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetOrganizerLinkDto,
+  ): Promise<{ updated: boolean }> {
+    await this.service.setOrganizerLink(user.userId, id, dto.organizerId ?? null);
     return { updated: true };
   }
 
