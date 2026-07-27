@@ -1,3 +1,6 @@
 
 # Redis dump (dev)
 *.rdb
+
+# Cache local des dumps GeoNames téléchargés (import-geonames.ts)
+scripts/.cache/

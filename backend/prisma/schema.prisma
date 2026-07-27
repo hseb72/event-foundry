@@ -732,6 +732,8 @@ model Country {
 model Region {
   id             String         @id @default(uuid()) @db.Uuid
   name           String
+  /// Code administratif de niveau 1 (ex. GeoNames admin code1). Optionnel, alimenté à l'ingestion.
+  code           String?
   countryId      String         @map("country_id") @db.Uuid
   isActive       Boolean        @default(true) @map("is_active")
   country        Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
@@ -744,11 +746,17 @@ model Region {
   @@map("regions")
 }
 
+/// Commune (TSPEC.03). Référentiel **local**, alimenté par une ingestion GeoNames batch (script
+/// `import-geonames.ts`) : le runtime n'appelle jamais GeoNames (résilience). Une commune peut porter
+/// plusieurs codes postaux (GeoNames) → une ligne par (region, name, postalCode). `latitude`/
+/// `longitude` proviennent de GeoNames (RG-LOC ; géoloc « à la Une »).
 model Municipality {
   id           String                @id @default(uuid()) @db.Uuid
   name         String
   regionId     String                @map("region_id") @db.Uuid
   postalCode   String?               @map("postal_code")
+  latitude     Float?
+  longitude    Float?
   isActive     Boolean               @default(true) @map("is_active")
   region       Region                @relation(fields: [regionId], references: [id], onDelete: Restrict)
   createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -756,7 +764,7 @@ model Municipality {
   events       Event[]
   orgAddresses OrganizationAddress[]
 
-  @@unique([regionId, name])
+  @@unique([regionId, name, postalCode])
   @@index([regionId])
   @@index([postalCode])
   @@map("municipalities")

@@ -67,6 +67,10 @@ model Municipality {
 - **Région dérivée** : obtenue via `Municipality.region` ; jamais stockée ailleurs (RG-LOC-02).
 - Un même `postalCode` peut correspondre à **plusieurs** communes (RG-LOC-03) → la résolution renvoie
   une **liste**.
+- Symétriquement, une même **commune** peut porter **plusieurs codes postaux** (source GeoNames) :
+  l'unicité est donc `(region, name, postal_code)` — une ligne par (commune, code postal).
+- `latitude` / `longitude` proviennent de GeoNames (géoloc « à la Une »). `Region.code` porte le code
+  administratif de niveau 1 (GeoNames admin code1).
 
 > **[à trancher — si option B]** rétrograder `Region` en attribut `Municipality.regionName` supposerait
 > une migration de données et la réécriture des rapprochements. Non retenu par défaut.
@@ -102,10 +106,34 @@ interface LocalizationService {
 
 ---
 
+# Alimentation du référentiel (GeoNames)
+
+Le référentiel des communes est **local** et alimenté par une **ingestion batch depuis GeoNames**
+(jeu de données *codes postaux* : `download.geonames.org/export/zip/{CC}.zip`). Objectif :
+**aucune dépendance runtime à GeoNames** — une fois importées, les communes vivent dans PostgreSQL
+et la résolution « pays + code postal → commune(s) » est purement locale (résilience à une
+indisponibilité de GeoNames).
+
+- **Script** : `backend/scripts/import-geonames.ts` (npm `geonames:import`). Sources acceptées :
+  fichier local déjà téléchargé (`--file FR.txt|.zip|.gz`, 100 % hors ligne) **ou** téléchargement
+  (`--country FR --download`). Le téléchargement est mis en cache local (`scripts/.cache/`, ignoré par git).
+- **Mapping GeoNames → modèle** : `country code` → `Country` ; `admin name1`/`admin code1` → `Region`
+  (`name`/`code`) ; `place name` + `postal code` + `latitude`/`longitude` → `Municipality`.
+- **Idempotent** : insertion en lot avec `skipDuplicates` sur `(region, name, postal_code)` ; une
+  ré-exécution n'ajoute que les nouveautés et **conserve** l'existant.
+- **Résilience** : en cas d'échec réseau du téléchargement, le script s'arrête **sans rien supprimer** ;
+  le référentiel déjà présent reste servi.
+- **Périodicité** : traitement d'exploitation (initialisation, puis rafraîchissement occasionnel) —
+  jamais dans le chemin d'une requête utilisateur.
+
+---
+
 # Migration
 
-- Migration Prisma additive : **ajout de l'index** `postal_code` ; aucune donnée détruite.
-- Les données géographiques existantes (V2) sont conservées ; `seed.ts` reste la source du référentiel
+- Migration Prisma additive : **index** `postal_code`, colonnes `latitude`/`longitude` et `Region.code`,
+  unicité élargie à `(region, name, postal_code)` ; aucune donnée détruite.
+- Les données géographiques existantes (V2) sont conservées. **GeoNames est la source** du référentiel
+  des communes (ingestion batch ci-dessus) ; `seed.ts` ne fournit plus qu'un **amorçage minimal de dev**
   (aucune donnée fonctionnelle).
 - Les formulaires migrent de la cascade 3 sélecteurs vers **pays + code postal** (impact Frontend,
   UISPEC.03) — le contrat de stockage (`municipalityId`) est inchangé.
@@ -143,3 +171,4 @@ interface LocalizationService {
 | Version | Description |
 |----------|-------------|
 | 3.0 | Première spécification technique de la localisation par pays + code postal (index, région dérivée, intégration adresses/import/recherche). |
+| 3.1 | Référentiel des communes alimenté par ingestion **GeoNames** (batch, local, résilient) ; `latitude`/`longitude`, `Region.code`, unicité `(region, name, postal_code)`. |

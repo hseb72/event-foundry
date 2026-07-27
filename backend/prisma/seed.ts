@@ -537,9 +537,10 @@ async function seedGeography(): Promise<void> {
       create: { name: region.name, countryId: country.id },
     });
     for (const [city, postalCode] of region.cities) {
+      // Unicité (region, name, postalCode) : une commune peut porter plusieurs codes postaux (GeoNames).
       await prisma.municipality.upsert({
-        where: { regionId_name: { regionId: created.id, name: city } },
-        update: { postalCode },
+        where: { regionId_name_postalCode: { regionId: created.id, name: city, postalCode } },
+        update: {},
         create: { name: city, regionId: created.id, postalCode },
       });
     }
