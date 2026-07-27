@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StatsApi } from '../../core/api/stats.service';
-import { ImportStatsDto, PlatformOverviewDto } from '../../core/models';
+import { PlatformConfigApi } from '../../core/api/platform-config.service';
+import { AiCallStats, ImportStatsDto, PlatformOverviewDto } from '../../core/models';
 
 const EVENT_STATUS_LABELS: [string, string][] = [
   ['DRAFT', 'Brouillons'],
@@ -131,6 +132,37 @@ const SOURCE_LABELS: [string, string][] = [
       .muted {
         color: var(--muted);
       }
+      table.stats {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.82rem;
+      }
+      table.stats th,
+      table.stats td {
+        text-align: left;
+        padding: 0.35rem 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+      table.stats td.num,
+      table.stats th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .fail {
+        color: #d33;
+        font-weight: 600;
+      }
+      .refresh {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 1.5rem 0 0.25rem;
+      }
+      .refresh h2 {
+        margin: 0;
+        font-size: 1.05rem;
+      }
     `,
   ],
   template: `
@@ -255,6 +287,68 @@ const SOURCE_LABELS: [string, string][] = [
         </div>
       </div>
     }
+
+    <div class="refresh">
+      <h2>Appels IA <span class="muted">(observabilité)</span></h2>
+      <button class="btn" (click)="loadAiStats()">Rafraîchir</button>
+    </div>
+    <p class="muted">Métadonnées uniquement (volumes, durées, échecs). Aucun contenu ni clé (RG-AI-04).</p>
+
+    @if (aiStats; as s) {
+      <div class="tiles">
+        <div class="card tile">
+          <div class="value">{{ s.total }}</div>
+          <div class="caption">Appels tracés</div>
+        </div>
+        <div class="card tile">
+          <div class="value">{{ s.failures }}</div>
+          <div class="caption">Échecs</div>
+        </div>
+        <div class="card tile">
+          <div class="value">{{ (s.failureRate * 100).toFixed(1) }}%</div>
+          <div class="caption">Taux d'échec</div>
+        </div>
+      </div>
+      @if (s.total > 0) {
+        <div class="grid">
+          <div class="card">
+            <h3>Par fournisseur</h3>
+            <table class="stats">
+              <thead><tr><th>Fournisseur</th><th class="num">Appels</th><th class="num">Échecs</th><th class="num">Durée moy.</th></tr></thead>
+              <tbody>
+                @for (p of s.byProvider; track p.provider) {
+                  <tr>
+                    <td>{{ p.provider }}</td>
+                    <td class="num">{{ p.total }}</td>
+                    <td class="num" [class.fail]="p.failures > 0">{{ p.failures }}</td>
+                    <td class="num">{{ p.avgDurationMs }} ms</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <h3>Par cas d'usage</h3>
+            <table class="stats">
+              <thead><tr><th>Cas d'usage</th><th class="num">Appels</th><th class="num">Échecs</th></tr></thead>
+              <tbody>
+                @for (u of s.byUseCase; track u.useCase) {
+                  <tr>
+                    <td>{{ u.useCase }}</td>
+                    <td class="num">{{ u.total }}</td>
+                    <td class="num" [class.fail]="u.failures > 0">{{ u.failures }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      } @else {
+        <p class="muted" style="font-size:0.82rem">Aucun appel IA tracé pour l'instant.</p>
+      }
+    } @else {
+      <p class="muted" style="font-size:0.82rem">Chargement…</p>
+    }
   `,
 })
 export class DashboardComponent implements OnInit {
@@ -272,9 +366,16 @@ export class DashboardComponent implements OnInit {
   candidateMax = 1;
   sourceMax = 1;
 
-  constructor(private readonly api: StatsApi) {}
+  /** Observabilité des appels IA (RG-AI-04) : monitoring, distinct de la configuration. */
+  aiStats: AiCallStats | null = null;
+
+  constructor(
+    private readonly api: StatsApi,
+    private readonly platformConfig: PlatformConfigApi,
+  ) {}
 
   ngOnInit(): void {
+    this.loadAiStats();
     this.api.overview().subscribe({
       next: (overview) => {
         this.overview = overview;
@@ -296,6 +397,10 @@ export class DashboardComponent implements OnInit {
       },
       error: () => (this.loading = false),
     });
+  }
+
+  loadAiStats(): void {
+    this.platformConfig.aiStats().subscribe((stats) => (this.aiStats = stats));
   }
 
   pct(value: number, max: number): number {
