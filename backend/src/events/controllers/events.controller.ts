@@ -94,6 +94,42 @@ export class EventsController {
     };
   }
 
+  /**
+   * Création manuelle d'un **événement privé personnel** (Explorer — FSPEC.22 §15). Homogénéise
+   * l'entonnoir de soumission Explorer (onglet « Création »). L'événement reste privé, personnel et
+   * non publié ; aucun droit `event.create` requis (action self-service sur ses propres données).
+   */
+  @Post('me/private')
+  @ApiCreatedResponse({ type: EventResponseDto })
+  async createPrivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateEventDto,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.createPrivateManual(dto, user.userId));
+  }
+
+  /** Archive un de mes événements privés (action personnelle — FSPEC.22 §15). */
+  @Post('me/private/:id/archive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: EventResponseDto })
+  async archivePrivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.archivePrivate(id, user.userId));
+  }
+
+  /** Restaure un de mes événements privés archivés (→ brouillon). */
+  @Post('me/private/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: EventResponseDto })
+  async restorePrivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.restorePrivate(id, user.userId));
+  }
+
   /** Fiche d'un Event. Un événement privé n'est lisible que par son créateur (FSPEC.22 §15). */
   @Get(':id')
   @ApiOkResponse({ type: EventResponseDto })

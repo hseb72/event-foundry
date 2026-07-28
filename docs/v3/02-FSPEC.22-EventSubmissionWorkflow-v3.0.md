@@ -278,10 +278,24 @@ Un événement **retient son origine** de façon durable :
   `visibility = PUBLIC`, `organizationId` renseigné ;
 - **organisateur autonome** (sans organisation) : `visibility = PUBLIC`, `organizationId = null`.
 
-Conséquence UX (expérience Explorer) : une **seule** entrée de menu « Mes événements privés » regroupe
-la soumission (box « Nouvelle soumission » repliable), les soumissions en cours, la qualification des
-brouillons et la **liste des événements privés**. Une fois qualifiés, les événements privés
+Conséquence UX (expérience Explorer) : une **seule** entrée de menu « Mes événements privés »,
+**homogène** avec l'entrée Organizer « Nos événements ». Elle regroupe la soumission (box « Nouvelle
+soumission » repliable, mêmes onglets : Documents, Texte, URL — avec le disclaimer authentification —,
+Fichiers structurés et **Création**), le chapitre **Soumissions** (visible seulement s'il reste des
+soumissions en cours d'analyse), le chapitre **Validation** (visible seulement s'il reste des
+brouillons à qualifier) et le chapitre **Mes événements** — tableau trié par colonne et paginé
+(`Date début | Titre | Catégorie | Publication | Archivage`). Une fois qualifiés, les événements privés
 apparaissent **ici**, jamais dans l'expérience Organizer (`organizationId` reste `null`).
+
+Spécificités « privé » du tableau Explorer (la doc prime — ESUB-009) :
+
+- l'onglet **Création** produit un **événement privé** (`visibility = PRIVATE`, `source = MANUAL`,
+  sans organisation), au même titre qu'un brouillon validé ; aucun droit `event.create` n'est requis
+  (action self-service sur ses propres données) ;
+- la colonne **Publication** est un interrupteur **désactivé** : un événement privé n'est jamais publié
+  au catalogue (ESUB-009). Elle n'existe que pour l'homogénéité visuelle avec l'expérience Organizer ;
+- l'**Archivage** (et sa restauration) est une **action personnelle** sur ses propres événements privés
+  (garde de propriété : créateur + `PRIVATE`) ; sans impact catalogue, puisqu'un privé n'y figure jamais.
 
 Symétriquement (expérience Organizer) : une **seule** entrée « Nos événements » regroupe la soumission
 (onglets Documents, Texte, URL, Fichiers structurés, Création), les soumissions en cours d'analyse, la

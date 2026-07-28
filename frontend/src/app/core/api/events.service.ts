@@ -29,6 +29,21 @@ export class EventsApi {
     return this.http.get<PaginatedEvents>(`${API_BASE}/events/me/private`);
   }
 
+  /** Création manuelle d'un événement privé personnel (Explorer — FSPEC.22 §15). */
+  createPrivate(body: CreateEventInput): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/me/private`, body);
+  }
+
+  /** Archive un de mes événements privés (action personnelle). */
+  archivePrivate(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/me/private/${id}/archive`, {});
+  }
+
+  /** Restaure un de mes événements privés archivés. */
+  restorePrivate(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/me/private/${id}/restore`, {});
+  }
+
   calendar(params: Record<string, string>): Observable<EventDto[]> {
     return this.http.get<EventDto[]>(`${API_BASE}/me/calendar`, { params });
   }

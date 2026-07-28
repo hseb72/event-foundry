@@ -170,6 +170,55 @@ export class EventsService {
   }
 
   /**
+   * Création manuelle d'un **événement privé personnel** (expérience Explorer — FSPEC.22 §15). Même
+   * saisie que la création Organizer, mais l'événement reste `PRIVATE` (visible du seul créateur,
+   * jamais publié — ESUB-009) et sans organisation. Homogénéise l'entonnoir de soumission Explorer.
+   */
+  async createPrivateManual(dto: CreateEventDto, actorId: string): Promise<EventWithRefs> {
+    const data = await this.buildValidatedEventData(dto, EventSource.MANUAL);
+    const event = await this.repository.createWithRefs({
+      ...data,
+      status: EventStatus.DRAFT,
+      visibility: EventVisibility.PRIVATE,
+      createdById: actorId,
+      organizationId: null,
+    });
+    await this.repository.recordStatusEvent(event.id, null, EventStatus.DRAFT, actorId);
+    return event;
+  }
+
+  /**
+   * Archive un **événement privé** de l'utilisateur (action personnelle — FSPEC.22 §15). Garde de
+   * propriété : seul le créateur d'un événement privé peut l'archiver ; sinon il est traité comme
+   * inexistant (on n'en révèle pas l'existence). Aucun impact catalogue (un privé n'y figure jamais).
+   */
+  async archivePrivate(id: string, userId: string): Promise<EventWithRefs> {
+    const event = await this.assertOwnPrivate(id, userId);
+    if (event.status === EventStatus.ARCHIVED) {
+      return event;
+    }
+    return this.repository.applyTransition(id, event.status, EventStatus.ARCHIVED, userId);
+  }
+
+  /** Restaure un événement privé archivé (→ DRAFT). Même garde de propriété que l'archivage. */
+  async restorePrivate(id: string, userId: string): Promise<EventWithRefs> {
+    const event = await this.assertOwnPrivate(id, userId);
+    if (event.status !== EventStatus.ARCHIVED) {
+      return event;
+    }
+    return this.repository.applyTransition(id, event.status, EventStatus.DRAFT, userId);
+  }
+
+  /** Garde de propriété d'un événement privé : existe, PRIVATE, et créé par l'utilisateur. */
+  private async assertOwnPrivate(id: string, userId: string): Promise<EventWithRefs> {
+    const event = await this.getOrThrow(id);
+    if (event.visibility !== EventVisibility.PRIVATE || event.createdById !== userId) {
+      throw new EventNotFoundException(id);
+    }
+    return event;
+  }
+
+  /**
    * Correction d'un Event (FSPEC.13 « Modifié » / TSPEC.05 Update Publication). Permet à
    * l'organisateur de corriger une erreur (ex. dates incohérentes) sans repartir de zéro. Seuls les
    * brouillons et événements soumis sont éditables ; un événement publié doit d'abord être dépublié.
