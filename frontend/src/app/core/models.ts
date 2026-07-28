@@ -131,6 +131,8 @@ export interface EventDto {
   region: string | null;
   country: string | null;
   tags: string[];
+  subjects: string[];
+  modalities: string[];
   media: EventMediaDto[];
   city: string | null;
   startsAt: string;
@@ -421,6 +423,8 @@ export interface EventEditValue {
   regionId: string | null;
   municipalityId: string | null;
   tagIds: string[];
+  subjectIds: string[];
+  modalityIds: string[];
   title: string;
   description: string | null;
   startsAt: string;
@@ -438,12 +442,22 @@ export interface CreateEventInput {
   venueId?: string;
   municipalityId?: string;
   tagIds?: string[];
+  subjectIds?: string[];
+  modalityIds?: string[];
   title: string;
   description?: string;
   startsAt: string;
   endsAt?: string;
   price?: number;
   currency?: string;
+}
+
+/** Axe C — dimension de modalité avec ses termes (DATA.01 v2.0). */
+export interface ModalityDimensionDto {
+  id: string;
+  name: string;
+  isActive: boolean;
+  modalities: ReferentialItem[];
 }
 
 /** Vision globale de l'état de la plateforme (tableau de bord Operator — OPE-001). */

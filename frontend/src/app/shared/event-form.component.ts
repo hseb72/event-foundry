@@ -7,6 +7,7 @@ import {
   CreateEventInput,
   EventDraft,
   EventEditValue,
+  ModalityDimensionDto,
   MunicipalityGeo,
   OrganizationAddress,
   ReferentialItem,
@@ -247,6 +248,38 @@ import {
         </div>
       </div>
 
+      @if (model.activityId && subjects.length) {
+        <div>
+          <label>Sujets <span class="muted">(le jeu / le genre / la discipline — plusieurs possibles)</span></label>
+          <select class="select" multiple [(ngModel)]="model.subjectIds" name="subjectIds">
+            @for (s of subjects; track s.id) {
+              <option [value]="s.id">{{ s.name }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (modalityDimensions.length) {
+        <div>
+          <label>Modalités <span class="muted">(par dimension)</span></label>
+          @for (dim of modalityDimensions; track dim.id) {
+            @if (dim.modalities.length) {
+              <div style="margin-bottom:0.4rem">
+                <span class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
+                <div class="tags">
+                  @for (m of dim.modalities; track m.id) {
+                    <button type="button" class="tag-chip" [class.on]="model.modalityIds.includes(m.id)"
+                            (click)="toggleModality(m.id)">
+                      {{ m.name }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+
       @if (orgAddresses.length) {
         <div>
           <label>Adresses de l'organisation</label>
@@ -368,6 +401,9 @@ export class EventFormComponent implements OnInit {
   venues: ReferentialItem[] = [];
   categories: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
+  // DATA.01 v2.0 — Axe A (sujets, dépendent de l'activité) + Axe C (modalités groupées par dimension).
+  subjects: ReferentialItem[] = [];
+  modalityDimensions: ModalityDimensionDto[] = [];
   countries: ReferentialItem[] = [];
   // Localisation V3 (chantier §8.1) : sélection par pays + code postal, région dérivée.
   postalCode = '';
@@ -404,6 +440,8 @@ export class EventFormComponent implements OnInit {
     countryId: '',
     municipalityId: '',
     tagIds: [] as string[],
+    subjectIds: [] as string[],
+    modalityIds: [] as string[],
     startsAt: '',
     endsAt: '',
     price: null as number | null,
@@ -449,6 +487,8 @@ export class EventFormComponent implements OnInit {
       this.applyDraftEventFormat();
     });
     this.referenceData.tags().subscribe((items) => (this.tags = items));
+    // Modalités (Axe C) : référentiel transverse, chargé une fois, groupé par dimension.
+    this.referenceData.modalityDimensions().subscribe((items) => (this.modalityDimensions = items));
     this.referenceData.countries().subscribe((items) => (this.countries = items));
     this.referenceData.activities().subscribe((items) => {
       this.activities = items;
@@ -476,6 +516,7 @@ export class EventFormComponent implements OnInit {
     this.model.organizerId = value.organizerId ?? '';
     this.model.venueId = value.venueId ?? '';
     this.model.tagIds = [...value.tagIds];
+    this.model.modalityIds = [...(value.modalityIds ?? [])];
     this.model.startsAt = toLocalInput(value.startsAt);
     this.model.endsAt = value.endsAt ? toLocalInput(value.endsAt) : '';
     this.model.price = value.price;
@@ -485,6 +526,10 @@ export class EventFormComponent implements OnInit {
       this.referenceData.eventTypes(value.activityId).subscribe((items) => {
         this.eventTypes = items;
         this.model.eventTypeId = value.eventTypeId ?? '';
+      });
+      this.referenceData.subjects(value.activityId).subscribe((items) => {
+        this.subjects = items;
+        this.model.subjectIds = [...(value.subjectIds ?? [])];
       });
     }
     // Préremplissage de la localisation (édition) : la commune connue → pays + code postal +
@@ -574,9 +619,12 @@ export class EventFormComponent implements OnInit {
   }
 
   onActivityChange(): void {
-    // Le Type dépend de l'activité ; le Format est transverse (rechargé au chargement du formulaire).
+    // Le Type dépend de l'activité ; le Format/les modalités sont transverses. Les sujets (Axe A)
+    // dépendent de l'activité : on recharge et on réinitialise la sélection.
     this.eventTypes = [];
     this.model.eventTypeId = '';
+    this.subjects = [];
+    this.model.subjectIds = [];
     if (!this.model.activityId) {
       return;
     }
@@ -584,6 +632,16 @@ export class EventFormComponent implements OnInit {
       this.eventTypes = items;
       this.applyDraftEventType();
     });
+    this.referenceData.subjects(this.model.activityId).subscribe((items) => (this.subjects = items));
+  }
+
+  toggleModality(id: string): void {
+    const index = this.model.modalityIds.indexOf(id);
+    if (index >= 0) {
+      this.model.modalityIds.splice(index, 1);
+    } else {
+      this.model.modalityIds.push(id);
+    }
   }
 
   submit(): void {
@@ -605,6 +663,8 @@ export class EventFormComponent implements OnInit {
     if (this.model.venueId) input.venueId = this.model.venueId;
     if (this.model.municipalityId) input.municipalityId = this.model.municipalityId;
     if (this.model.tagIds.length) input.tagIds = [...this.model.tagIds];
+    if (this.model.subjectIds.length) input.subjectIds = [...this.model.subjectIds];
+    if (this.model.modalityIds.length) input.modalityIds = [...this.model.modalityIds];
     if (this.model.description.trim()) input.description = this.model.description.trim();
     if (this.model.endsAt) input.endsAt = toIso(this.model.endsAt);
     if (this.model.price != null && !Number.isNaN(this.model.price) && this.model.price > 0) {

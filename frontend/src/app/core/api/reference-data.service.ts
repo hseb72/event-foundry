@@ -2,7 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import { ActivityDto, MunicipalityGeo, ProvisionalEntry, ProvisionalType, ReferentialItem } from '../models';
+import {
+  ActivityDto,
+  ModalityDimensionDto,
+  MunicipalityGeo,
+  ProvisionalEntry,
+  ProvisionalType,
+  ReferentialItem,
+} from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ReferenceDataApi {
@@ -83,6 +90,18 @@ export class ReferenceDataApi {
 
   tags(): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/tags`);
+  }
+
+  /** Sujets (Axe A — DATA.01 v2.0), filtrables par activité (via la Family parente). */
+  subjects(activityId?: string): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/subjects`, {
+      params: activityId ? { activityId } : {},
+    });
+  }
+
+  /** Dimensions de modalités avec leurs termes (Axe C — DATA.01 v2.0). */
+  modalityDimensions(): Observable<ModalityDimensionDto[]> {
+    return this.http.get<ModalityDimensionDto[]>(`${API_BASE}/modality-dimensions`);
   }
 
   countries(): Observable<ReferentialItem[]> {
