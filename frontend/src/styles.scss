@@ -44,9 +44,22 @@
   --green: #16a34a;
   --red: #dc2626;
 
-  --radius: 14px;
-  --shadow: 0 6px 20px rgba(30, 35, 51, 0.06);
-  --shadow-sm: 0 2px 8px rgba(30, 35, 51, 0.05);
+  /* Marque festive (UISPEC.13) : dégradé signature orange → rose → violet → indigo, décliné
+     du logo. Utilisé sur les surfaces sans contexte d'expérience (vitrine, auth, accents). */
+  --brand-1: #f97316;
+  --brand-2: #ec4899;
+  --brand-3: #8b5cf6;
+  --brand-4: #6366f1;
+  --brand: #7c3aed;
+  --brand-strong: #6d28d9;
+  --brand-gradient: linear-gradient(120deg, var(--brand-1) 0%, var(--brand-2) 38%, var(--brand-3) 70%, var(--brand-4) 100%);
+  --brand-gradient-soft: linear-gradient(120deg, rgba(249, 115, 22, 0.14), rgba(139, 92, 246, 0.14) 60%, rgba(99, 102, 241, 0.14));
+
+  --radius: 16px;
+  --radius-lg: 22px;
+  --shadow: 0 12px 34px rgba(30, 35, 51, 0.09);
+  --shadow-sm: 0 3px 12px rgba(30, 35, 51, 0.06);
+  --shadow-brand: 0 12px 30px rgba(124, 58, 237, 0.28);
 }
 
 /* La couleur SUIT l'expérience active : posée par le layout via [data-exp] (ADR.22 / RG-VIS-03). */
@@ -75,8 +88,9 @@
   --border: #313543;
   --text: #eceef5;
   --muted: #9aa0b4;
-  --shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 3px 12px rgba(0, 0, 0, 0.38);
+  --brand-gradient-soft: linear-gradient(120deg, rgba(249, 115, 22, 0.2), rgba(139, 92, 246, 0.2) 60%, rgba(99, 102, 241, 0.2));
 }
 
 * {
@@ -110,28 +124,68 @@ button {
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   border-radius: 999px;
-  padding: 0.45rem 0.9rem;
+  padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  transition: all 0.15s ease;
+  font-weight: 600;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .btn:hover {
   border-color: var(--exp);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn-primary {
   background: var(--exp);
-  border-color: var(--exp);
+  border-color: transparent;
   color: var(--exp-contrast);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--exp) 32%, transparent);
 }
 
 .btn-primary:hover {
   background: var(--exp-strong);
-  border-color: var(--exp-strong);
+  border-color: transparent;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--exp) 42%, transparent);
+}
+
+/* Bouton signature : dégradé de marque (vitrine / auth / accents festifs, hors contexte d'expérience). */
+.btn-brand {
+  background: var(--brand-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-brand);
+}
+
+.btn-brand:hover {
+  border-color: transparent;
+  filter: brightness(1.05);
+  box-shadow: 0 16px 34px rgba(124, 58, 237, 0.36);
+}
+
+.btn-lg {
+  padding: 0.75rem 1.4rem;
+  font-size: 1rem;
+}
+
+.btn-sm {
+  padding: 0.32rem 0.7rem;
+  font-size: 0.82rem;
 }
 
 .btn.active {
@@ -151,12 +205,22 @@ button {
 .input,
 .select {
   width: 100%;
-  padding: 0.55rem 0.75rem;
+  padding: 0.6rem 0.8rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
   color: var(--text);
   font: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--exp);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--exp) 18%, transparent);
 }
 
 .tag {
@@ -165,6 +229,14 @@ button {
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 600;
+}
+
+/* Texte en dégradé de marque (titres festifs de la vitrine). */
+.brand-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .muted {

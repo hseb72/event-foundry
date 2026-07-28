@@ -7,6 +7,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { ThemeService } from '../core/theme.service';
 import { Experience } from '../core/models';
 import { toInitials } from '../shared/initials';
+import { LogoComponent } from '../shared/logo.component';
 
 interface ExperienceMeta {
   key: Experience;
@@ -59,7 +60,7 @@ const NAV: NavItem[] = [
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, LogoComponent],
   styles: [
     `
       .onboarding {
@@ -96,9 +97,9 @@ const NAV: NavItem[] = [
         overflow-y: auto;
       }
       .brand {
-        font-weight: 800;
-        font-size: 1.25rem;
-        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        --logo-word-size: 1.15rem;
       }
       .switcher {
         display: flex;
@@ -285,7 +286,9 @@ const NAV: NavItem[] = [
   template: `
     <div class="layout" [attr.data-exp]="activeExperience()">
       <aside class="sidebar">
-        <div class="brand">EventFoundry</div>
+        <a class="brand" routerLink="/home" aria-label="EventFoundry — accueil">
+          <app-logo [size]="30" [onDark]="true" />
+        </a>
 
         @if (visibleExperiences().length > 1) {
           <div class="switcher" role="tablist" aria-label="Expérience active">

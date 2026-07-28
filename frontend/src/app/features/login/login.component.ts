@@ -2,31 +2,48 @@ import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { LogoComponent } from '../../shared/logo.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, LogoComponent],
   styles: [
     `
       .wrap {
+        position: relative;
         min-height: 100vh;
         display: grid;
         place-items: center;
-        background: linear-gradient(135deg, #2a1b3d, #db2777);
+        overflow: hidden;
+        background: var(--brand-gradient);
         padding: 1rem;
       }
+      /* Voile festif : halos lumineux au-dessus du dégradé de marque. */
+      .wrap::before,
+      .wrap::after {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(70px);
+        opacity: 0.5;
+      }
+      .wrap::before { width: 360px; height: 360px; background: #f97316; top: -120px; left: -80px; }
+      .wrap::after { width: 320px; height: 320px; background: #6366f1; bottom: -100px; right: -60px; }
       .box {
+        position: relative;
+        z-index: 1;
         width: 100%;
-        max-width: 380px;
+        max-width: 400px;
         display: grid;
         gap: 0.9rem;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow);
       }
       .brand {
-        font-size: 1.6rem;
-        font-weight: 800;
-        text-align: center;
-        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: center;
+        margin-bottom: 0.4rem;
       }
       .error {
         color: var(--red);
@@ -41,7 +58,7 @@ import { AuthService } from '../../core/auth/auth.service';
   template: `
     <div class="wrap">
       <form class="card box" (ngSubmit)="submit()">
-        <div class="brand">EventFoundry</div>
+        <div class="brand"><app-logo [size]="34" /></div>
         <label for="email">E-mail</label>
         <input id="email" class="input" type="email" name="email" [(ngModel)]="email" required />
         <label for="password">Mot de passe</label>
@@ -61,7 +78,7 @@ import { AuthService } from '../../core/auth/auth.service';
         @if (error) {
           <div class="error">{{ error }}</div>
         }
-        <button class="btn btn-primary" type="submit" [disabled]="loading">
+        <button class="btn btn-brand" type="submit" [disabled]="loading">
           {{ loading ? 'Connexion…' : mfaRequired ? 'Valider le code' : 'Se connecter' }}
         </button>
         <a routerLink="/forgot-password" style="text-align:center; font-size:0.85rem">
