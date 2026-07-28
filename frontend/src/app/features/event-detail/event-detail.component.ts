@@ -23,30 +23,79 @@ import { participationColor, participationLabel } from '../../shared/participati
         margin-bottom: 1rem;
         color: var(--muted);
       }
+      /* Fiche sans padding : la couverture est pleine largeur, le contenu vit dans .body. */
       .head {
-        border-left: 6px solid var(--stripe, transparent);
-        padding-left: 1rem;
+        padding: 0;
+        overflow: hidden;
       }
-      h1 {
-        margin-bottom: 0.25rem;
+      /* Bandeau de couverture festif : image de l'événement, sinon dégradé de repli déterministe. */
+      .cover {
+        position: relative;
+        height: 210px;
+        background-size: cover;
+        background-position: center;
+      }
+      .cover::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.55));
+      }
+      .cover .top {
+        position: absolute;
+        top: 0.8rem;
+        left: 0.9rem;
+        right: 0.9rem;
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        z-index: 1;
+      }
+      .cover .bottom {
+        position: absolute;
+        left: 1.1rem;
+        right: 1.1rem;
+        bottom: 0.9rem;
+        z-index: 1;
+      }
+      .cover h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.7rem;
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+      }
+      .cover .sub {
+        color: rgba(255, 255, 255, 0.92);
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+      }
+      /* Filet de participation (remplace l'ancienne bordure gauche) — palette planning. */
+      .filet {
+        height: 5px;
+        background: var(--stripe, transparent);
+      }
+      .body {
+        padding: 1.1rem 1.25rem 1.35rem;
       }
       .badge {
         display: inline-block;
         font-size: 0.7rem;
         font-weight: 700;
-        padding: 0.1rem 0.5rem;
+        padding: 0.15rem 0.55rem;
         border-radius: 999px;
-        background: rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.92);
+        color: #1f2333;
         vertical-align: middle;
-        margin-left: 0.5rem;
+        backdrop-filter: blur(4px);
       }
       .badge.archived {
-        background: rgba(220, 38, 38, 0.14);
-        color: var(--red);
+        background: rgba(220, 38, 38, 0.92);
+        color: #fff;
       }
       .badge.private {
-        background: rgba(37, 99, 235, 0.14);
-        color: var(--exp, #2563eb);
+        background: rgba(37, 99, 235, 0.92);
+        color: #fff;
       }
       .notify-org {
         display: flex;
@@ -207,14 +256,22 @@ import { participationColor, participationLabel } from '../../shared/participati
       <p class="muted">Événement introuvable.</p>
     } @else {
       <div class="head card" [style.--stripe]="color()">
-        <h1>
-          {{ event.title }}
-          <span class="badge">{{ event.source === 'IMPORT' ? 'Importé' : 'Manuel' }}</span>
-          <span class="badge" [class.archived]="event.status === 'ARCHIVED'">{{ statusLabel() }}</span>
-          @if (event.visibility === 'PRIVATE') {
-            <span class="badge private" title="Événement personnel, visible de vous seul">🔒 Privé</span>
-          }
-        </h1>
+        <!-- Bandeau de couverture festif : 1ʳᵉ image de l'événement, sinon dégradé de repli. -->
+        <div class="cover" [style.background]="coverBg()">
+          <div class="top">
+            <span class="badge">{{ event.source === 'IMPORT' ? 'Importé' : 'Manuel' }}</span>
+            <span class="badge" [class.archived]="event.status === 'ARCHIVED'">{{ statusLabel() }}</span>
+            @if (event.visibility === 'PRIVATE') {
+              <span class="badge private" title="Événement personnel, visible de vous seul">🔒 Privé</span>
+            }
+          </div>
+          <div class="bottom">
+            <h1>{{ event.title }}</h1>
+            <div class="sub">{{ coverSub() }}</div>
+          </div>
+        </div>
+        <div class="filet"></div>
+        <div class="body">
 
         @if (event.visibility === 'PRIVATE' && event.canNotifyOrganizer) {
           <div class="notify-org">
@@ -418,6 +475,7 @@ import { participationColor, participationLabel } from '../../shared/participati
             </div>
           }
         </div>
+        </div>
       </div>
     }
   `,
@@ -589,6 +647,44 @@ export class EventDetailComponent implements OnInit {
     this.aiConfigApi.get().subscribe((config) => {
       this.aiEnabled = config?.enabled ? { ...config.useCases } : {};
     });
+  }
+
+  /** Dégradés festifs (déclinés de la marque) pour la couverture d'un événement sans image. */
+  private static readonly PLACEHOLDERS = [
+    'linear-gradient(135deg, #f97316, #ec4899)',
+    'linear-gradient(135deg, #8b5cf6, #6366f1)',
+    'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    'linear-gradient(135deg, #6366f1, #06b6d4)',
+    'linear-gradient(135deg, #f59e0b, #ef4444)',
+  ];
+
+  /** Fond de la couverture : 1ʳᵉ image de l'événement, sinon dégradé festif déterministe (par id). */
+  coverBg(): string {
+    const event = this.event;
+    if (!event) {
+      return EventDetailComponent.PLACEHOLDERS[0];
+    }
+    const image = event.media?.find((m) => m.contentType?.startsWith('image/')) ?? event.media?.[0];
+    if (image) {
+      return `center / cover no-repeat url("${image.url}")`;
+    }
+    let hash = 0;
+    for (const ch of event.id) hash = (hash + ch.charCodeAt(0)) | 0;
+    const list = EventDetailComponent.PLACEHOLDERS;
+    return list[Math.abs(hash) % list.length];
+  }
+
+  /** Sous-titre incrusté sur la couverture : date · activité · type. */
+  coverSub(): string {
+    const event = this.event;
+    if (!event) {
+      return '';
+    }
+    const parts = [formatDateTime(event.startsAt), event.activity];
+    if (event.eventType) {
+      parts.push(event.eventType);
+    }
+    return parts.join(' · ');
   }
 
   color(): string {

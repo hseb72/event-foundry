@@ -77,6 +77,9 @@ dégradé unique par instance (plusieurs logos sur une page). Le favicon reprend
   incrustée sur la couverture ; le prix éventuel en surimpression.
 - Interaction : léger *lift* au survol (ombre `--shadow`). La **pastille de participation** (palette
   planning, UISPEC.12) reste portée par la bordure gauche `--stripe`.
+- **Fiche d'événement** (`event-detail`) : même couverture en **bandeau pleine largeur** (~210 px) avec
+  titre, badges et date/activité **en surimpression** (voile dégradé pour la lisibilité), suivi d'un
+  **filet** de participation coloré. La galerie de gestion des médias reste inchangée en dessous.
 
 ---
 
