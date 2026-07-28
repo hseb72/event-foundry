@@ -15,6 +15,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Experience, PrismaClient, RoleScope } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { seedTaxonomyV2 } from './seed-taxonomy-v2';
 
 /**
  * Lit une variable d'environnement OBLIGATOIRE (aucun secret par défaut codé en dur — ADR.21).
@@ -555,10 +556,12 @@ async function main(): Promise<void> {
   await seedReferenceData();
   await seedGeneralTaxonomy();
   await seedCatalogReferentials();
+  await seedTaxonomyV2(prisma);
   await seedGeography();
   console.log(
     'Seed terminé : permissions + rôles V2 + abonnements + admin + organisation démo + ' +
-      'référentiels TCG + taxonomie généraliste DATA.01 (activités/types/formats/catégories/tags) + géographie FR.',
+      'référentiels TCG + taxonomie généraliste DATA.01 v1.1 + taxonomie v2.0 ' +
+      '(familles/sujets/dimensions/modalités) + géographie FR.',
   );
 }
 
