@@ -343,7 +343,7 @@ model User {
   // MFA (FSPEC.18 §MFA) : secret TOTP (base32) + activation + codes de récupération (hachés).
   mfaSecret              String?                  @map("mfa_secret")
   mfaEnabledAt           DateTime?                @map("mfa_enabled_at") @db.Timestamptz(6)
-  mfaRecoveryCodes       String[]                 @map("mfa_recovery_codes")
+  mfaRecoveryCodes       String[]                 @default([]) @map("mfa_recovery_codes")
   // Soumissions d'import de l'utilisateur (FSPEC.22 §5-6 — « Mes soumissions »).
   importJobs             ImportJob[]              @relation("UserImportJobs")
   createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
