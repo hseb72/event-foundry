@@ -284,7 +284,7 @@ soumission » repliable, mêmes onglets : Documents, Texte, URL — avec le disc
 Fichiers structurés et **Création**), le chapitre **Soumissions** (visible seulement s'il reste des
 soumissions en cours d'analyse), le chapitre **Validation** (visible seulement s'il reste des
 brouillons à qualifier) et le chapitre **Mes événements** — tableau trié par colonne et paginé
-(`Date début | Titre | Catégorie | Publication | Archivage`). Une fois qualifiés, les événements privés
+(`Date début | Titre | Catégorie | Archivage`). Une fois qualifiés, les événements privés
 apparaissent **ici**, jamais dans l'expérience Organizer (`organizationId` reste `null`).
 
 Spécificités « privé » du tableau Explorer (la doc prime — ESUB-009) :
@@ -292,8 +292,8 @@ Spécificités « privé » du tableau Explorer (la doc prime — ESUB-009) :
 - l'onglet **Création** produit un **événement privé** (`visibility = PRIVATE`, `source = MANUAL`,
   sans organisation), au même titre qu'un brouillon validé ; aucun droit `event.create` n'est requis
   (action self-service sur ses propres données) ;
-- la colonne **Publication** est un interrupteur **désactivé** : un événement privé n'est jamais publié
-  au catalogue (ESUB-009). Elle n'existe que pour l'homogénéité visuelle avec l'expérience Organizer ;
+- **aucune colonne « Publication »** : un événement privé n'est jamais publié au catalogue (ESUB-009),
+  l'interrupteur n'aurait aucun sens à cet endroit ;
 - l'**Archivage** (et sa restauration) est une **action personnelle** sur ses propres événements privés
   (garde de propriété : créateur + `PRIVATE`) ; sans impact catalogue, puisqu'un privé n'y figure jamais.
 

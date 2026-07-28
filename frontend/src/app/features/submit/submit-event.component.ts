@@ -66,11 +66,6 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
       th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
       th .arr { color: var(--exp); }
       .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
-      .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
-      .switch input { display: none; }
-      .slider { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: 0.2s; }
-      .slider::before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.2s; }
-      .switch input:disabled + .slider { opacity: 0.45; cursor: not-allowed; }
     `,
   ],
   template: `
@@ -200,7 +195,6 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
                   <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
                   <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
                   <th class="sortable" (click)="sort('category')">Catégorie <span class="arr">{{ arrow('category') }}</span></th>
-                  <th>Publication</th>
                   <th>Archivage</th>
                 </tr>
               </thead>
@@ -210,12 +204,6 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
                     <td>{{ date(e) }}</td>
                     <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
                     <td>{{ categoryOf(e) }}</td>
-                    <td>
-                      <label class="switch" title="Un événement privé n'est jamais publié au catalogue (ESUB-009).">
-                        <input type="checkbox" [checked]="false" disabled />
-                        <span class="slider"></span>
-                      </label>
-                    </td>
                     <td>
                       @if (e.status === 'ARCHIVED') {
                         <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction(e, 'restore')">Restaurer</button>
