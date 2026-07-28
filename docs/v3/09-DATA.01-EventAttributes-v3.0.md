@@ -62,6 +62,11 @@ AXE D — Tags (mots-clés libres, non contrôlés)
 | C | Modality (par ModalityDimension) | Comment / pour qui / conditions ? | Event | 0..N |
 | D | Tag | Mots-clés libres | Event, Venue | 0..N |
 
+> **Axe de navigation/suivi (décision PO — Solution A).** Le **suivi** (Follow), la **recommandation**
+> et les **facettes de recherche** reposent sur l'axe **Subject** (`FollowTargetType.SUBJECT`) : on
+> suit « Magic », « Rock », « Football », pas une modalité. L'ancien axe *Catégorie* (qui remplissait
+> ce rôle en v1.1) est **retiré** avec le Format, tous deux fusionnés dans les **Modalités**.
+
 ---
 
 # 3. Axe A — Sujet (Domain → Activity → Family → Subject)

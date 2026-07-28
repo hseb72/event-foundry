@@ -162,7 +162,8 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
 - Toutes les tables métier : `created_at`, `updated_at` (+ `created_by`/`updated_by` si pertinent).
 - **Suppression logique** :
   - donnée métier (Event) → `deleted_at` (soft delete) ;
-  - référentiels (Domain, Activity, EventType, EventFormat, Organizer, Venue) → `is_active`
+  - référentiels (Domain, Activity, ActivityFamily, Subject, EventType, ModalityDimension,
+    Modality, Organizer, Venue, Tag) → `is_active`
     (aligné sur ARCHI.03 / FSPEC.07 ; cf. TSPEC.02 v1.1).
 - Relations explicites, `RESTRICT` par défaut sur les données métier.
 - Nommage :
@@ -196,11 +197,15 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
   Modality unique global. Ne se substituent jamais aux champs techniques (`price`, `visibility`)
   ni à la Participation (qualificatifs de recherche — TAX-010).
 - **Axe D — Tags** : libres, extensibles, 0..N (Event et Venue).
-- Migration depuis v1.1 (EventType scopé, EventFormat/Category) : cf. DATA.01 §9 (reste à faire
-  tant que schéma + applicatif non déployés).
+- **Suivi/reco/recherche** (Follow, recommandation, facettes) reposent sur l'axe **Subject**
+  (l'ancien axe Catégorie est retiré — Solution A) : `FollowTargetType.SUBJECT`.
+- Format et Catégorie sont **retirés** (fusionnés dans les Modalités) ; EventType est transverse.
+  Migrations DATA.01 §9 appliquées (schéma déployé) : `*_data02_taxonomy`, `*_event_type_transverse`,
+  `*_retire_format_category`.
 
 Entités : `User`, `Attachment`, `ImportJob`, `ImportJobEvent`, `EventCandidate`, `Event`,
-`Domain`, `Activity`, `EventType`, `EventFormat`, `Organizer`, `Venue`, `UserParticipation`.
+`Domain`, `Activity`, `ActivityFamily`, `Subject`, `EventType`, `ModalityDimension`, `Modality`,
+`Organizer`, `Venue`, `Tag`, `UserParticipation`.
 
 - `ImportJobEvent` : journal d'audit des transitions d'état d'un ImportJob (une ligne par
   passage d'état), alimenté par le Backend qui orchestre chaque étape. Base des statistiques
