@@ -35,8 +35,9 @@ export class ReferenceDataApi {
     return this.http.post(`${API_BASE}/activities/${activityId}/aliases`, { value });
   }
 
-  createEventType(name: string, activityId: string): Observable<ReferentialItem> {
-    return this.http.post<ReferentialItem>(`${API_BASE}/event-types`, { name, activityId });
+  /** Type transverse (DATA.01 v2.0) : créé sans rattachement à une Activité. */
+  createEventType(name: string): Observable<ReferentialItem> {
+    return this.http.post<ReferentialItem>(`${API_BASE}/event-types`, { name });
   }
 
   createEventFormat(name: string): Observable<ReferentialItem> {
@@ -65,10 +66,9 @@ export class ReferenceDataApi {
     return this.http.delete<void>(`${API_BASE}/admin/reference/provisional`, { body: { type, id } });
   }
 
-  eventTypes(activityId: string): Observable<ReferentialItem[]> {
-    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-types`, {
-      params: { activityId },
-    });
+  /** Types d'événement : référentiel **transverse** (DATA.01 v2.0), indépendant de l'Activité. */
+  eventTypes(): Observable<ReferentialItem[]> {
+    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-types`);
   }
 
   /** Formats : référentiel transverse (DATA.01 §4), indépendant de l'Activité. */

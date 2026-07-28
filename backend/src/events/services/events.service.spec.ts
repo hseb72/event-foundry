@@ -84,9 +84,9 @@ describe('EventsService', () => {
     await expect(service.buildValidatedEventData(baseDto, EventSource.MANUAL)).rejects.toThrow();
   });
 
-  it('rejette un EventType appartenant à une autre Activity', async () => {
+  it('rejette un EventType inexistant (type transverse — existence seule)', async () => {
     activityRepo.findById.mockResolvedValue({ id: 'a1' });
-    eventTypeRepo.findById.mockResolvedValue({ id: 't1', activityId: 'autre' });
+    eventTypeRepo.findById.mockResolvedValue(null);
     await expect(
       service.buildValidatedEventData(
         { ...baseDto, eventTypeId: 't1' } as CreateEventDto,

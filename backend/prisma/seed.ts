@@ -423,13 +423,7 @@ async function seedReferenceData(): Promise<void> {
     where: { domainId_name: { domainId: tcg.id, name: 'Magic' } },
   });
   if (magic) {
-    for (const name of ['Avant-première', 'Tournoi']) {
-      await prisma.eventType.upsert({
-        where: { activityId_name: { activityId: magic.id, name } },
-        update: {},
-        create: { name, activityId: magic.id },
-      });
-    }
+    // Types désormais transverses (DATA.01 v2.0) : semés globalement par seedGeneralTaxonomy.
     for (const value of ['MTG', 'Magic The Gathering']) {
       await prisma.alias.upsert({
         where: { value },
@@ -497,9 +491,8 @@ async function seedCatalogReferentials(): Promise<void> {
 }
 
 /**
- * Taxonomie généraliste DATA.01 v1.1 : Domain « Général » + 20 Activités et leurs Types.
- * Les EventType sont uniques par Activité (`@@unique([activityId, name])`), un même nom pouvant
- * exister sous plusieurs Activités (TAX-011).
+ * Taxonomie généraliste : Domain « Général » + Activités. Les **Types sont transverses**
+ * (DATA.01 v2.0, TAX-004) : `name` unique global, dédoublonné entre activités.
  */
 async function seedGeneralTaxonomy(): Promise<void> {
   const general = await prisma.domain.upsert({
@@ -508,19 +501,18 @@ async function seedGeneralTaxonomy(): Promise<void> {
     create: { name: 'Général' },
   });
 
-  for (const [activityName, types] of Object.entries(GENERAL_TAXONOMY)) {
-    const activity = await prisma.activity.upsert({
+  for (const activityName of Object.keys(GENERAL_TAXONOMY)) {
+    await prisma.activity.upsert({
       where: { domainId_name: { domainId: general.id, name: activityName } },
       update: {},
       create: { name: activityName, domainId: general.id },
     });
-    for (const typeName of types) {
-      await prisma.eventType.upsert({
-        where: { activityId_name: { activityId: activity.id, name: typeName } },
-        update: {},
-        create: { name: typeName, activityId: activity.id },
-      });
-    }
+  }
+
+  // Types transverses : ensemble dédoublonné de tous les noms (indépendants de l'activité).
+  const typeNames = [...new Set(Object.values(GENERAL_TAXONOMY).flat())];
+  for (const name of typeNames) {
+    await prisma.eventType.upsert({ where: { name }, update: {}, create: { name } });
   }
 }
 

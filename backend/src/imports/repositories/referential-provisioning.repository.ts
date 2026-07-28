@@ -37,13 +37,14 @@ export class ReferentialProvisioningRepository {
     return created.id;
   }
 
-  async resolveOrCreateEventType(label: string, activityId: string): Promise<void> {
+  /** Type **transverse** (DATA.01 v2.0) : résolution/création par nom, sans activité. */
+  async resolveOrCreateEventType(label: string): Promise<void> {
     const existing = await this.prisma.eventType.findFirst({
-      where: { activityId, name: { equals: label, mode: 'insensitive' } },
+      where: { name: { equals: label, mode: 'insensitive' } },
       select: { id: true },
     });
     if (!existing) {
-      await this.prisma.eventType.create({ data: { name: label, activityId, provisional: true } });
+      await this.prisma.eventType.create({ data: { name: label, provisional: true } });
     }
   }
 

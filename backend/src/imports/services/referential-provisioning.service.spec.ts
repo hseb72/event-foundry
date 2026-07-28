@@ -41,21 +41,22 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
     expect(repo.resolveOrCreateActivity).not.toHaveBeenCalled();
   });
 
-  it('provisionne activité (+ type rattaché), format transverse et référentiels indépendants', async () => {
+  it('provisionne activité, type transverse, format transverse et référentiels indépendants', async () => {
     await service.provision(fields, { autoProvisionReferentials: true, provisioningDefaultDomainId: 'dom-1' });
     expect(repo.resolveOrCreateActivity).toHaveBeenCalledWith('Riftbound', 'dom-1');
-    expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi', 'act-1');
+    // Type transverse (DATA.01 v2.0) : provisionné par nom, sans rattachement à l'activité.
+    expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi');
     // Format transverse (DATA.01 §4) : provisionné sans rattachement à l'activité.
     expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');
     expect(repo.resolveOrCreateVenue).toHaveBeenCalledWith('Le Repaire');
   });
 
-  it('n’attache pas le type quand l’activité n’a pu être créée, mais provisionne le format transverse', async () => {
+  it('provisionne le type transverse même sans activité, comme le format', async () => {
     repo.resolveOrCreateActivity.mockResolvedValue(null);
     await service.provision(fields, { autoProvisionReferentials: true, provisioningDefaultDomainId: null });
-    expect(repo.resolveOrCreateEventType).not.toHaveBeenCalled();
-    // Le format est transverse : provisionné indépendamment de l'activité.
+    // Type transverse : provisionné indépendamment de l'activité (DATA.01 v2.0).
+    expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi');
     expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     // Les référentiels indépendants sont tout de même provisionnés.
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');

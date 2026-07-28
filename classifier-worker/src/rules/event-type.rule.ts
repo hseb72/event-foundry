@@ -2,23 +2,19 @@ import { Injectable } from '@nestjs/common';
 import type { ClassificationContext, ClassificationRule } from '../classification-rule.interface';
 import { containsWord } from '../engine/text-utils';
 
-/** Reconnaît l'EventType parmi ceux de l'Activity détectée. */
+/**
+ * Reconnaît l'EventType (nature du rassemblement). **Transverse** (DATA.01 v2.0) : indépendant de
+ * l'Activité détectée — recherché par nom dans tout le référentiel. La correspondance la plus
+ * longue l'emporte (« Avant-première » avant « Première »).
+ */
 @Injectable()
 export class EventTypeRule implements ClassificationRule {
   readonly name = 'EventTypeRule';
 
   async execute(context: ClassificationContext): Promise<void> {
-    const activityName = context.extractedFields.activity;
-    if (!activityName) {
-      return;
-    }
-    const activity = context.reference.activities.find((a) => a.name === activityName);
-    if (!activity) {
-      return;
-    }
     const match = context.reference.eventTypes
-      .filter((type) => type.activityId === activity.id)
-      .find((type) => containsWord(context.normalizedText, type.name));
+      .filter((type) => containsWord(context.normalizedText, type.name))
+      .sort((a, b) => b.name.length - a.name.length)[0];
     if (match) {
       context.extractedFields.eventType = match.name;
       context.confidenceByField.eventType = 0.8;

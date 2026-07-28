@@ -63,17 +63,8 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
     segment: 'event-types',
     label: "Types d'événement",
     singular: "Type d'événement",
-    fields: [
-      NAME,
-      {
-        key: 'activityId',
-        label: 'Activité',
-        type: 'select',
-        required: true,
-        optionsFrom: 'activities',
-        immutableOnEdit: true,
-      },
-    ],
+    // Type transverse (DATA.01 v2.0) : plus de rattachement à une Activité.
+    fields: [NAME],
   },
   {
     segment: 'event-formats',

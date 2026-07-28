@@ -147,9 +147,8 @@ import {
           }
         </div>
         <div>
-          <label>Type d'événement</label>
-          <select class="select" [(ngModel)]="model.eventTypeId" name="eventTypeId"
-                  [disabled]="!model.activityId">
+          <label>Type d'événement <span class="muted">(nature du rassemblement)</span></label>
+          <select class="select" [(ngModel)]="model.eventTypeId" name="eventTypeId">
             <option value="">— aucun —</option>
             @for (t of eventTypes; track t.id) {
               <option [value]="t.id">{{ t.name }}</option>
@@ -158,14 +157,12 @@ import {
           @if (unresolved.eventType) {
             <div class="propose">
               <span>Type « <strong>{{ unresolved.eventType }}</strong> » non reconnu.</span>
-              @if (canManageRef && model.activityId) {
+              @if (canManageRef) {
                 <div class="propose-actions">
                   <button type="button" class="btn" [disabled]="busy" (click)="createEventTypeRef()">
                     Créer ce type
                   </button>
                 </div>
-              } @else if (canManageRef) {
-                <span class="muted">Choisissez d'abord une activité.</span>
               }
             </div>
           }
@@ -481,6 +478,11 @@ export class EventFormComponent implements OnInit {
       this.applyDraftVenue();
     });
     this.referenceData.categories().subscribe((items) => (this.categories = items));
+    // Types : référentiel **transverse** (DATA.01 v2.0), chargé une fois, indépendant de l'activité.
+    this.referenceData.eventTypes().subscribe((items) => {
+      this.eventTypes = items;
+      this.applyDraftEventType();
+    });
     // Formats : référentiel transverse (DATA.01 §4), chargé une fois, indépendamment de l'activité.
     this.referenceData.eventFormats().subscribe((items) => {
       this.eventFormats = items;
@@ -525,11 +527,9 @@ export class EventFormComponent implements OnInit {
     this.model.price = value.price;
     this.model.currency = value.currency ?? '';
 
+    // Type transverse (DATA.01 v2.0) : la liste est chargée globalement (ngOnInit) ; on pose la valeur.
+    this.model.eventTypeId = value.eventTypeId ?? '';
     if (value.activityId) {
-      this.referenceData.eventTypes(value.activityId).subscribe((items) => {
-        this.eventTypes = items;
-        this.model.eventTypeId = value.eventTypeId ?? '';
-      });
       this.referenceData.subjects(value.activityId).subscribe((items) => {
         this.subjects = items;
         this.model.subjectIds = [...(value.subjectIds ?? [])];
@@ -622,19 +622,13 @@ export class EventFormComponent implements OnInit {
   }
 
   onActivityChange(): void {
-    // Le Type dépend de l'activité ; le Format/les modalités sont transverses. Les sujets (Axe A)
-    // dépendent de l'activité : on recharge et on réinitialise la sélection.
-    this.eventTypes = [];
-    this.model.eventTypeId = '';
+    // Type/Format/Modalités sont transverses. Seuls les **Sujets** (Axe A) dépendent de l'activité :
+    // on recharge et on réinitialise leur sélection.
     this.subjects = [];
     this.model.subjectIds = [];
     if (!this.model.activityId) {
       return;
     }
-    this.referenceData.eventTypes(this.model.activityId).subscribe((items) => {
-      this.eventTypes = items;
-      this.applyDraftEventType();
-    });
     this.referenceData.subjects(this.model.activityId).subscribe((items) => {
       this.subjects = items;
       this.applyDraftSubjects();
@@ -796,9 +790,9 @@ export class EventFormComponent implements OnInit {
 
   createEventTypeRef(): void {
     const name = this.unresolved.eventType?.trim();
-    if (!name || !this.model.activityId) return;
+    if (!name) return;
     this.refError = '';
-    this.referenceData.createEventType(name, this.model.activityId).subscribe({
+    this.referenceData.createEventType(name).subscribe({
       next: (created) => {
         this.eventTypes = [...this.eventTypes, created];
         this.model.eventTypeId = created.id;

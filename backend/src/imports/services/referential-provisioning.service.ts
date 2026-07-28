@@ -34,9 +34,9 @@ export class ReferentialProvisioningService {
           config.provisioningDefaultDomainId,
         );
       }
-      // Type : rattaché à l'activité — provisionné seulement si l'activité est connue.
-      if (activityId && fields.eventType) {
-        await this.repository.resolveOrCreateEventType(fields.eventType, activityId);
+      // Type : **transverse** (DATA.01 v2.0) — provisionné indépendamment de l'activité.
+      if (fields.eventType) {
+        await this.repository.resolveOrCreateEventType(fields.eventType);
       }
       // Format : transverse (DATA.01 §4) — provisionné indépendamment de l'activité.
       if (fields.eventFormat) {

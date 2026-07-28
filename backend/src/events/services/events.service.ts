@@ -300,11 +300,9 @@ export class EventsService {
     if (!activity) {
       throw new ActivityNotFoundException(dto.activityId);
     }
-    if (dto.eventTypeId) {
-      const eventType = await this.eventTypeRepository.findById(dto.eventTypeId);
-      if (!eventType || eventType.activityId !== dto.activityId) {
-        throw new InvalidEventTypeException(dto.eventTypeId);
-      }
+    // Type transverse (DATA.01 v2.0) : existence seule, aucun rattachement à l'Activité.
+    if (dto.eventTypeId && !(await this.eventTypeRepository.findById(dto.eventTypeId))) {
+      throw new InvalidEventTypeException(dto.eventTypeId);
     }
     // Formats transverses (DATA.01 §4 / TAX-009) : existence seule, aucun rattachement à l'Activité.
     const eventFormatIds = await this.validateEventFormats(dto.eventFormatIds);

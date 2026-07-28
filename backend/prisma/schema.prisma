@@ -624,7 +624,6 @@ model Activity {
   isActive      Boolean                @default(true) @map("is_active")
   provisional   Boolean                @default(false)
   domain        Domain                 @relation(fields: [domainId], references: [id], onDelete: Restrict)
-  eventTypes    EventType[]
   aliases       Alias[]
   events        Event[]
   organizations OrganizationActivity[]
@@ -639,18 +638,15 @@ model Activity {
 }
 
 model EventType {
+  // DATA.01 v2.0 — Type **transverse** (TAX-004) : plus de rattachement à l'Activité, `name` unique global.
   id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  activityId  String   @map("activity_id") @db.Uuid
+  name        String   @unique
   isActive    Boolean  @default(true) @map("is_active")
   provisional Boolean  @default(false)
-  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
   events      Event[]
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  @@unique([activityId, name])
-  @@index([activityId])
   @@map("event_types")
 }
 

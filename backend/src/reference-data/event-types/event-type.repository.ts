@@ -12,11 +12,4 @@ export class EventTypeRepository extends ReferentialRepository<EventType> {
   protected get refDelegate(): ReferentialDelegate<EventType> {
     return this.prisma.eventType as unknown as ReferentialDelegate<EventType>;
   }
-
-  listByActivity(activityId: string, includeInactive: boolean): Promise<EventType[]> {
-    return this.prisma.eventType.findMany({
-      where: { activityId, ...(includeInactive ? {} : { isActive: true }) },
-      orderBy: { name: 'asc' },
-    });
-  }
 }

@@ -6,10 +6,10 @@ export interface ReferenceActivity {
   aliases: string[];
 }
 
+/** EventType : référentiel **transverse** (DATA.01 v2.0), sans rattachement à une Activité. */
 export interface ReferenceNamed {
   id: string;
   name: string;
-  activityId: string;
 }
 
 /** Format d'événement : référentiel **transverse** (DATA.01 §4), sans rattachement à une Activité. */

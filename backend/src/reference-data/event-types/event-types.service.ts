@@ -1,22 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import type { EventType } from '@prisma/client';
-import { ActivityRepository } from '../activities/activity.repository';
-import { ActivityNotFoundException, EventTypeNotFoundException } from '../common/exceptions';
+import { EventTypeNotFoundException } from '../common/exceptions';
 import { rethrowAsConflict } from '../common/prisma-error';
 import { CreateEventTypeDto, UpdateEventTypeDto } from './event-type.dto';
 import { EventTypeRepository } from './event-type.repository';
 
 @Injectable()
 export class EventTypesService {
-  constructor(
-    private readonly repository: EventTypeRepository,
-    private readonly activityRepository: ActivityRepository,
-  ) {}
+  constructor(private readonly repository: EventTypeRepository) {}
 
-  list(includeInactive: boolean, activityId?: string): Promise<EventType[]> {
-    return activityId
-      ? this.repository.listByActivity(activityId, includeInactive)
-      : this.repository.list(includeInactive);
+  list(includeInactive: boolean): Promise<EventType[]> {
+    return this.repository.list(includeInactive);
   }
 
   async getOrThrow(id: string): Promise<EventType> {
@@ -28,14 +22,10 @@ export class EventTypesService {
   }
 
   async create(dto: CreateEventTypeDto): Promise<EventType> {
-    const activity = await this.activityRepository.findById(dto.activityId);
-    if (!activity) {
-      throw new ActivityNotFoundException(dto.activityId);
-    }
     try {
-      return await this.repository.create({ name: dto.name, activityId: dto.activityId });
+      return await this.repository.create({ name: dto.name });
     } catch (error) {
-      rethrowAsConflict(error, `Un EventType « ${dto.name} » existe déjà pour cette Activity.`);
+      rethrowAsConflict(error, `Un EventType « ${dto.name} » existe déjà.`);
     }
   }
 
@@ -44,7 +34,7 @@ export class EventTypesService {
     try {
       return await this.repository.update(id, dto);
     } catch (error) {
-      rethrowAsConflict(error, `Un EventType « ${dto.name} » existe déjà pour cette Activity.`);
+      rethrowAsConflict(error, `Un EventType « ${dto.name} » existe déjà.`);
     }
   }
 

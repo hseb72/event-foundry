@@ -1,16 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateEventTypeDto {
-  @ApiProperty({ example: 'Avant-première' })
+  @ApiProperty({ example: 'Tournoi', description: 'Type transverse (DATA.01 v2.0) — nom unique global.' })
   @IsString()
   @MinLength(2)
   @MaxLength(80)
   name!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
-  activityId!: string;
 }
 
 export class UpdateEventTypeDto {
@@ -33,9 +29,6 @@ export class EventTypeResponseDto {
 
   @ApiProperty()
   name!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  activityId!: string;
 
   @ApiProperty()
   isActive!: boolean;

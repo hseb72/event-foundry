@@ -24,7 +24,6 @@ interface AliasDto {
 interface NamedDto {
   id: string;
   name: string;
-  activityId: string;
 }
 interface FormatDto {
   id: string;
@@ -108,7 +107,7 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
     );
 
     const named = (items: NamedDto[]): ReferenceNamed[] =>
-      items.map((item) => ({ id: item.id, name: item.name, activityId: item.activityId }));
+      items.map((item) => ({ id: item.id, name: item.name }));
     const formats: ReferenceFormat[] = eventFormats.map((f) => ({ id: f.id, name: f.name }));
     const subs: ReferenceSubject[] = subjects.map((s) => ({ id: s.id, name: s.name }));
     const mods: ReferenceModality[] = modalities.map((m) => ({ id: m.id, name: m.name }));

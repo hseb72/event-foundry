@@ -24,11 +24,8 @@ export class EventTypesController {
   constructor(private readonly service: EventTypesService) {}
 
   @Get()
-  async list(
-    @Query('includeInactive') includeInactive?: string,
-    @Query('activityId') activityId?: string,
-  ): Promise<EventTypeResponseDto[]> {
-    const eventTypes = await this.service.list(includeInactive === 'true', activityId);
+  async list(@Query('includeInactive') includeInactive?: string): Promise<EventTypeResponseDto[]> {
+    const eventTypes = await this.service.list(includeInactive === 'true');
     return eventTypes.map(EventTypeMapper.toResponse);
   }
 

@@ -6,7 +6,6 @@ export class EventTypeMapper {
     return {
       id: eventType.id,
       name: eventType.name,
-      activityId: eventType.activityId,
       isActive: eventType.isActive,
       createdAt: eventType.createdAt.toISOString(),
     };
