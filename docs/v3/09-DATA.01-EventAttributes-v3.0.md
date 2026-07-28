@@ -1,12 +1,12 @@
-# SPEC – Taxonomie des événements EventFoundry
+# SPEC – Taxonomie EventFoundry
 
 **Document** : SPEC-EVENT-TAXONOMY
 
 **Fichier** : 09-DATA.01-EventAttributes-v3.0.md
 
-**Version** : 1.1
+**Version** : 2.0
 
-**Statut** : Validé
+**Statut** : Validé (décisions PO 2026-07)
 
 **Dernière mise à jour** : 2026-07
 
@@ -14,781 +14,312 @@
 
 # 1. Objectif
 
-Cette spécification définit la taxonomie standard utilisée pour classifier tous les événements de la plateforme EventFoundry.
+Cette spécification définit la taxonomie de classification d'EventFoundry. Elle sert à
+normaliser les données quelle que soit la source, faciliter la recherche et les filtres,
+alimenter les recommandations et les statistiques, et rester extensible.
 
-Cette taxonomie poursuit plusieurs objectifs :
+La v2.0 corrige deux défauts structurels de la v1.1, identifiés avec le Product Owner :
 
-- normaliser les événements provenant de multiples sources ;
-- faciliter la recherche ;
-- améliorer les recommandations ;
-- permettre les statistiques ;
-- simplifier les filtres de recherche ;
-- conserver une structure extensible dans le temps.
-
-Chaque événement est caractérisé par cinq niveaux :
-
-```
-Activité   (exactement 1)
-    ↓
-Type       (exactement 1)
-    ↓
-Format     (0..N — transverse)
-    ↓
-Catégorie  (0..N — transverse)
-    ↓
-Tags       (0..N — extensibles)
-```
-
-Chaque niveau possède une responsabilité précise.
-
-**Cardinalités (source de vérité — §7 Règles de gestion) :**
-
-| Niveau | Cardinalité | Portée | Modèle |
-|--------|-------------|--------|--------|
-| Activité | exactement 1 | rattachée à un `Domain` (déduit, jamais saisi) | `Event.activityId` (obligatoire) |
-| Type | exactement 1 | **rattaché à une Activité** | `Event.eventTypeId` |
-| Format | 0..N | **transverse** (indépendant de l'Activité) | N-N `Event ↔ EventFormat` |
-| Catégorie | 0..N | **transverse** | N-N `Event ↔ Category` |
-| Tags | 0..N | **transverse**, extensibles | N-N `Event ↔ Tag` |
-
-> **Alignement modèle.** Cette version 1.1 réconcilie la taxonomie avec le modèle
-> persistant (`schema.prisma`) : le Format et la Catégorie deviennent des **relations
-> N-N** portées par des tables de liaison (`event_format_links`, `event_category_links`),
-> et le Format devient un **référentiel transverse** (non rattaché à une Activité), au
-> même titre que la Catégorie et les Tags. La migration correspondante est décrite au §10.
+1. **Absence de critère de disjonction** entre `Format` et `Catégorie` : deux référentiels
+   « fourre-tout » de dimensions hétérogènes, d'où des termes qui **coexistaient dans plusieurs
+   tables** (`Compétitif`, `Professionnel`, `Privé`, `Famille`…).
+2. **Absence d'un niveau « sujet »** : le jeu lui-même (Pokémon, Magic, *Seven Wonders*) était
+   tantôt modélisé comme **Activité** (V1 TCG), tantôt absent (généraliste « Jeux »). Deux
+   représentations incompatibles du même concept.
 
 ---
 
-# 2. Activité
+# 2. Principe directeur : quatre axes disjoints
 
-## Définition
+> **Règle de disjonction (TAX-000).** Un terme n'appartient qu'à **un seul** référentiel, et
+> chaque référentiel ne répond qu'à **une seule** question. Aucun terme ne coexiste dans deux
+> tables. Les collisions historiques sont résolues à la migration (§9).
 
-L'Activité représente le domaine principal auquel appartient l'événement.
+La classification repose sur **deux natures** que la v1.1 mélangeait, désormais séparées :
 
-Il s'agit du niveau le plus élevé de classification proposé à l'utilisateur.
+- une **hiérarchie taxonomique** — *« de quoi ça parle »* — **partagée** par l'`Event`,
+  l'`Organization` **et** le `Venue` ;
+- des **facettes orthogonales** — *« comment / pour qui / dans quelles conditions »* — **propres
+  à l'événement**.
 
-Le nombre de valeurs doit rester volontairement limité afin de garantir une navigation cohérente.
+```
+AXE A — Sujet (hiérarchie, PARTAGÉE Event / Organization / Venue)
+    Domain    (déduit, jamais saisi ni filtré)
+      └─ Activity     Jeux · Musique · Sport …           ← niveau partagé & filtrable
+           └─ Family  TCG · Jeu de plateau · Jeu de rôle  ← regroupement (matérialisé)
+                └─ Subject  Pokémon · Magic · Seven Wonders  ← « le sujet lui-même »
 
-Un événement possède **une seule Activité**.
+AXE B — Type (nature du rassemblement, TRANSVERSE au sujet)   Tournoi · Concert · Atelier …
+AXE C — Facettes (référentiel unique dimensionné)             Participation · Public · Ambiance …
+AXE D — Tags (mots-clés libres, non contrôlés)
+```
 
-> **Domain vs Activité.** Le modèle EventFoundry conserve un niveau `Domain` **au-dessus**
-> de l'Activité (règle d'or n°3 : le `Domain` est toujours **déduit** de l'Activité, jamais
-> saisi, jamais envoyé par le client, jamais utilisé comme filtre). La taxonomie généraliste
-> ci-dessous est regroupée sous un `Domain` unique **« Général »** ; la V1 TCG reste
-> disponible sous le `Domain` **« TCG »**. Un Domain ne caractérise jamais directement un Event.
+| Axe | Référentiel | Question | Porté par | Cardinalité |
+|-----|-------------|----------|-----------|-------------|
+| A | Domain → Activity → Family → Subject | De quoi ça parle ? | Event, Organization, Venue | Event : 1 Activity + 0..N Subject |
+| B | Type | Quelle est la nature du rassemblement ? | Event | exactement 1 |
+| C | FacetTerm (par FacetDimension) | Comment / pour qui / conditions ? | Event | 0..N |
+| D | Tag | Mots-clés libres | Event (et Venue) | 0..N |
 
-## Valeurs
+---
+
+# 3. Axe A — Sujet (Domain → Activity → Family → Subject)
+
+## 3.1 Domain
+
+Regroupement de plus haut niveau. **Déduit** de l'Activité (règle d'or n°3), jamais saisi,
+jamais envoyé par le client, jamais utilisé comme filtre. Exemples : `Général`, `TCG`.
+Un Domain ne caractérise jamais directement un Event, une Organization ou un Venue.
+
+## 3.2 Activity
+
+Le domaine principal d'activité humaine. **C'est le niveau partagé** : un événement *concerne*
+une Activité, une organisation *propose* des Activités, un lieu *héberge* des Activités. Nombre
+volontairement limité et stable.
 
 | Activité |
 |----------|
-| Arts |
-| Culture |
-| Patrimoine |
-| Musique |
-| Spectacle vivant |
-| Cinéma |
-| Jeux |
-| Sport |
-| Esport |
-| Technologie |
-| Sciences |
-| Éducation |
-| Business |
-| Lifestyle |
-| Gastronomie |
-| Tourisme |
-| Nature |
-| Solidarité |
-| Famille |
-| Communauté |
+| Arts · Culture · Patrimoine · Musique · Spectacle vivant · Cinéma · **Jeux** · Sport · Esport · Technologie · Sciences · Éducation · Business · Lifestyle · Gastronomie · Tourisme · Nature · Solidarité |
+
+> **Retirées de la liste des Activités** (ce n'étaient pas des sujets) : `Famille` et
+> `Communauté` deviennent des **facettes** (Axe C, dimension *Public visé* / *Ambiance*). Voir §9.
+
+## 3.3 Family (matérialisée)
+
+Regroupement intermédiaire **entre l'Activité et le Sujet**, décidé PO. Une Family appartient à
+une Activité. Elle porte le « genre » sous lequel se rangent les sujets.
+
+| Activité | Familles (exemples) |
+|----------|---------------------|
+| Jeux | **TCG** · Jeu de plateau · Jeu de rôle · Jeu vidéo · Wargame · Jeu d'ambiance |
+| Musique | Rock · Jazz · Classique · Électronique · Musiques du monde |
+| Sport | Sports collectifs · Sports de combat · Sports de raquette · Sports mécaniques |
+
+La Family est **optionnelle** sur un Event (un événement peut cibler une Activité sans préciser
+la Family), mais un **Subject** appartient toujours à une Family (donc à une Activité).
+
+## 3.4 Subject (le sujet / le jeu lui-même)
+
+Le sujet précis. C'est **ici** qu'arrivent Pokémon, Magic, *Seven Wonders*, un groupe, une
+discipline. Un Subject appartient à une Family.
+
+| Family | Sujets (exemples) |
+|--------|-------------------|
+| TCG | Magic · Pokémon · Lorcana · One Piece · Star Wars Unlimited · Flesh and Blood · Riftbound · Yu-Gi-Oh! · Altered · Dragon Ball Super · Union Arena · KeyForge |
+| Jeu de plateau | Seven Wonders · Catan · Terraforming Mars · Wingspan |
+| Jeu de rôle | Donjons & Dragons · L'Appel de Cthulhu |
+
+**Rattachements de l'Axe A :**
+
+- `Event` : **1 Activity** (obligatoire) + **0..N Subject** (donc Family implicite). Ex. un tournoi
+  peut mêler plusieurs sujets ; un événement « Jeux » générique n'a aucun Subject.
+- `Organization` : **0..N Activity** (déjà en place via `OrganizationActivity`) + **0..N Subject**.
+- `Venue` : **0..N Activity** + **0..N Subject** (nouveau — cf. import boutiques, §10.4).
 
 ---
 
-# 3. Type
+# 4. Axe B — Type (transverse)
 
-## Définition
+Le Type décrit la **nature du rassemblement**, **indépendamment du sujet** (décision PO :
+**Type transverse**). Un « Tournoi » vaut pour Pokémon, le judo ou l'esport ; un « Concert »
+pour tous les genres musicaux. Un événement possède **exactement un** Type.
 
-Le Type décrit précisément la nature de l'événement.
+Conséquence directe : la **duplication par Activité disparaît** (fin de `@@unique(activityId, name)` ;
+`EventType.name` devient **unique globalement**, sans `activityId`).
 
-Il s'agit du principal critère de recherche.
+Référentiel Type (extrait représentatif ; le `seed.ts` fait foi pour la liste complète) :
 
-Un événement possède **un seul Type**.
+| Nature du rassemblement |
+|-------------------------|
+| Tournoi · Ligue · Compétition · Match · Rencontre · Meetup · Atelier · Stage · Initiation · Démonstration · Avant-première · Conférence · Table ronde · Débat · Exposition · Vernissage · Projection · Concert · Festival · Spectacle · Représentation · Salon · Convention · Marché · Vente · Portes ouvertes · Visite · Assemblée |
 
-Les Types sont **rattachés à une Activité** (relation `EventType.activityId`).
-
-> **Réconciliation v1.1.** La v1.0 regroupait les Types sous des entêtes (« Spectacle »,
-> « Visite », « Formation »…) qui ne correspondaient pas un-à-un à la liste des Activités,
-> et ses exemples plaçaient un même Type sous des Activités différentes (ex. « Concert »
-> présenté comme Type de l'Activité *Musique*). Le modèle imposant qu'un Type appartienne à
-> une Activité (`@@unique([activityId, name])`), la v1.1 **rattache chaque Type à une ou
-> plusieurs Activités** : un même **nom** de Type peut exister sous plusieurs Activités
-> (ex. « Concert » sous *Musique* **et** *Spectacle vivant* ; « Tournoi » sous *Jeux*,
-> *Sport* et *Esport*). L'unicité reste garantie **par Activité**. Les tables ci-dessous
-> font foi ; le `seed.ts` en est la traduction exécutable.
-
-Les Types sont organisés par Activité.
+> **Sous-formats spécifiques d'un jeu** (`Draft`, `Scellé`, `Constructed`…) ne sont **pas** des
+> Types. Ce sont des modalités liées à la **Family/au Subject** (ex. modes de jeu d'une famille
+> TCG) ; en V1 ils vivent en **Tags** ou dans une future facette *Mode de jeu détaillé*. Ils ne
+> polluent pas le référentiel Type transverse.
 
 ---
 
-## Arts
+# 5. Axe C — Facettes (référentiel unique dimensionné)
 
-| Type |
-|------|
-| Exposition |
-| Vernissage |
-| Performance artistique |
-| Happening |
-| Biennale |
-| Atelier |
+`Format` et `Catégorie` **fusionnent** en un seul référentiel de **facettes**. Chaque terme
+(`FacetTerm`) appartient à **une** dimension (`FacetDimension`). La disjonction est garantie *par
+construction* : le nom d'un terme est **unique globalement**, une dimension le porte. Un événement
+porte **0..N** FacetTerm.
 
----
+| Dimension (FacetDimension) | Termes (FacetTerm) |
+|----------------------------|--------------------|
+| Participation | Présentiel · En ligne · Hybride |
+| Accès | Libre · Sur inscription · Sur invitation |
+| Tarification | Gratuit · Payant |
+| Public visé | Tout public · Famille · Enfant · Adolescent · Étudiant · Senior · Professionnel · Expert · Débutant |
+| Accessibilité | PMR · Langue des signes · Audiodescription · Sous-titré |
+| Ambiance | Festif · Culturel · Éducatif · Caritatif · Convivial · Communautaire |
+| Rayonnement | Local · Régional · National · International |
+| Nature de l'organisateur | Association · Collectivité · Entreprise · Particulier · Institution |
+| Mode de jeu | Compétitif · Coopératif |
+| Durée | Permanent · Temporaire · Ponctuel · Récurrent |
+| Cadre | Intérieur · Extérieur |
+| Formation d'équipe | Solo · Équipe |
 
-## Culture
+**Collisions v1.1 résolues (§9) :** `Compétitif` → dimension *Mode de jeu* uniquement (retiré de
+l'ex-Ambiance) ; `Professionnel` → *Public visé* uniquement (retiré d'Ambiance/Organisateur) ;
+`Communautaire` remplace l'ex-Activité `Communauté` (dimension *Ambiance*) ; `Privé` disparaît des
+facettes (c'est `Event.visibility`, TAX-012).
 
-| Type |
-|------|
-| Conférence |
-| Lecture publique |
-| Rencontre |
-| Débat |
-| Exposition |
-
----
-
-## Patrimoine
-
-| Type |
-|------|
-| Musée |
-| Galerie d'art |
-| Monument |
-| Site touristique |
-| Site historique |
-| Château |
-| Jardin |
-| Parc |
-| Réserve naturelle |
-| Aquarium |
-| Zoo |
+Les facettes restent des **qualificatifs de recherche**, jamais des règles métier : elles ne se
+substituent pas à `Event.price` / `Event.visibility` / la Participation (TAX-012 conservé).
 
 ---
 
-## Musique
-
-| Type |
-|------|
-| Concert |
-| Festival |
-| Récital |
-| Jam session |
-| DJ set |
-
----
-
-## Spectacle vivant
-
-| Type |
-|------|
-| Concert |
-| Festival |
-| Théâtre |
-| Comédie musicale |
-| Opéra |
-| Ballet |
-| Danse |
-| Cirque |
-| Cabaret |
-| One-man-show |
-| Improvisation |
-| Humour |
-| Performance artistique |
-| Happening |
-
----
-
-## Cinéma
-
-| Type |
-|------|
-| Projection |
-| Avant-première |
-| Festival |
-| Ciné-débat |
-
----
-
-## Jeux
-
-| Type |
-|------|
-| Jeux de société |
-| Jeu de rôle |
-| Escape Game |
-| Murder Party |
-| TCG |
-| WarGame |
-| Jeux vidéo |
-| LAN |
-| Quiz |
-| Tournoi |
-
----
-
-## Sport
-
-| Type |
-|------|
-| Compétition |
-| Match |
-| Course |
-| Trail |
-| Marathon |
-| Cyclisme |
-| Triathlon |
-| Randonnée |
-| Tournoi |
-| Stage |
-
----
-
-## Esport
-
-| Type |
-|------|
-| LAN |
-| Championnat |
-| Tournoi |
-| Showmatch |
-| Viewing Party |
-| Meetup |
-
----
-
-## Technologie
-
-| Type |
-|------|
-| Conférence |
-| Meetup |
-| Hackathon |
-| Atelier |
-| Workshop |
-| Bootcamp |
-| Salon professionnel |
-
----
-
-## Sciences
-
-| Type |
-|------|
-| Conférence |
-| Atelier |
-| Démonstration |
-| Séminaire |
-| Exposition |
-
----
-
-## Éducation
-
-| Type |
-|------|
-| Conférence |
-| Atelier |
-| Cours |
-| Masterclass |
-| Formation |
-| Séminaire |
-| Workshop |
-| Bootcamp |
-
----
-
-## Business
-
-| Type |
-|------|
-| Networking |
-| Meetup |
-| Forum |
-| Salon professionnel |
-| Pitch |
-| Hackathon |
-| Job Dating |
-
----
-
-## Lifestyle
-
-| Type |
-|------|
-| Atelier |
-| Salon |
-| Marché |
-| Défilé |
-| Rencontre |
-
----
-
-## Gastronomie
-
-| Type |
-|------|
-| Dégustation |
-| Marché gourmand |
-| Festival culinaire |
-| Cours de cuisine |
-| Repas |
-
----
-
-## Tourisme
-
-| Type |
-|------|
-| Visite guidée |
-| Visite libre |
-| Circuit |
-| Balade |
-| Randonnée découverte |
-| Parcours |
-
----
-
-## Nature
-
-| Type |
-|------|
-| Randonnée |
-| Balade |
-| Sortie nature |
-| Observation |
-| Atelier |
-
----
-
-## Solidarité
-
-| Type |
-|------|
-| Collecte |
-| Bénévolat |
-| Gala caritatif |
-| Sensibilisation |
-| Repas solidaire |
-
----
-
-## Famille
-
-| Type |
-|------|
-| Animation |
-| Spectacle enfant |
-| Atelier enfant |
-| Chasse au trésor |
-
----
-
-## Communauté
-
-| Type |
-|------|
-| Rencontre |
-| Meetup |
-| Assemblée |
-| Vide-grenier |
-| Marché artisanal |
-| Fête de quartier |
-
----
-
-# 4. Format
-
-## Définition
-
-Le Format décrit la manière dont se déroule l'événement.
-
-Contrairement au Type, le Format est **indépendant de la nature de l'événement** : c'est un
-**référentiel transverse**, partagé par toutes les Activités (aucun rattachement à une
-Activité — évolution v1.1, cf. §10).
-
-Un événement peut posséder **plusieurs Formats** (relation N-N `Event ↔ EventFormat`, table
-de liaison `event_format_links`).
-
-> **Pas de chevauchement avec les autres attributs (décision v1.1).** Les axes de Format
-> — dont *Tarification* (Gratuit/Payant), *Réservation* (Avec/Sans) et *Visibilité*
-> (Ouvert/Privé) — sont conservés **tels quels** dans la taxonomie. Ils ne se substituent
-> pas et ne sont pas fusionnés avec les champs techniques de l'Event (`price`, `visibility`)
-> ni avec la Participation : ce sont des **qualificatifs de recherche/filtrage**, pas des
-> règles métier. La cohérence éventuelle entre un Format « Gratuit » et `price = 0` relève de
-> l'ergonomie de saisie, jamais d'une déduction automatique.
-
-## Valeurs
-
-### Participation
-
-- Présentiel
-- En ligne
-- Hybride
-
-### Accès
-
-- Libre
-- Sur inscription
-- Sur invitation
-
-### Tarification
-
-- Gratuit
-- Payant
-
-### Mode de jeu
-
-- Compétitif
-- Coopératif
-
-### Durée
-
-- Permanent
-- Temporaire
-- Ponctuel
-- Récurrent
-
-### Lieu
-
-- Intérieur
-- Extérieur
-
-### Organisation
-
-- Solo
-- Équipe
-
-### Réservation
-
-- Avec réservation
-- Sans réservation
-
-### Visibilité
-
-- Ouvert
-- Privé
-
----
-
-# 5. Catégorie
-
-## Définition
-
-Les Catégories permettent d'affiner la recherche.
-
-C'est un **référentiel transverse** (aucun rattachement à une Activité).
-
-Un événement peut appartenir à **plusieurs catégories** (relation N-N `Event ↔ Category`,
-table de liaison `event_category_links`).
-
----
-
-## Public
-
-| Catégorie |
-|------------|
-| Tout public |
-| Famille |
-| Enfant |
-| Adolescent |
-| Étudiant |
-| Senior |
-| Professionnel |
-| Expert |
-| Débutant |
-
----
-
-## Accessibilité
-
-| Catégorie |
-|------------|
-| PMR |
-| Langue des signes |
-| Audiodescription |
-| Sous-titré |
-
----
-
-## Ambiance
-
-| Catégorie |
-|------------|
-| Festif |
-| Culturel |
-| Compétitif |
-| Éducatif |
-| Caritatif |
-| Professionnel |
-| Convivial |
-
----
-
-## Rayonnement
-
-| Catégorie |
-|------------|
-| Local |
-| Régional |
-| National |
-| International |
-
----
-
-## Organisateur
-
-| Catégorie |
-|------------|
-| Association |
-| Collectivité |
-| Entreprise |
-| Particulier |
-| Institution |
-
----
-
-# 6. Tags
-
-## Définition
-
-Les Tags sont des mots-clés destinés à enrichir les événements.
-
-Ils servent principalement :
-
-- aux recherches textuelles ;
-- aux recommandations ;
-- au filtrage avancé.
-
-Un événement peut posséder un nombre illimité de Tags.
-
-Les Tags sont extensibles.
-
----
-
-## Jeux de cartes
-
-- Magic
-- Pokémon
-- Lorcana
-- Altered
-- Star Wars Unlimited
-- Yu-Gi-Oh
-- Flesh and Blood
-- KeyForge
-
----
-
-## Jeux de société
-
-- Catane
-- Terraforming Mars
-- Brass
-- Ark Nova
-- Carcassonne
-- 7 Wonders
-- Azul
-
----
-
-## Sports
-
-- Football
-- Rugby
-- Basket
-- Handball
-- Tennis
-- Natation
-- Escalade
-- Judo
-
----
-
-## Esport
-
-- League of Legends
-- Valorant
-- Counter Strike
-- Rocket League
-- Fortnite
-- Dota 2
-- Overwatch
-
----
-
-## Musique
-
-- Rock
-- Metal
-- Jazz
-- Classique
-- Pop
-- Rap
-- Électro
-- Blues
-- Reggae
-- Country
-
----
-
-## Culture
-
-- Impressionnisme
-- Art moderne
-- Photographie
-- Street Art
-- Architecture
-- Histoire
-- Archéologie
-
----
-
-## Tourisme
-
-- UNESCO
-- Médiéval
-- Antiquité
-- Nature
-- Panorama
-
----
-
-## Gastronomie
-
-- Vin
-- Bière
-- Fromage
-- Chocolat
-- Cuisine italienne
-- Cuisine japonaise
-- Cuisine française
+# 6. Axe D — Tags
+
+Mots-clés **libres**, non contrôlés, extensibles sans modifier la taxonomie. C'est l'échappatoire :
+tout ce qui n'entre pas dans A/B/C. Aucun terme des axes A/B/C n'y est dupliqué. Portés par l'Event
+et (nouveau) par le Venue.
 
 ---
 
 # 7. Règles de gestion
 
-| Identifiant | Règle |
-|-------------|--------|
-| TAX-001 | Chaque événement possède exactement une Activité. |
-| TAX-002 | Chaque événement possède exactement un Type, rattaché à son Activité. |
-| TAX-003 | Un événement peut posséder plusieurs Formats (relation N-N). |
-| TAX-004 | Un événement peut appartenir à plusieurs Catégories (relation N-N). |
-| TAX-005 | Un événement peut posséder un nombre illimité de Tags. |
-| TAX-006 | Les Tags sont extensibles sans modification de la taxonomie. |
-| TAX-007 | Les Activités sont limitées et rarement modifiées. |
-| TAX-008 | Les Types évoluent avec les besoins fonctionnels. |
-| TAX-009 | Les Formats décrivent uniquement la manière dont se déroule l'événement ; ils sont transverses (indépendants de l'Activité). |
-| TAX-010 | Les Catégories sont destinées au filtrage fonctionnel ; elles sont transverses. |
-| TAX-011 | Un même nom de Type peut exister sous plusieurs Activités ; l'unicité est garantie par Activité. |
-| TAX-012 | Le Format et la Catégorie ne se substituent jamais aux champs techniques (`price`, `visibility`) ni à la Participation : ce sont des qualificatifs de recherche, jamais des règles métier (règle d'or n°1). |
+| Id | Règle |
+|----|-------|
+| TAX-000 | **Disjonction** : un terme n'existe que dans un référentiel ; un référentiel = une question. |
+| TAX-001 | Chaque Event a **exactement une** Activity. |
+| TAX-002 | Chaque Event a **0..N** Subject (chacun rattaché à une Family, donc à une Activity). |
+| TAX-003 | La Family est un niveau matérialisé entre Activity et Subject ; un Subject appartient à une Family. |
+| TAX-004 | Chaque Event a **exactement un** Type ; le Type est **transverse** (aucun rattachement à l'Activité), `name` unique global. |
+| TAX-005 | Chaque Event a **0..N** FacetTerm ; chaque FacetTerm appartient à une FacetDimension ; `name` de FacetTerm unique global. |
+| TAX-006 | Chaque Event a **0..N** Tag (libres, extensibles). |
+| TAX-007 | Activity, Family, Type, FacetDimension sont stables et rarement modifiés ; Subject, FacetTerm, Tag évoluent avec les besoins. |
+| TAX-008 | Domain est **déduit** de l'Activity, jamais saisi, jamais filtré (règle d'or n°3). |
+| TAX-009 | L'axe Sujet (Activity + Subject) est **partagé** : porté aussi par Organization et Venue. Le Type et les Facettes restent **propres à l'Event**. |
+| TAX-010 | Les FacetTerm ne se substituent jamais à `price` / `visibility` / la Participation (qualificatifs de recherche, pas règles métier). |
+| TAX-011 | Provisioning : un Subject / FacetTerm / Tag reconnu à l'import mais absent du référentiel est créé `provisional = true` puis curé en administration (ADR.24). Activity, Family, Type ne sont **jamais** auto-provisionnés. |
 
 ---
 
-# 8. Exemple
+# 8. Modèle persistant cible
 
-## Tournoi Altered
+| Table | Rôle | Clés / contraintes notables |
+|-------|------|------------------------------|
+| `domains` | Domain | `name` unique |
+| `activities` | Activity | `@@unique(domain_id, name)` |
+| `activity_families` | **Family (nouveau)** | `activity_id` FK ; `@@unique(activity_id, name)` |
+| `subjects` | **Subject (nouveau)** | `family_id` FK ; `@@unique(family_id, name)` ; `provisional` |
+| `event_types` | Type **transverse** | `name` **unique global** ; suppression de `activity_id` |
+| `facet_dimensions` | **Dimension (nouveau)** | `name` unique |
+| `facet_terms` | **FacetTerm (nouveau)** | `dimension_id` FK ; `name` **unique global** ; `provisional` |
+| `tags` | Tag | `name` unique |
+| `event_subjects` | N-N Event ↔ Subject | PK composite |
+| `event_facets` | N-N Event ↔ FacetTerm | PK composite (remplace `event_format_links` + `event_category_links`) |
+| `event_tags` | N-N Event ↔ Tag | inchangé |
+| `venue_activities` | **N-N Venue ↔ Activity (nouveau)** | PK composite |
+| `venue_subjects` | **N-N Venue ↔ Subject (nouveau)** | PK composite |
+| `venue_tags` | **N-N Venue ↔ Tag (nouveau)** | PK composite |
+| `organization_activities` | N-N Org ↔ Activity | inchangé |
+| `organization_subjects` | **N-N Org ↔ Subject (nouveau)** | PK composite |
 
-| Attribut | Valeur |
-|----------|--------|
-| Activité | Jeux |
-| Type | TCG |
-| Format | Présentiel |
-| Format | Payant |
-| Format | Compétitif |
-| Format | Sur inscription |
-| Catégorie | Tout public |
-| Catégorie | Association |
-| Tags | Altered |
-| Tags | Tournoi |
-| Tags | Deckbuilding |
+Tables **supprimées** : `event_formats`, `categories`, `event_format_links`,
+`event_category_links` (absorbées par `facet_dimensions` / `facet_terms` / `event_facets`).
+Champs Event `activity_id` (conservé, obligatoire) et `event_type_id` (conservé) ; `Event` perd
+tout scalaire de format/catégorie.
 
 ---
 
-## Concert de Jazz
+# 9. Plan de migration des données existantes
 
-| Attribut | Valeur |
-|----------|--------|
-| Activité | Musique |
+Migration Prisma `*_data02_taxonomy`, en **une transaction**, ordre :
+
+1. **Créer** `activity_families`, `subjects`, `facet_dimensions`, `facet_terms`, et les tables
+   de liaison (§8).
+2. **Sujets ex-Activités TCG** : `Magic, Pokémon, Lorcana, One Piece, SWU, Flesh and Blood,
+   Riftbound…` (Domain `TCG`) → **Subjects** sous Activity `Jeux` / Family `TCG`. Réaffecter les
+   `Event.activity_id` pointant vers ces ex-Activités → Activity `Jeux`, et créer le
+   `event_subjects` correspondant. Le Domain `TCG` est ensuite retiré/désactivé.
+3. **Ex-EventType « TCG » sous « Jeux »** → devient la **Family `TCG`** (pas un Type).
+4. **Facettes** : chaque `event_formats` + `categories` → `facet_terms` (avec dimension d'origine) ;
+   `event_format_links` + `event_category_links` → `event_facets`. Dédoublonnage par nom global
+   (résolutions §5) ; `Privé` (Visibilité) **écarté**.
+5. **Ex-Activités `Famille` / `Communauté`** → `facet_terms` (`Famille` = *Public visé* déjà
+   présent ; `Communautaire` = *Ambiance*). Les Events qui les portaient reçoivent une Activity
+   de repli déterministe (`Jeux` ou selon Type) + le FacetTerm ; règle de reprise documentée dans
+   la migration.
+6. **Type transverse** : fusionner les `event_types` de même `name` (dédoublonnage), supprimer
+   `activity_id`, poser l'unicité globale ; recâbler `Event.event_type_id` vers le Type fusionné.
+7. **Contrôle** : aucun Event orphelin (Activity + Type obligatoires), aucun terme en double
+   inter-tables, tables obsolètes supprimées.
+
+> Tant que migration + adaptation applicative (DTO, mappers, services, recherche, reco, moteur
+> expert, frontend, admin) ne sont pas déployées, cette section **fait foi** sur la cible ; toute
+> divergence code/doc est un reste à faire, pas une entorse à la spec.
+
+---
+
+# 10. Exemples
+
+## 10.1 Événement « Tournoi Pokémon »
+| Axe | Valeur |
+|-----|--------|
+| Activity | Jeux |
+| Subject | Pokémon *(Family TCG)* |
+| Type | Tournoi |
+| Facettes | Présentiel · Payant · Compétitif · Sur inscription |
+| Tags | Pokémon · Draft · Deckbuilding |
+
+## 10.2 Événement « Concert de Jazz »
+| Axe | Valeur |
+|-----|--------|
+| Activity | Musique |
+| Subject | *(Family Jazz)* — optionnel |
 | Type | Concert |
-| Format | Présentiel |
-| Format | Payant |
-| Catégorie | Tout public |
-| Catégorie | Culturel |
-| Tags | Jazz |
-| Tags | Live |
-| Tags | Quartet |
+| Facettes | Présentiel · Payant · Tout public · Culturel |
+| Tags | Jazz · Live · Quartet |
 
-> Valide en v1.1 : « Concert » existe désormais comme Type de l'Activité *Musique*
-> (et de *Spectacle vivant*), conformément à TAX-011.
+## 10.3 Organisation « Boutique Cartapapa »
+| Axe | Valeur |
+|-----|--------|
+| Activity | Jeux |
+| Subjects | Pokémon · Magic · Lorcana · One Piece · SWU |
+| Type / Facettes | *(non applicables — propres à l'Event)* |
 
----
+## 10.4 Lieu « Cartapapa » (Venue)
+| Axe | Valeur |
+|-----|--------|
+| Activity | Jeux |
+| Subjects | Pokémon · Magic · Lorcana · One Piece · SWU |
+| Tags | tcg · magic · pokemon · lorcana · one-piece · swu |
+| Services *(hors taxonomie)* | Tournois · Avant-premières · Cartes à l'unité · Rachat de collections |
 
-## Musée du Louvre
-
-| Attribut | Valeur |
-|----------|--------|
-| Activité | Patrimoine |
-| Type | Musée |
-| Format | Présentiel |
-| Format | Permanent |
-| Catégorie | Culturel |
-| Catégorie | International |
-| Tags | Art |
-| Tags | Louvre |
-| Tags | Peinture |
-| Tags | Sculpture |
+> Les 12 magasins du jeu d'essai valident l'Axe A partagé (mêmes Activity/Subject pour Venue et
+> Event) et alimentent le provisioning des Subjects hors V1 (Yu-Gi-Oh!, Altered, Dragon Ball
+> Super, Union Arena). Voir §11 pour les `services[]`.
 
 ---
 
-# 9. Évolutivité
+# 11. Administration des référentiels
 
-La présente taxonomie est conçue pour être extensible.
+Tous les référentiels de cette spec sont gérés dans la **zone d'administration** (rôle `ADMIN`,
+`catalog.manage`), avec la même trame par référentiel :
 
-Les évolutions futures privilégient :
+- **CRUD + activation** (`is_active`, jamais de suppression physique d'un référentiel — TSPEC.02) ;
+- **curation du provisoire** : lister les entrées `provisional = true` (issues de l'import), les
+  **valider** (→ `provisional = false`), **fusionner** vers une entrée canonique, ou **désactiver** ;
+- **hiérarchie** : édition Domain → Activity → Family → Subject (rattachement d'un Subject à une
+  Family) ; édition FacetDimension → FacetTerm ;
+- **garde de disjonction** : refus déterministe de créer un terme dont le `name` existe déjà dans
+  un autre référentiel de la taxonomie (matérialise TAX-000).
 
-- l'ajout de nouveaux Types ;
-- l'ajout de nouvelles Catégories ;
-- l'enrichissement des Tags.
-
-Les Activités doivent rester stables afin de préserver la cohérence globale de la plateforme et des mécanismes de recommandation.
-
----
-
-# 10. Réconciliation & impact modèle (v1.1)
-
-Cette version fige cinq décisions (arbitrées avec le Product Owner) et leur traduction dans le modèle persistant.
-
-| # | Décision | Impact |
-|---|----------|--------|
-| 1 | **Format multiple** confirmé (TAX-003). | Suppression du scalaire `Event.eventFormatId` ; création de la table de liaison N-N `event_format_links` (`event_id`, `event_format_id`). |
-| 2 | **Catégorie multiple** confirmée (TAX-004). | Suppression du scalaire `Event.categoryId` ; création de la table de liaison N-N `event_category_links` (`event_id`, `category_id`). |
-| 3 | **Pas de chevauchement** : les axes de Format (Tarification, Réservation, Visibilité…) restent des qualificatifs, distincts de `Event.price` / `Event.visibility` / Participation (TAX-012). | Aucun champ technique n'est fusionné ni déduit. |
-| 4 | **Réconciliation** du mapping Type↔Activité : chaque Type est rattaché à une (ou plusieurs) Activité(s) réelle(s) ; un nom de Type peut se répéter entre Activités (TAX-011). | §3 réécrit par Activité ; `seed.ts` aligné. |
-| 5 | **Taxonomie généraliste** confirmée. | `Domain` « Général » regroupant les 20 Activités et leurs Types ; `Domain` « TCG » conservé (V1). Référentiels Format / Catégorie / Tags (re)semés depuis les §4/§5/§6. |
-
-**Migration Prisma associée (résumé)** — voir la migration `*_data01_taxonomy` :
-
-- `EventFormat` : la colonne `activity_id` devient **transverse** (le Format n'est plus rattaché à une Activité) ; l'unicité passe de `(activity_id, name)` à `(name)`.
-- `events.event_format_id` et `events.category_id` : **supprimées** (remplacées par les tables de liaison).
-- Nouvelles tables : `event_format_links`, `event_category_links` (clés composites, index sur la clé étrangère de liaison).
-- La projection de recherche (`search_documents`) expose désormais des **listes** de formats et catégories (au lieu d'un identifiant/nom unique).
-
-> Tant que la migration et l'adaptation applicative (DTO, mappers, services, recherche,
-> recommandation, moteur expert, frontend) ne sont pas déployées, cette section fait foi sur
-> la cible ; toute divergence code/doc constatée est un reste à faire, pas une entorse à la spec.
+Cas particulier des **`services[]` de Venue** (Tournois, Ligues, Avant-premières…) : ce **ne sont
+pas** des attributs de la taxonomie d'événement. Décision de modélisation (à acter à l'implémentation
+Venue) : petit référentiel dédié `VenueService` N-N, curable en admin, distinct des Axes A–D.
 
 ---
 
-# 11. Historique
+# 12. Historique
 
 | Version | Description |
-|----------|-------------|
-| 1.0 | Première rédaction de la taxonomie (Draft). |
-| 1.1 | Réconciliation avec le modèle persistant : Format/Catégorie en N-N, Format transverse, mapping Type↔Activité par Activité réelle (TAX-011), non-chevauchement formalisé (TAX-012), taxonomie généraliste sous `Domain` « Général ». Statut : **Validé**. |
+|---------|-------------|
+| 1.0 | Première taxonomie (Draft). |
+| 1.1 | Réconciliation modèle : Format/Catégorie en N-N, Format transverse, Type↔Activité par Activité (TAX-011 v1.1), non-chevauchement formalisé. |
+| 2.0 | **Refonte en 4 axes disjoints** (décisions PO) : Axe Sujet `Domain→Activity→Family→Subject` **partagé Event/Org/Venue** (le « jeu » devient un **Subject**) ; **Type transverse** ; **fusion Format+Catégorie** en **Facettes dimensionnées** (règle de disjonction TAX-000) ; `Famille`/`Communauté` reclassés en facettes. Plan de migration §9, administration §11. Statut : **Validé**. |
