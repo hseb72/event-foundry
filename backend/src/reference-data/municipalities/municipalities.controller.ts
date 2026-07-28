@@ -17,6 +17,7 @@ import {
   CreateMunicipalityDto,
   MunicipalityGeoDto,
   MunicipalityResponseDto,
+  PaginatedMunicipalitiesDto,
   UpdateMunicipalityDto,
 } from './municipality.dto';
 import { MunicipalityMapper } from './municipality.mapper';
@@ -35,6 +36,34 @@ export class MunicipalitiesController {
   ): Promise<MunicipalityResponseDto[]> {
     const municipalities = await this.service.list(includeInactive === 'true', regionId);
     return municipalities.map(MunicipalityMapper.toResponse);
+  }
+
+  /**
+   * Liste paginée / triée / filtrée côté serveur (référentiel volumineux : communes GeoNames).
+   * Déclarée avant `:id/...` pour ne pas être capturée par une route paramétrée.
+   */
+  @Get('page')
+  async page(
+    @Query('includeInactive') includeInactive?: string,
+    @Query('regionId') regionId?: string,
+    @Query('search') search?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ): Promise<PaginatedMunicipalitiesDto> {
+    const skipN = skip !== undefined ? Number(skip) : 0;
+    const takeN = take !== undefined ? Number(take) : 25;
+    const { items, total } = await this.service.listPaged({
+      includeInactive: includeInactive === 'true',
+      regionId,
+      search,
+      sort,
+      order,
+      skip: skipN,
+      take: takeN,
+    });
+    return { items: items.map(MunicipalityMapper.toResponse), total, skip: skipN, take: takeN };
   }
 
   /**

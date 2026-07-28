@@ -6,7 +6,7 @@ import { MunicipalityRepository } from './municipality.repository';
 
 describe('MunicipalitiesService — localisation V3 (pays + code postal)', () => {
   let repository: jest.Mocked<
-    Pick<MunicipalityRepository, 'resolveByPostalCode' | 'findWithGeo'>
+    Pick<MunicipalityRepository, 'resolveByPostalCode' | 'findWithGeo' | 'listPaged'>
   >;
   let service: MunicipalitiesService;
 
@@ -14,6 +14,7 @@ describe('MunicipalitiesService — localisation V3 (pays + code postal)', () =>
     repository = {
       resolveByPostalCode: jest.fn(),
       findWithGeo: jest.fn(),
+      listPaged: jest.fn(),
     };
     service = new MunicipalitiesService(
       repository as unknown as MunicipalityRepository,
@@ -51,5 +52,30 @@ describe('MunicipalitiesService — localisation V3 (pays + code postal)', () =>
     await expect(service.getGeoOrThrow('missing')).rejects.toBeInstanceOf(
       MunicipalityNotFoundException,
     );
+  });
+
+  describe('listPaged — liste paginée serveur (référentiel volumineux)', () => {
+    beforeEach(() => repository.listPaged.mockResolvedValue({ items: [], total: 0 }));
+
+    it('normalise un tri hors liste blanche vers « name » et borne take à [1,100]', async () => {
+      await service.listPaged({ includeInactive: true, sort: 'evil', order: 'weird', take: 5000 });
+      expect(repository.listPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ sort: 'name', order: 'asc', take: 100 }),
+      );
+    });
+
+    it('préserve un tri autorisé et le sens décroissant, et applique skip', async () => {
+      await service.listPaged({ includeInactive: false, sort: 'postalCode', order: 'desc', skip: 20, take: 10 });
+      expect(repository.listPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ sort: 'postalCode', order: 'desc', skip: 20, take: 10 }),
+      );
+    });
+
+    it('borne take à un minimum de 1 et skip à un minimum de 0', async () => {
+      await service.listPaged({ includeInactive: true, take: 0, skip: -5 });
+      expect(repository.listPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ take: 1, skip: 0 }),
+      );
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
@@ -10,6 +10,24 @@ export interface ReferenceRow {
   name: string;
   isActive: boolean;
   [key: string]: unknown;
+}
+
+/** Page de référentiel (référentiels volumineux : pagination / tri / filtre côté serveur). */
+export interface PaginatedReference {
+  items: ReferenceRow[];
+  total: number;
+  skip: number;
+  take: number;
+}
+
+/** Paramètres d'une requête paginée serveur. */
+export interface ReferencePageQuery {
+  includeInactive?: boolean;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  skip?: number;
+  take?: number;
 }
 
 /**
@@ -25,6 +43,20 @@ export class AdminReferenceApi {
     return this.http.get<ReferenceRow[]>(`${API_BASE}/${segment}`, {
       params: { includeInactive: 'true' },
     });
+  }
+
+  /**
+   * Page d'un référentiel volumineux (tri/filtre/pagination côté serveur — endpoint `<segment>/page`).
+   * Inclut les entrées désactivées (vue admin).
+   */
+  listPaged(segment: string, query: ReferencePageQuery): Observable<PaginatedReference> {
+    let params = new HttpParams().set('includeInactive', String(query.includeInactive ?? true));
+    if (query.search) params = params.set('search', query.search);
+    if (query.sort) params = params.set('sort', query.sort);
+    if (query.order) params = params.set('order', query.order);
+    if (query.skip != null) params = params.set('skip', String(query.skip));
+    if (query.take != null) params = params.set('take', String(query.take));
+    return this.http.get<PaginatedReference>(`${API_BASE}/${segment}/page`, { params });
   }
 
   create(segment: string, body: Record<string, unknown>): Observable<ReferenceRow> {

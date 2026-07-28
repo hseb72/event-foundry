@@ -22,6 +22,41 @@ export class MunicipalityRepository extends ReferentialRepository<Municipality> 
   }
 
   /**
+   * Liste paginée / triée / filtrée côté serveur (référentiel volumineux : communes GeoNames).
+   * La recherche porte sur le nom et le code postal ; le tri est restreint par le service.
+   */
+  async listPaged(params: {
+    includeInactive: boolean;
+    regionId?: string;
+    search?: string;
+    sort: 'name' | 'postalCode' | 'createdAt';
+    order: 'asc' | 'desc';
+    skip: number;
+    take: number;
+  }): Promise<{ items: Municipality[]; total: number }> {
+    const search = params.search?.trim();
+    const where = {
+      ...(params.includeInactive ? {} : { isActive: true }),
+      ...(params.regionId ? { regionId: params.regionId } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { postalCode: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
+    // Tri stable : critère demandé puis id pour départager (pagination déterministe).
+    const orderBy = [{ [params.sort]: params.order }, { id: 'asc' as const }];
+    const [items, total] = await Promise.all([
+      this.prisma.municipality.findMany({ where, orderBy, skip: params.skip, take: params.take }),
+      this.prisma.municipality.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  /**
    * Résolution « pays + code postal → commune(s) » (Localisation V3, chantier §8.1). Renvoie les
    * communes actives du pays dont le code postal correspond, avec leur région/pays (région dérivée).
    * Peut renvoyer plusieurs communes (désambiguïsation côté client).

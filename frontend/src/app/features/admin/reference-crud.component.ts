@@ -2,7 +2,7 @@ import { Component, Input, OnChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminReferenceApi, ReferenceRow } from '../../core/api/admin-reference.service';
 import { ReferentialItem } from '../../core/models';
-import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
+import { DataColumn, DataTableComponent, DataTableQuery } from '../../shared/data-table.component';
 import { EntityDef, FieldDef } from './reference-admin.model';
 
 /**
@@ -96,7 +96,7 @@ import { EntityDef, FieldDef } from './reference-admin.model';
       }
     </div>
 
-    @if (loading) {
+    @if (loading && !entity.paged) {
       <p class="muted">Chargement…</p>
     } @else {
       <app-data-table
@@ -107,6 +107,10 @@ import { EntityDef, FieldDef } from './reference-admin.model';
         [pageSize]="15"
         [searchPlaceholder]="'Rechercher un ' + entity.singular.toLowerCase() + '…'"
         [rowClass]="rowClassFn"
+        [serverMode]="!!entity.paged"
+        [serverTotal]="total"
+        [loading]="loading"
+        (query)="onQuery($event)"
       />
       <ng-template #actions let-row>
         <div class="row-actions">
@@ -181,6 +185,8 @@ export class ReferenceCrudComponent implements OnChanges {
   @Input({ required: true }) entity!: EntityDef;
 
   rows: ReferenceRow[] = [];
+  /** Total serveur (mode paginé uniquement). */
+  total = 0;
   loading = false;
   formOpen = false;
   busy = false;
@@ -190,6 +196,9 @@ export class ReferenceCrudComponent implements OnChanges {
   editIsActive = true;
   model: Record<string, string> = {};
 
+  /** Dernière requête serveur (mode paginé) — rejouée après une mutation pour rester sur la page. */
+  private lastQuery: DataTableQuery = { search: '', sortKey: '', sortDir: 'asc', page: 0, pageSize: 15 };
+
   private readonly optionsCache: Record<string, ReferentialItem[]> = {};
 
   constructor(private readonly api: AdminReferenceApi) {}
@@ -197,11 +206,16 @@ export class ReferenceCrudComponent implements OnChanges {
   ngOnChanges(): void {
     this.formOpen = false;
     this.error = '';
+    this.lastQuery = { search: '', sortKey: '', sortDir: 'asc', page: 0, pageSize: 15 };
     this.loadOptions();
     this.reload();
   }
 
   reload(): void {
+    if (this.entity.paged) {
+      this.loadPage(this.lastQuery);
+      return;
+    }
     this.loading = true;
     this.api.list(this.entity.segment).subscribe({
       next: (rows) => {
@@ -212,18 +226,48 @@ export class ReferenceCrudComponent implements OnChanges {
     });
   }
 
+  /** Réagit aux changements de tri / recherche / page émis par le tableau en mode serveur. */
+  onQuery(query: DataTableQuery): void {
+    this.lastQuery = query;
+    this.loadPage(query);
+  }
+
+  private loadPage(query: DataTableQuery): void {
+    this.loading = true;
+    this.api
+      .listPaged(this.entity.segment, {
+        includeInactive: true,
+        search: query.search || undefined,
+        sort: query.sortKey || undefined,
+        order: query.sortDir,
+        skip: query.page * query.pageSize,
+        take: query.pageSize,
+      })
+      .subscribe({
+        next: (page) => {
+          this.rows = page.items;
+          this.total = page.total;
+          this.loading = false;
+        },
+        error: () => (this.loading = false),
+      });
+  }
+
   /** Colonnes du tableau générique : champs de l'entité + colonne d'état (triables/cherchables). */
   get tableColumns(): DataColumn[] {
+    // En mode serveur, seules les colonnes acceptées par le backend sont triables (liste blanche).
+    const sortable = (key: string): boolean =>
+      this.entity.paged ? (this.entity.serverSortFields ?? []).includes(key) : true;
     const cols: DataColumn[] = this.entity.fields.map((f) => ({
       key: f.key,
       label: f.label,
-      sortable: true,
+      sortable: sortable(f.key),
       value: (row) => this.display(row as ReferenceRow, f),
     }));
     cols.push({
       key: 'isActive',
       label: 'État',
-      sortable: true,
+      sortable: sortable('isActive'),
       value: (row) => (row['isActive'] ? 'Actif' : 'Inactif'),
     });
     return cols;

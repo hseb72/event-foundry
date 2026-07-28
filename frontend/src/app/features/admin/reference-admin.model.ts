@@ -32,6 +32,16 @@ export interface EntityDef {
   singular: string;
   /** Champs éditables (le nom en premier). `isActive` est géré à part. */
   fields: FieldDef[];
+  /**
+   * Référentiel volumineux : tri/filtre/pagination délégués au serveur (endpoint `<segment>/page`).
+   * Le CRUD bascule le tableau en mode serveur. À réserver aux référentiels à fort volume (communes).
+   */
+  paged?: boolean;
+  /**
+   * En mode serveur, clés de colonnes triables acceptées par le backend (liste blanche). Les autres
+   * colonnes restent affichées mais non triables. Ignoré hors mode paginé.
+   */
+  serverSortFields?: string[];
 }
 
 const NAME: FieldDef = { key: 'name', label: 'Nom', type: 'text', required: true };
@@ -112,6 +122,9 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
     segment: 'municipalities',
     label: 'Villes',
     singular: 'Ville',
+    // Référentiel volumineux (communes GeoNames) : pagination / tri / filtre côté serveur.
+    paged: true,
+    serverSortFields: ['name', 'postalCode'],
     fields: [
       NAME,
       {

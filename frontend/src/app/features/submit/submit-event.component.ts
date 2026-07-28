@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -16,11 +16,10 @@ import {
 import { EventsApi } from '../../core/api/events.service';
 import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
+import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
 import { formatDateTime } from '../../shared/date-format';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
-/** Colonnes triables (tri client — les listes privées personnelles restent de petite taille). */
-type SortKey = 'startsAt' | 'title' | 'category' | 'status';
 
 /**
  * Entonnoir de soumission Explorer (FSPEC.22 §5-6, §15) — homogénéisé avec l'expérience Organizer.
@@ -34,7 +33,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe, EventFormComponent, FileDropComponent],
+  imports: [FormsModule, DatePipe, EventFormComponent, FileDropComponent, DataTableComponent],
   styles: [
     `
       .intro { color: var(--muted); margin: 0 0 1rem; }
@@ -61,11 +60,6 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
       .err { color: var(--red); }
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
       .note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgba(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-      th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-      th .arr { color: var(--exp); }
-      .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
     `,
   ],
   template: `
@@ -188,39 +182,23 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
         } @else if (!events().length) {
           <p class="muted">Aucun événement privé pour l'instant. Validez un brouillon ou créez-en un ci-dessus.</p>
         } @else {
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
-                  <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
-                  <th class="sortable" (click)="sort('category')">Sujets <span class="arr">{{ arrow('category') }}</span></th>
-                  <th>Archivage</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (e of paged(); track e.id) {
-                  <tr>
-                    <td>{{ date(e) }}</td>
-                    <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
-                    <td>{{ categoryOf(e) }}</td>
-                    <td>
-                      @if (e.status === 'ARCHIVED') {
-                        <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction(e, 'restore')">Restaurer</button>
-                      } @else {
-                        <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction(e, 'archive')">Archiver</button>
-                      }
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <div class="pager">
-            <span class="muted">{{ events().length }} événement(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
-            <button class="btn btn-sm" [disabled]="page() === 0" (click)="page.set(page() - 1)">‹</button>
-            <button class="btn btn-sm" [disabled]="page() >= pageCount() - 1" (click)="page.set(page() + 1)">›</button>
-          </div>
+          <app-data-table
+            [columns]="privateColumns"
+            [rows]="$any(events())"
+            [rowActions]="rowActions"
+            actionsLabel="Archivage"
+            [rowClickable]="true"
+            (rowClick)="openEvent($event)"
+            [pageSize]="10"
+            searchPlaceholder="Rechercher un événement…"
+          />
+          <ng-template #rowActions let-e>
+            @if (e.status === 'ARCHIVED') {
+              <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">Restaurer</button>
+            } @else {
+              <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">Archiver</button>
+            }
+          </ng-template>
         }
         @if (error()) { <p class="err">{{ error() }}</p> }
       </section>
@@ -231,6 +209,7 @@ export class SubmitEventComponent implements OnInit {
   private readonly imports = inject(ImportsApi);
   private readonly candidates = inject(EventCandidatesApi);
   private readonly eventsApi = inject(EventsApi);
+  private readonly router = inject(Router);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -255,24 +234,23 @@ export class SubmitEventComponent implements OnInit {
   url = '';
   structured = '';
 
-  // Tri + pagination du tableau (côté client : listes privées personnelles de petite taille).
-  readonly sortKey = signal<SortKey>('startsAt');
-  readonly sortDir = signal<'asc' | 'desc'>('asc');
-  readonly page = signal(0);
-  readonly pageSize = 10;
-
   /** Soumissions encore en cours d'analyse (ni terminées, ni en échec, ni prêtes à valider). */
   readonly inAnalysis = computed(() =>
     this.submissions().filter((s) => !['COMPLETED', 'FAILED', 'READY_FOR_VALIDATION'].includes(s.status)),
   );
 
-  readonly sorted = computed(() => {
-    const key = this.sortKey();
-    const dir = this.sortDir() === 'asc' ? 1 : -1;
-    return [...this.events()].sort((a, b) => this.compare(a, b, key) * dir);
-  });
-  readonly pageCount = computed(() => Math.max(1, Math.ceil(this.events().length / this.pageSize)));
-  readonly paged = computed(() => this.sorted().slice(this.page() * this.pageSize, (this.page() + 1) * this.pageSize));
+  // Colonnes du tableau « Mes événements » (tri/recherche/pagination via app-data-table).
+  readonly privateColumns: DataColumn[] = [
+    {
+      key: 'startsAt',
+      label: 'Date début',
+      sortable: true,
+      value: (r) => this.date(r as unknown as EventDto),
+      sortValue: (r) => String(r['startsAt'] ?? ''),
+    },
+    { key: 'title', label: 'Titre', sortable: true, value: (r) => String(r['title'] ?? '') },
+    { key: 'subjects', label: 'Sujets', sortable: true, value: (r) => this.categoryOf(r as unknown as EventDto) },
+  ];
 
   ngOnInit(): void {
     this.refresh();
@@ -434,31 +412,8 @@ export class SubmitEventComponent implements OnInit {
     return e.subjects?.length ? e.subjects.join(', ') : '—';
   }
 
-  sort(key: SortKey): void {
-    if (this.sortKey() === key) {
-      this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.sortKey.set(key);
-      this.sortDir.set('asc');
-    }
-    this.page.set(0);
-  }
-
-  arrow(key: SortKey): string {
-    return this.sortKey() === key ? (this.sortDir() === 'asc' ? '▲' : '▼') : '';
-  }
-
-  private compare(a: EventDto, b: EventDto, key: SortKey): number {
-    switch (key) {
-      case 'title':
-        return a.title.localeCompare(b.title);
-      case 'category':
-        return this.categoryOf(a).localeCompare(this.categoryOf(b));
-      case 'status':
-        return a.status.localeCompare(b.status);
-      default:
-        return a.startsAt.localeCompare(b.startsAt);
-    }
+  openEvent(row: Record<string, unknown>): void {
+    void this.router.navigate(['/events', String(row['id'])]);
   }
 
   rowAction(e: EventDto, action: 'archive' | 'restore'): void {

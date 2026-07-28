@@ -8,15 +8,40 @@ export interface DataColumn {
   key: string;
   label: string;
   sortable?: boolean;
+  /** Valeur affichée (et cherchée). */
   value: (row: Record<string, unknown>) => string;
+  /** Clé de tri si différente de l'affichage (ex. date : afficher formaté, trier sur l'ISO). */
+  sortValue?: (row: Record<string, unknown>) => string;
+  /**
+   * Nom d'un `<ng-template>` (fourni via `[cellTemplates]`) pour un rendu riche/interactif de la
+   * cellule (cases à cocher, pastilles, boutons…). Le tri et la recherche continuent d'utiliser
+   * `value()`. Sans template, la cellule affiche simplement `value(row)`.
+   */
+  cellTemplate?: string;
+}
+
+/** Requête émise par le tableau en **mode serveur** : le consommateur va chercher la page correspondante
+ *  (tri/recherche/pagination délégués au backend). */
+export interface DataTableQuery {
+  search: string;
+  sortKey: string;
+  sortDir: 'asc' | 'desc';
+  page: number;
+  pageSize: number;
 }
 
 /**
- * Tableau réutilisable : **triable, filtrable (recherche texte) et paginé** — mode client (les
- * lignes complètes sont fournies via `[rows]`, adapté aux listes bornées : référentiels, etc.).
+ * Tableau réutilisable : **triable, filtrable (recherche texte) et paginé**, avec deux modes :
+ *
+ * - **mode client** (défaut) : les lignes complètes sont fournies via `[rows]` ; tri, recherche et
+ *   pagination sont calculés côté navigateur (adapté aux listes bornées : référentiels, etc.).
+ * - **mode serveur** (`[serverMode]="true"`) : `[rows]` ne contient que la page courante, `[serverTotal]`
+ *   donne le total et `[loading]` l'état de chargement ; à chaque changement de tri/recherche/page le
+ *   composant émet `(query)` — le consommateur récupère la page correspondante (gros volumes : communes
+ *   GeoNames, événements d'une organisation…). L'API des colonnes/templates est identique dans les deux modes.
+ *
  * Rendu générique par colonnes déclaratives ; une cellule d'actions par ligne est projetée via
- * `[rowActions]` (`<ng-template let-row>`). Pour les grands volumes, un mode serveur pourra
- * être ajouté (loader + total) sans changer l'API des consommateurs.
+ * `[rowActions]` (`<ng-template let-row>`).
  */
 @Component({
   selector: 'app-data-table',
@@ -56,11 +81,23 @@ export interface DataColumn {
           </tr>
         </thead>
         <tbody>
+          @if (loading) {
+            <tr><td [attr.colspan]="colspan" class="muted">Chargement…</td></tr>
+          } @else {
           @for (row of paged; track rowId(row)) {
             <tr [ngClass]="rowClass(row)" [class.clickable]="rowClickable"
                 (click)="rowClickable ? rowClick.emit(row) : null">
               @for (col of columns; track col.key) {
-                <td>{{ col.value(row) }}</td>
+                <td>
+                  @if (col.cellTemplate && cellTemplates[col.cellTemplate]) {
+                    <ng-container
+                      [ngTemplateOutlet]="cellTemplates[col.cellTemplate]"
+                      [ngTemplateOutletContext]="{ $implicit: row, value: col.value(row) }"
+                    />
+                  } @else {
+                    {{ col.value(row) }}
+                  }
+                </td>
               }
               @if (rowActions) {
                 <td (click)="$event.stopPropagation()">
@@ -70,6 +107,7 @@ export interface DataColumn {
             </tr>
           } @empty {
             <tr><td [attr.colspan]="colspan" class="muted">{{ emptyLabel }}</td></tr>
+          }
           }
         </tbody>
       </table>
@@ -88,6 +126,12 @@ export class DataTableComponent {
   @Input() rows: Record<string, unknown>[] = [];
   /** Cellule d'actions projetée par ligne (`<ng-template let-row>…</ng-template>`). */
   @Input() rowActions: TemplateRef<{ $implicit: Record<string, unknown> }> | null = null;
+  /**
+   * Templates de cellule riches, indexés par le `cellTemplate` d'une colonne. Chaque template reçoit
+   * la ligne (`$implicit`) et la valeur texte (`value`). Permet des cellules interactives tout en
+   * conservant le tri/filtre déclaratif.
+   */
+  @Input() cellTemplates: Record<string, TemplateRef<{ $implicit: Record<string, unknown>; value: string }>> = {};
   @Input() actionsLabel = '';
   @Input() searchable = true;
   @Input() searchPlaceholder = 'Rechercher…';
@@ -98,10 +142,21 @@ export class DataTableComponent {
   @Input() rowClass: (row: Record<string, unknown>) => Record<string, boolean> = () => ({});
   @Output() rowClick = new EventEmitter<Record<string, unknown>>();
 
+  /** Active la délégation au serveur : `[rows]` = page courante, `[serverTotal]` = total, `(query)` émis. */
+  @Input() serverMode = false;
+  /** Total serveur (mode serveur uniquement) — pilote la pagination affichée. */
+  @Input() serverTotal = 0;
+  /** Chargement en cours (affiche une ligne « Chargement… »). */
+  @Input() loading = false;
+  /** Émis en mode serveur à chaque changement de recherche / tri / page. */
+  @Output() query = new EventEmitter<DataTableQuery>();
+
   search = '';
   sortKey = '';
   sortDir: 'asc' | 'desc' = 'asc';
   page = 0;
+
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   private get filtered(): Record<string, unknown>[] {
     const q = this.search.trim().toLowerCase();
@@ -112,14 +167,15 @@ export class DataTableComponent {
   private get sorted(): Record<string, unknown>[] {
     const col = this.columns.find((c) => c.key === this.sortKey);
     if (!col) return this.filtered;
+    const keyOf = col.sortValue ?? col.value;
     const dir = this.sortDir === 'asc' ? 1 : -1;
     return [...this.filtered].sort(
-      (a, b) => col.value(a).localeCompare(col.value(b), undefined, { numeric: true }) * dir,
+      (a, b) => keyOf(a).localeCompare(keyOf(b), undefined, { numeric: true }) * dir,
     );
   }
 
   get total(): number {
-    return this.filtered.length;
+    return this.serverMode ? this.serverTotal : this.filtered.length;
   }
   get pageCount(): number {
     return Math.max(1, Math.ceil(this.total / this.pageSize));
@@ -127,7 +183,9 @@ export class DataTableComponent {
   get clampedPage(): number {
     return Math.min(this.page, this.pageCount - 1);
   }
+  /** Lignes affichées : en mode serveur `[rows]` est déjà la page courante ; sinon on trie/pagine localement. */
   get paged(): Record<string, unknown>[] {
+    if (this.serverMode) return this.rows;
     const start = this.clampedPage * this.pageSize;
     return this.sorted.slice(start, start + this.pageSize);
   }
@@ -137,6 +195,10 @@ export class DataTableComponent {
 
   onSearch(): void {
     this.page = 0;
+    if (!this.serverMode) return;
+    // Débounce en mode serveur pour ne pas requêter à chaque frappe.
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    this.searchTimer = setTimeout(() => this.emitQuery(), 300);
   }
 
   sortBy(col: DataColumn): void {
@@ -148,6 +210,7 @@ export class DataTableComponent {
       this.sortDir = 'asc';
     }
     this.page = 0;
+    if (this.serverMode) this.emitQuery();
   }
 
   arrow(col: DataColumn): string {
@@ -156,5 +219,16 @@ export class DataTableComponent {
 
   go(delta: number): void {
     this.page = Math.min(Math.max(0, this.clampedPage + delta), this.pageCount - 1);
+    if (this.serverMode) this.emitQuery();
+  }
+
+  private emitQuery(): void {
+    this.query.emit({
+      search: this.search.trim(),
+      sortKey: this.sortKey,
+      sortDir: this.sortDir,
+      page: this.clampedPage,
+      pageSize: this.pageSize,
+    });
   }
 }

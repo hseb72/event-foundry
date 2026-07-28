@@ -20,6 +20,37 @@ export class MunicipalitiesService {
       : this.repository.list(includeInactive);
   }
 
+  /** Champs de tri autorisés pour la liste paginée (liste blanche — jamais de tri arbitraire). */
+  static readonly SORT_FIELDS = ['name', 'postalCode', 'createdAt'] as const;
+
+  /** Liste paginée / triée / filtrée côté serveur (référentiel volumineux). */
+  listPaged(params: {
+    includeInactive: boolean;
+    regionId?: string;
+    search?: string;
+    sort?: string;
+    order?: string;
+    skip?: number;
+    take?: number;
+  }): Promise<{ items: Municipality[]; total: number }> {
+    const sort = (MunicipalitiesService.SORT_FIELDS as readonly string[]).includes(params.sort ?? '')
+      ? (params.sort as 'name' | 'postalCode' | 'createdAt')
+      : 'name';
+    const order = params.order === 'desc' ? 'desc' : 'asc';
+    const skip = Math.max(0, Number.isFinite(params.skip) ? (params.skip as number) : 0);
+    const rawTake = Number.isFinite(params.take) ? (params.take as number) : 25;
+    const take = Math.min(100, Math.max(1, rawTake));
+    return this.repository.listPaged({
+      includeInactive: params.includeInactive,
+      regionId: params.regionId,
+      search: params.search,
+      sort,
+      order,
+      skip,
+      take,
+    });
+  }
+
   /** Résout « pays + code postal → commune(s) » (Localisation V3, chantier §8.1). */
   resolveByPostalCode(countryId: string, postalCode: string): Promise<MunicipalityWithGeo[]> {
     return this.repository.resolveByPostalCode(countryId, postalCode.trim());

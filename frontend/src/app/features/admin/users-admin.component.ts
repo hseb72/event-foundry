@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { UsersAdminApi } from '../../core/api/users.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminUserDto } from '../../core/models';
+import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
 
 const ROLES = ['USER', 'ADMIN'];
 
@@ -9,24 +10,9 @@ const ROLES = ['USER', 'ADMIN'];
 @Component({
   selector: 'app-users-admin',
   standalone: true,
+  imports: [DataTableComponent],
   styles: [
     `
-      table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      th,
-      td {
-        text-align: left;
-        padding: 0.55rem 0.6rem;
-        border-bottom: 1px solid var(--border);
-        font-size: 0.92rem;
-        vertical-align: middle;
-      }
-      th {
-        color: var(--muted);
-        font-weight: 600;
-      }
       .inactive td {
         opacity: 0.5;
       }
@@ -78,61 +64,55 @@ const ROLES = ['USER', 'ADMIN'];
       <p class="muted">Chargement…</p>
     } @else {
       <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Utilisateur</th>
-              <th>Rôles</th>
-              <th>État</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (user of users; track user.id) {
-              <tr [class.inactive]="!user.isActive">
-                <td>
-                  <div>
-                    {{ user.displayName }}
-                    @if (user.id === currentId) {
-                      <span class="me">(vous)</span>
-                    }
-                  </div>
-                  <small class="muted">{{ user.email }}</small>
-                </td>
-                <td>
-                  <div class="roles">
-                    @for (role of allRoles; track role) {
-                      <label>
-                        <input
-                          type="checkbox"
-                          [checked]="user.roles.includes(role)"
-                          [disabled]="busyId === user.id"
-                          (change)="toggleRole(user, role, isChecked($event))"
-                        />
-                        {{ role }}
-                      </label>
-                    }
-                  </div>
-                </td>
-                <td>
-                  <span class="pill" [class.on]="user.isActive" [class.off]="!user.isActive">
-                    {{ user.isActive ? 'Actif' : 'Suspendu' }}
-                  </span>
-                </td>
-                <td>
-                  <button
-                    class="btn"
-                    [disabled]="busyId === user.id || user.id === currentId"
-                    [title]="user.isActive ? 'Bloque la connexion ; les données sont conservées' : 'Restaure l’accès au compte'"
-                    (click)="toggleActive(user)"
-                  >
-                    {{ user.isActive ? 'Suspendre' : 'Réactiver' }}
-                  </button>
-                </td>
-              </tr>
+        <app-data-table
+          [columns]="columns"
+          [rows]="$any(users)"
+          [cellTemplates]="{ user: userCell, roles: rolesCell, state: stateCell }"
+          [rowActions]="actions"
+          actionsLabel=""
+          [pageSize]="15"
+          searchPlaceholder="Rechercher un utilisateur…"
+          [rowClass]="rowClassFn"
+        />
+        <ng-template #userCell let-user>
+          <div>
+            {{ user.displayName }}
+            @if (user.id === currentId) {
+              <span class="me">(vous)</span>
             }
-          </tbody>
-        </table>
+          </div>
+          <small class="muted">{{ user.email }}</small>
+        </ng-template>
+        <ng-template #rolesCell let-user>
+          <div class="roles">
+            @for (role of allRoles; track role) {
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="user.roles.includes(role)"
+                  [disabled]="busyId === user.id"
+                  (change)="toggleRole($any(user), role, isChecked($event))"
+                />
+                {{ role }}
+              </label>
+            }
+          </div>
+        </ng-template>
+        <ng-template #stateCell let-user>
+          <span class="pill" [class.on]="user.isActive" [class.off]="!user.isActive">
+            {{ user.isActive ? 'Actif' : 'Suspendu' }}
+          </span>
+        </ng-template>
+        <ng-template #actions let-user>
+          <button
+            class="btn"
+            [disabled]="busyId === user.id || user.id === currentId"
+            [title]="user.isActive ? 'Bloque la connexion ; les données sont conservées' : 'Restaure l’accès au compte'"
+            (click)="toggleActive($any(user))"
+          >
+            {{ user.isActive ? 'Suspendre' : 'Réactiver' }}
+          </button>
+        </ng-template>
       </div>
     }
   `,
@@ -144,6 +124,35 @@ export class UsersAdminComponent implements OnInit {
   error = '';
   readonly allRoles = ROLES;
   readonly currentId: string | null;
+
+  readonly columns: DataColumn[] = [
+    {
+      key: 'user',
+      label: 'Utilisateur',
+      sortable: true,
+      value: (r) => `${r['displayName'] ?? ''} ${r['email'] ?? ''}`.trim(),
+      sortValue: (r) => String(r['displayName'] ?? ''),
+      cellTemplate: 'user',
+    },
+    {
+      key: 'roles',
+      label: 'Rôles',
+      sortable: true,
+      value: (r) => ((r['roles'] as string[] | undefined) ?? []).join(', '),
+      cellTemplate: 'roles',
+    },
+    {
+      key: 'isActive',
+      label: 'État',
+      sortable: true,
+      value: (r) => (r['isActive'] ? 'Actif' : 'Suspendu'),
+      cellTemplate: 'state',
+    },
+  ];
+
+  readonly rowClassFn = (row: Record<string, unknown>): Record<string, boolean> => ({
+    inactive: !row['isActive'],
+  });
 
   constructor(
     private readonly api: UsersAdminApi,

@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ModerationApi, ModerationTerm } from '../../core/api/moderation.service';
+import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
 
 /**
  * Référentiel des termes de modération (FSPEC.22 §13 / FSPEC.20). Les Operators gèrent la liste des
@@ -10,7 +11,7 @@ import { ModerationApi, ModerationTerm } from '../../core/api/moderation.service
 @Component({
   selector: 'app-moderation-terms',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DataTableComponent],
   styles: [
     `
       .intro { color: var(--muted); margin: 0 0 1rem; }
@@ -19,8 +20,6 @@ import { ModerationApi, ModerationTerm } from '../../core/api/moderation.service
         border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.6rem;
         font: inherit; background: var(--bg); color: var(--text);
       }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
       .badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; }
       .badge.banned { color: var(--red); background: rgba(220, 38, 38, 0.14); }
       .badge.spam { color: #b45309; background: rgba(234, 179, 8, 0.15); }
@@ -50,19 +49,25 @@ import { ModerationApi, ModerationTerm } from '../../core/api/moderation.service
     @if (!terms().length) {
       <p class="muted">Aucun terme configuré.</p>
     } @else {
-      <table>
-        <thead><tr><th>Terme</th><th>Nature</th><th>Actif</th><th></th></tr></thead>
-        <tbody>
-          @for (t of terms(); track t.id) {
-            <tr [class.off]="!t.isActive">
-              <td>{{ t.term }}</td>
-              <td><span class="badge" [class.banned]="t.kind === 'BANNED'" [class.spam]="t.kind === 'SPAM'">{{ t.kind === 'BANNED' ? 'Interdit' : 'Spam' }}</span></td>
-              <td><input type="checkbox" [checked]="t.isActive" (change)="toggle(t)" /></td>
-              <td><button class="btn btn-sm" (click)="remove(t)">Supprimer</button></td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <app-data-table
+        [columns]="columns"
+        [rows]="$any(terms())"
+        [cellTemplates]="{ kind: kindCell, active: activeCell }"
+        [rowActions]="actions"
+        actionsLabel=""
+        [pageSize]="15"
+        searchPlaceholder="Rechercher un terme…"
+        [rowClass]="rowClassFn"
+      />
+      <ng-template #kindCell let-t>
+        <span class="badge" [class.banned]="t.kind === 'BANNED'" [class.spam]="t.kind === 'SPAM'">{{ t.kind === 'BANNED' ? 'Interdit' : 'Spam' }}</span>
+      </ng-template>
+      <ng-template #activeCell let-t>
+        <input type="checkbox" [checked]="t.isActive" (change)="toggle($any(t))" />
+      </ng-template>
+      <ng-template #actions let-t>
+        <button class="btn btn-sm" (click)="remove($any(t))">Supprimer</button>
+      </ng-template>
     }
   `,
 })
@@ -73,6 +78,28 @@ export class ModerationTermsComponent implements OnInit {
   readonly message = signal('');
   term = '';
   kind: 'BANNED' | 'SPAM' = 'BANNED';
+
+  readonly columns: DataColumn[] = [
+    { key: 'term', label: 'Terme', sortable: true, value: (r) => String(r['term'] ?? '') },
+    {
+      key: 'kind',
+      label: 'Nature',
+      sortable: true,
+      value: (r) => (r['kind'] === 'BANNED' ? 'Interdit' : 'Spam'),
+      cellTemplate: 'kind',
+    },
+    {
+      key: 'isActive',
+      label: 'Actif',
+      sortable: true,
+      value: (r) => (r['isActive'] ? 'Actif' : 'Inactif'),
+      cellTemplate: 'active',
+    },
+  ];
+
+  readonly rowClassFn = (row: Record<string, unknown>): Record<string, boolean> => ({
+    off: !row['isActive'],
+  });
 
   ngOnInit(): void {
     this.reload();
