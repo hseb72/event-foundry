@@ -21,8 +21,11 @@ générique pour d'autres domaines sans changement du modèle métier.
    100 % déterministe : règles + référentiels. Aucune liste métier codée en dur.
 2. **PostgreSQL est l'unique source de vérité.** Redis = cache + files uniquement.
    MinIO = tous les fichiers. Aucun fichier en base, aucune donnée métier dans Redis.
-3. **Le `Domain` est toujours déduit de l'`Activity`.** Jamais saisi, jamais envoyé par
-   le client, jamais utilisé comme filtre. Toute tentative d'envoi est ignorée/rejetée.
+3. **Le `Domain` (« grand univers ») est toujours déduit de l'`Activity`.** Jamais **saisi** ni
+   envoyé par le client comme attribut d'un Event/Organization/Venue (on choisit l'Activité, le
+   Domain suit) ; toute tentative de saisie est ignorée/rejetée. Il **peut** en revanche servir de
+   **regroupement de navigation** (univers de la Découverte, onboarding) et d'axe **statistique** :
+   un filtre de navigation *dérivé* du Domain est autorisé (DATA.01 v2.0, option A).
 4. **Le Backend orchestre, il n'exécute jamais l'OCR ni la classification.**
 5. **Tout échange inter-composant passe par `shared/contracts`.** Aucun composant ne
    dépend des objets internes d'un autre (ADR.03, ADR.07).
@@ -179,16 +182,21 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
 
 ## 8. Modèle métier (ARCHI.02 / ARCHI.03)
 
-Hiérarchie référentielle : `Domain → Activity → EventType`.
-- Une Activity appartient à un Domain ; un EventType appartient à une Activity.
-- **Taxonomie DATA.01 v1.1** (référence : `docs/v3/09-DATA.01-EventAttributes`) :
-  Activité (1) → Type (1, rattaché à l'Activité) → Format (0..N, **transverse**) →
-  Catégorie (0..N, **transverse**) → Tags (0..N). Format et Catégorie sont des relations
-  **N-N** portées par des tables de liaison ; l'EventFormat n'est **plus** rattaché à une
-  Activity (référentiel transverse au même titre que Category/Tag). Un même nom de Type peut
-  exister sous plusieurs Activités (unicité par Activité — TAX-011).
-- Format et Catégorie ne se substituent jamais aux champs techniques (`price`, `visibility`)
-  ni à la Participation : ce sont des qualificatifs de recherche, jamais des règles métier (TAX-012).
+**Taxonomie DATA.01 v2.0** (référence : `docs/v3/09-DATA.01-EventAttributes`) — **4 axes disjoints**
+(règle TAX-000 : un terme n'existe que dans un référentiel) :
+- **Axe A — Sujet** : `Domain (univers) → Activity → Family → Subject`, hiérarchie **partagée**
+  Event/Organization/Venue. Le sujet précis (Magic, Pokémon, Catane, Rock, Football…) est un
+  **Subject** sous une **Family** (TCG, Jeu de plateau, Jazz & Blues, Sports collectifs…).
+  L'Event porte **1 Activity** (obligatoire) + **0..N Subject**. Domain = « grand univers »
+  (Culture & Patrimoine, Jeux & Esport…), déduit, visible en navigation (cf. règle d'or n°3).
+- **Axe B — Type** : **transverse** (nature du rassemblement : Tournoi, Concert, Atelier…),
+  **1 par Event**, `name` unique global — plus de rattachement à l'Activité.
+- **Axe C — Facettes** : `FacetDimension → FacetTerm` (fusion de l'ancien Format + Catégorie),
+  **0..N par Event**, `name` de FacetTerm unique global. Ne se substituent jamais aux champs
+  techniques (`price`, `visibility`) ni à la Participation (qualificatifs de recherche — TAX-010).
+- **Axe D — Tags** : libres, extensibles, 0..N (Event et Venue).
+- Migration depuis v1.1 (EventType scopé, EventFormat/Category) : cf. DATA.01 §9 (reste à faire
+  tant que schéma + applicatif non déployés).
 
 Entités : `User`, `Attachment`, `ImportJob`, `ImportJobEvent`, `EventCandidate`, `Event`,
 `Domain`, `Activity`, `EventType`, `EventFormat`, `Organizer`, `Venue`, `UserParticipation`.
