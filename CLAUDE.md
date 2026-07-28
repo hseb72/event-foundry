@@ -191,9 +191,10 @@ Une capacité métier = un module NestJS indépendant. Modules V1 : `auth`, `imp
   (Culture & Patrimoine, Jeux & Esport…), déduit, visible en navigation (cf. règle d'or n°3).
 - **Axe B — Type** : **transverse** (nature du rassemblement : Tournoi, Concert, Atelier…),
   **1 par Event**, `name` unique global — plus de rattachement à l'Activité.
-- **Axe C — Facettes** : `FacetDimension → FacetTerm` (fusion de l'ancien Format + Catégorie),
-  **0..N par Event**, `name` de FacetTerm unique global. Ne se substituent jamais aux champs
-  techniques (`price`, `visibility`) ni à la Participation (qualificatifs de recherche — TAX-010).
+- **Axe C — Modalités** : `ModalityDimension → Modality` (fusion de l'ancien Format + Catégorie ;
+  inclut la dimension *Format de jeu* : Draft, Scellé, Constructed…), **0..N par Event**, `name` de
+  Modality unique global. Ne se substituent jamais aux champs techniques (`price`, `visibility`)
+  ni à la Participation (qualificatifs de recherche — TAX-010).
 - **Axe D — Tags** : libres, extensibles, 0..N (Event et Venue).
 - Migration depuis v1.1 (EventType scopé, EventFormat/Category) : cf. DATA.01 §9 (reste à faire
   tant que schéma + applicatif non déployés).

@@ -40,7 +40,7 @@ Deux natures, désormais séparées :
 
 - une **hiérarchie taxonomique** — *« de quoi ça parle »* — **partagée** par `Event`,
   `Organization` **et** `Venue` ;
-- des **facettes orthogonales** — *« comment / pour qui / dans quelles conditions »* — **propres à
+- des **modalités orthogonales** — *« comment / pour qui / dans quelles conditions »* — **propres à
   l'Event**.
 
 ```
@@ -51,7 +51,7 @@ AXE A — Sujet (hiérarchie, PARTAGÉE Event / Organization / Venue)
                 └─ Subject        Magic · Pokémon · Catane · Rock …   ← « le sujet lui-même »
 
 AXE B — Type (nature du rassemblement, TRANSVERSE)   Tournoi · Concert · Atelier · Dégustation …
-AXE C — Facettes (référentiel unique dimensionné)    Participation · Public · Ambiance · Accès …
+AXE C — Modalités (référentiel unique dimensionné)    Participation · Public · Ambiance · Accès …
 AXE D — Tags (mots-clés libres, non contrôlés)
 ```
 
@@ -59,7 +59,7 @@ AXE D — Tags (mots-clés libres, non contrôlés)
 |-----|-------------|----------|-----------|---------------------|
 | A | Domain → Activity → Family → Subject | De quoi ça parle ? | Event, Organization, Venue | 1 Activity + 0..N Subject |
 | B | Type | Nature du rassemblement ? | Event | exactement 1 |
-| C | FacetTerm (par FacetDimension) | Comment / pour qui / conditions ? | Event | 0..N |
+| C | Modality (par ModalityDimension) | Comment / pour qui / conditions ? | Event | 0..N |
 | D | Tag | Mots-clés libres | Event, Venue | 0..N |
 
 ---
@@ -93,7 +93,7 @@ organisation *propose* des Activités, un lieu *héberge* des Activités. Liste 
 regroupées par univers ci-dessus).
 
 > **Retirées des Activités** (ce n'étaient pas des sujets, cf. §9) : `Famille` et `Communauté`
-> deviennent des **facettes** (Axe C).
+> deviennent des **modalités** (Axe C).
 
 ## 3.3 Family (matérialisée) & 3.4 Subject
 
@@ -189,8 +189,9 @@ l'exhaustivité. Un Subject appartient à une Family (donc à une Activité) ; u
 | Jazz, Blues | A | Subject | Musique → Jazz, Blues & Soul |
 | Football, Basket-ball, Rugby | A | Subject | Sport → Sports collectifs |
 | Tournoi, Concert, Dégustation | B | Type | (transverse) |
-| Présentiel, Payant, Compétitif | C | FacetTerm | Participation / Tarification / Mode de jeu |
-| Deckbuilding, Draft, Cosplay | D | Tag | (libre) |
+| Présentiel, Payant, Compétitif | C | Modality | Participation / Tarification / Mode de jeu |
+| Draft, Scellé, Constructed | C | Modality | Format de jeu |
+| Deckbuilding, Cosplay, Vintage | D | Tag | (libre) |
 
 ---
 
@@ -205,17 +206,17 @@ l'Activité). Extrait représentatif (le `seed.ts` fait foi) :
 | Tournoi · Championnat · Ligue · Compétition · Match · Concours · Rencontre · Meetup · Atelier · Stage · Cours · Initiation · Masterclass · Démonstration · Conférence · Table ronde · Débat · Colloque · Séminaire · Webinaire · Avant-première · Projection · Exposition · Vernissage · Concert · Récital · Festival · Spectacle · Représentation · Gala · Soirée · Salon · Convention · Foire · Marché · Vente · Dédicace · Dégustation · Portes ouvertes · Visite · Balade · Excursion · Assemblée · Cérémonie · Défilé · Showcase |
 
 > Les sous-formats propres à un jeu (`Draft`, `Scellé`, `Constructed`…) **ne sont pas** des Types :
-> ce sont des modalités du Subject/de la Family → **Tags** en V1 (décision PO). Ils ne polluent pas
+> ce sont des **modalités** (Axe C, dimension *Format de jeu* — décision PO). Ils ne polluent pas
 > le référentiel Type transverse. De même, les anciens « Types » v1.1 qui étaient en réalité des
 > lieux/sujets (`Musée`, `Château`, `Zoo`, `Aquarium`) deviennent des **Subjects** (§9).
 
 ---
 
-# 5. Axe C — Facettes (référentiel unique dimensionné)
+# 5. Axe C — Modalités (référentiel unique dimensionné)
 
-`Format` et `Catégorie` **fusionnent** en un référentiel de **facettes**. Chaque `FacetTerm`
-appartient à **une** `FacetDimension` ; le `name` d'un FacetTerm est **unique global**. Un Event
-porte **0..N** FacetTerm.
+`Format` et `Catégorie` **fusionnent** en un référentiel de **modalités**. Chaque `Modality`
+appartient à **une** `ModalityDimension` ; le `name` d'un Modality est **unique global**. Un Event
+porte **0..N** Modality.
 
 | Dimension | Termes |
 |-----------|--------|
@@ -228,13 +229,14 @@ porte **0..N** FacetTerm.
 | Rayonnement | Local · Régional · National · International |
 | Nature de l'organisateur | Association · Collectivité · Entreprise · Particulier · Institution |
 | Mode de jeu | Compétitif · Coopératif |
+| Format de jeu | Constructed · Draft · Scellé · Standard · Commander · Limité |
 | Durée | Permanent · Temporaire · Ponctuel · Récurrent |
 | Cadre | Intérieur · Extérieur |
 | Formation d'équipe | Solo · Équipe |
 
 **Collisions v1.1 résolues :** `Compétitif` → *Mode de jeu* seul ; `Professionnel` → *Public visé*
 seul ; `Famille` → *Public visé* (ex-Activité) ; `Communautaire` → *Ambiance* (ex-Activité
-`Communauté`) ; `Privé` **écarté** (c'est `Event.visibility`, TAX-010). Les FacetTerm restent des
+`Communauté`) ; `Privé` **écarté** (c'est `Event.visibility`, TAX-010). Les Modality restent des
 **qualificatifs de recherche**, jamais des règles métier.
 
 ---
@@ -242,7 +244,7 @@ seul ; `Famille` → *Public visé* (ex-Activité) ; `Communautaire` → *Ambian
 # 6. Axe D — Tags
 
 Mots-clés **libres**, non contrôlés, extensibles sans modifier la taxonomie : l'échappatoire pour
-tout ce qui n'entre pas dans A/B/C (`Deckbuilding`, `Draft`, `Cosplay`, `Vintage`, `Kids`…). Aucun
+tout ce qui n'entre pas dans A/B/C (`Deckbuilding`, `Cosplay`, `Vintage`, `Kids`…). Aucun
 terme des axes A/B/C n'y est dupliqué. Portés par l'Event et par le Venue.
 
 ---
@@ -256,13 +258,13 @@ terme des axes A/B/C n'y est dupliqué. Portés par l'Event et par le Venue.
 | TAX-002 | Chaque Event a **0..N** Subject (chacun rattaché à une Family, donc à une Activity). |
 | TAX-003 | La Family est un niveau matérialisé entre Activity et Subject ; un Subject appartient à une Family. |
 | TAX-004 | Chaque Event a **exactement un** Type ; le Type est **transverse**, `name` unique global. |
-| TAX-005 | Chaque Event a **0..N** FacetTerm ; chaque FacetTerm appartient à une FacetDimension ; `name` unique global. |
+| TAX-005 | Chaque Event a **0..N** Modality ; chaque Modality appartient à une ModalityDimension ; `name` unique global. |
 | TAX-006 | Chaque Event a **0..N** Tag (libres, extensibles). |
-| TAX-007 | Domain, Activity, Family, Type, FacetDimension sont stables ; Subject, FacetTerm, Tag évoluent avec les besoins. |
+| TAX-007 | Domain, Activity, Family, Type, ModalityDimension sont stables ; Subject, Modality, Tag évoluent avec les besoins. |
 | TAX-008 | Le **Domain** (« univers ») est **déduit** de l'Activity — jamais *saisi* sur un Event/Org/Venue — mais **peut** servir de regroupement de navigation (filtre dérivé) et d'axe statistique (option A ; règle d'or n°3 révisée). |
-| TAX-009 | L'axe Sujet (Activity + Subject) est **partagé** Event/Organization/Venue. Type et Facettes restent **propres à l'Event**. |
-| TAX-010 | Les FacetTerm ne se substituent jamais à `price` / `visibility` / la Participation. |
-| TAX-011 | Provisioning : un Subject / FacetTerm / Tag reconnu à l'import mais absent est créé `provisional = true` puis curé en admin (ADR.24). Domain, Activity, Family, Type ne sont **jamais** auto-provisionnés. |
+| TAX-009 | L'axe Sujet (Activity + Subject) est **partagé** Event/Organization/Venue. Type et Modalités restent **propres à l'Event**. |
+| TAX-010 | Les Modality ne se substituent jamais à `price` / `visibility` / la Participation. |
+| TAX-011 | Provisioning : un Subject / Modality / Tag reconnu à l'import mais absent est créé `provisional = true` puis curé en admin (ADR.24). Domain, Activity, Family, Type ne sont **jamais** auto-provisionnés. |
 
 ---
 
@@ -275,10 +277,10 @@ terme des axes A/B/C n'y est dupliqué. Portés par l'Event et par le Venue.
 | `activity_families` | **Family (nouveau)** | `activity_id` FK ; `@@unique(activity_id, name)` |
 | `subjects` | **Subject (nouveau)** | `family_id` FK ; `@@unique(family_id, name)` ; `provisional` |
 | `event_types` | Type **transverse** | `name` **unique global** ; plus de `activity_id` |
-| `facet_dimensions` | **Dimension (nouveau)** | `name` unique |
-| `facet_terms` | **FacetTerm (nouveau)** | `dimension_id` FK ; `name` **unique global** ; `provisional` |
+| `modality_dimensions` | **Dimension (nouveau)** | `name` unique |
+| `modalities` | **Modality (nouveau)** | `dimension_id` FK ; `name` **unique global** ; `provisional` |
 | `tags` | Tag | `name` unique |
-| `event_subjects` · `event_facets` · `event_tags` | N-N Event ↔ Subject / FacetTerm / Tag | PK composite (`event_facets` remplace format+category links) |
+| `event_subjects` · `event_modalities` · `event_tags` | N-N Event ↔ Subject / Modality / Tag | PK composite (`event_modalities` remplace format+category links) |
 | `venue_activities` · `venue_subjects` · `venue_tags` | **N-N Venue ↔ … (nouveau)** | PK composite |
 | `organization_activities` · `organization_subjects` | N-N Org ↔ Activity (existant) / Subject (**nouveau**) | PK composite |
 
@@ -291,19 +293,19 @@ terme des axes A/B/C n'y est dupliqué. Portés par l'Event et par le Venue.
 
 Migration Prisma `*_data02_taxonomy`, en **une transaction** :
 
-1. **Créer** `domains` (6 univers), `activity_families`, `subjects`, `facet_dimensions`,
-   `facet_terms`, et les tables de liaison. Réaffecter chaque Activity à son univers (§3.1).
+1. **Créer** `domains` (6 univers), `activity_families`, `subjects`, `modality_dimensions`,
+   `modalities`, et les tables de liaison. Réaffecter chaque Activity à son univers (§3.1).
 2. **Sujets ex-Activités TCG** (`Magic, Pokémon, Lorcana…`, Domain `TCG`) → **Subjects** sous
    Activity `Jeux` / Family `TCG`. Recâbler `Event.activity_id` → `Jeux` + créer `event_subjects`.
    Domain `TCG` désactivé.
 3. **Ex-EventType « TCG » sous « Jeux »** → **Family `TCG`** (pas un Type).
 4. **Ex-« Types »-lieux** (`Musée, Château, Zoo, Aquarium, Jardin…`) → **Subjects** (Patrimoine /
    Nature) ; les Events concernés reçoivent un Type transverse de repli (`Visite`, `Exposition`).
-5. **Facettes** : `event_formats` + `categories` → `facet_terms` (dimension d'origine) ;
-   `event_format_links` + `event_category_links` → `event_facets`. Dédoublonnage par nom global
+5. **Modalités** : `event_formats` + `categories` → `modalities` (dimension d'origine) ;
+   `event_format_links` + `event_category_links` → `event_modalities`. Dédoublonnage par nom global
    (§5) ; `Privé` écarté.
-6. **Ex-Activités `Famille` / `Communauté`** → `facet_terms` (Public visé / Ambiance) ; Events
-   concernés reçoivent une Activity de repli déterministe + le FacetTerm.
+6. **Ex-Activités `Famille` / `Communauté`** → `modalities` (Public visé / Ambiance) ; Events
+   concernés reçoivent une Activity de repli déterministe + le Modality.
 7. **Type transverse** : fusionner les `event_types` de même `name`, supprimer `activity_id`, poser
    l'unicité globale, recâbler `Event.event_type_id`.
 8. **Contrôle** : aucun Event orphelin (Activity + Type obligatoires), aucun terme en double
@@ -317,15 +319,15 @@ Migration Prisma `*_data02_taxonomy`, en **une transaction** :
 # 10. Exemples
 
 ## 10.1 Événement « Tournoi Pokémon »
-Activity `Jeux` · Subject `Pokémon` *(TCG)* · Type `Tournoi` · Facettes {Présentiel, Payant,
-Compétitif, Sur inscription} · Tags {Draft, Deckbuilding} · Univers déduit **Jeux & Esport**.
+Activity `Jeux` · Subject `Pokémon` *(TCG)* · Type `Tournoi` · Modalités {Présentiel, Payant,
+Compétitif, Sur inscription, Draft *(Format de jeu)*} · Tags {Deckbuilding} · Univers déduit **Jeux & Esport**.
 
 ## 10.2 Événement « Concert de Blues »
-Activity `Musique` · Subject `Blues` *(Jazz, Blues & Soul)* · Type `Concert` · Facettes {Présentiel,
+Activity `Musique` · Subject `Blues` *(Jazz, Blues & Soul)* · Type `Concert` · Modalités {Présentiel,
 Payant, Tout public, Culturel} · Tags {Live, Trio} · Univers **Musique & Spectacle**.
 
 ## 10.3 Événement « Initiation Catane en famille »
-Activity `Jeux` · Subject `Catane` *(Jeu de plateau)* · Type `Initiation` · Facettes {Présentiel,
+Activity `Jeux` · Subject `Catane` *(Jeu de plateau)* · Type `Initiation` · Modalités {Présentiel,
 Gratuit, Famille, Convivial, Coopératif} · Univers **Jeux & Esport**.
 
 ## 10.4 Lieu « Cartapapa » (Venue)
@@ -334,7 +336,7 @@ Services *(hors taxonomie, cf. §11)* {Tournois, Avant-premières, Cartes à l'u
 
 ## 10.5 Organisation « Club de Rugby »
 Activity `Sport` · Subject `Rugby` *(Sports collectifs)* · Univers **Sport & Plein air**. (Type /
-Facettes non applicables — propres à l'Event.)
+Modalités non applicables — propres à l'Event.)
 
 ---
 
@@ -346,7 +348,7 @@ Zone d'administration (rôle `ADMIN`, `catalog.manage`), trame commune par réf�
 - **curation du provisoire** : lister `provisional = true` (issus de l'import), **valider** /
   **fusionner** vers une entrée canonique / **désactiver** ;
 - **hiérarchie** : Domain → Activity → Family → Subject (rattacher un Subject à une Family, une
-  Activity à un univers) ; FacetDimension → FacetTerm ;
+  Activity à un univers) ; ModalityDimension → Modality ;
 - **garde de disjonction (TAX-000)** : refus déterministe de créer un terme dont le `name` existe
   déjà dans un **autre** référentiel de la taxonomie.
 
@@ -361,4 +363,4 @@ dédié `VenueService` (N-N), curable en admin, distinct des Axes A–D. À acte
 |---------|-------------|
 | 1.0 | Première taxonomie (Draft). |
 | 1.1 | Réconciliation modèle : Format/Catégorie N-N, Format transverse, Type↔Activité par Activité. |
-| 2.0 | **Refonte en 4 axes disjoints** (décisions PO) : axe Sujet `Domain→Activity→Family→Subject` **partagé Event/Org/Venue** (le « jeu » = **Subject**) ; **Domain promu en grands univers visibles** (option A) ; **Type transverse** ; **fusion Format+Catégorie** en **Facettes dimensionnées** (TAX-000) ; `Famille`/`Communauté` reclassés en facettes ; vocabulaires complets §3–§6, migration §9, admin §11. Statut : **Validé**. |
+| 2.0 | **Refonte en 4 axes disjoints** (décisions PO) : axe Sujet `Domain→Activity→Family→Subject` **partagé Event/Org/Venue** (le « jeu » = **Subject**) ; **Domain promu en grands univers visibles** (option A) ; **Type transverse** ; **fusion Format+Catégorie** en **Modalités dimensionnées** (TAX-000) ; `Famille`/`Communauté` reclassés en modalités ; vocabulaires complets §3–§6, migration §9, admin §11. Statut : **Validé**. |
