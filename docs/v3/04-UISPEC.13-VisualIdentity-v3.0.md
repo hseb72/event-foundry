@@ -32,6 +32,54 @@ Cette UISPEC **ancre** la charte jusque-là présente uniquement dans `styles.cs
 
 ---
 
+# Marque festive & dégradé signature
+
+En complément de l'identité **par univers** (couleur `--exp`, qui régit l'**intérieur** de
+l'application), EventFoundry possède une **identité de marque** commune, festive, utilisée sur les
+surfaces **sans contexte d'expérience**. Elle matérialise le ton « Découvrez. Planifiez. Vivez. ».
+
+## Dégradé de marque
+
+Dégradé signature décliné du logo : **orange → rose → violet → indigo**.
+
+| Token | Valeur | Usage |
+|-------|--------|-------|
+| `--brand-1` | `#f97316` (orange) | butée chaude du dégradé |
+| `--brand-2` | `#ec4899` (rose) | — |
+| `--brand-3` | `#8b5cf6` (violet) | accents (eyebrow, icônes de section) |
+| `--brand-4` | `#6366f1` (indigo) | butée froide du dégradé |
+| `--brand` / `--brand-strong` | `#7c3aed` / `#6d28d9` | aplat de marque (theme-color, focus neutres) |
+| `--brand-gradient` | `linear-gradient(120deg, …)` | boutons `.btn-brand`, titres `.brand-text`, couvertures |
+| `--brand-gradient-soft` | dégradé très pâle | fonds de bandes CTA |
+
+## Où l'utiliser — et où **ne pas** l'utiliser
+
+- **Marque (dégradé) autorisée** : page de garde publique (vitrine), pages d'authentification
+  (connexion / inscription), logo, favicon, couvertures d'événement **sans image**, bande CTA.
+- **Interdit à l'intérieur de l'application** : les écrans applicatifs restent gouvernés par `--exp`
+  (RG-VIS-03). Le dégradé de marque **ne remplace pas** la couleur d'univers active pour les boutons
+  primaires, chips, onglets, liens actifs d'un écran interne.
+
+> Règle : *sans contexte d'expérience → marque ; avec contexte d'expérience → `--exp`.*
+
+## Logo
+
+Marque vectorielle (`shared/logo.component.ts`) : **calendrier + enclume + étoile + confettis** dans le
+dégradé de marque, accompagnée du wordmark bicolore « **Event**Foundry » (« Event » neutre, « Foundry »
+en dégradé). Taille paramétrable ; variante fond sombre (`onDark`) pour la sidebar. Identifiant de
+dégradé unique par instance (plusieurs logos sur une page). Le favicon reprend l'icône (SVG *data URI*).
+
+## Cartes d'événement illustrées
+
+- Chaque carte d'événement (`shared/event-card.component.ts`) et la vitrine affichent une **couverture
+  pleine largeur** : la **1ʳᵉ image** de l'événement (`media[]`) si disponible, sinon un **dégradé
+  festif déterministe** (dérivé de l'`id`, palette déclinée de la marque). Une **chip d'activité** est
+  incrustée sur la couverture ; le prix éventuel en surimpression.
+- Interaction : léger *lift* au survol (ombre `--shadow`). La **pastille de participation** (palette
+  planning, UISPEC.12) reste portée par la bordure gauche `--stripe`.
+
+---
+
 # Usage des tokens (règles UI)
 
 Les composants **n'utilisent que des tokens**, jamais de couleur en dur :
@@ -44,9 +92,14 @@ Les composants **n'utilisent que des tokens**, jamais de couleur en dur :
 | Bordures d'accent | `--exp` |
 | Liens de navigation actifs | `--exp` |
 | Fonds, textes, séparateurs | tokens **neutres** (`--surface`, `--text`, `--muted`) pilotés par le thème |
+| Bouton de marque (`.btn-brand`) | `--brand-gradient` — **hors contexte d'expérience uniquement** (vitrine, auth) |
+| Titre festif (`.brand-text`), couverture de repli | `--brand-gradient` |
 
 > **Interdit** : `var(--accent)` en dur (couleur Explorer figée) dans un composant partagé — cause de
 > la dette du chantier §7. Utiliser `var(--exp)`.
+>
+> **Interdit** : `--brand-gradient` / `.btn-brand` sur un écran **interne** (contexte d'expérience) —
+> réservé aux surfaces sans univers actif (cf. « Marque festive »).
 
 ---
 
@@ -104,8 +157,9 @@ Quick win : substitution globale `--accent` → `--exp` + `.btn-primary` sensibl
 
 # Composants
 
-Jeton de couleur d'univers · bouton primaire tokenisé · chips/facettes · onglets · sélecteur
-d'expérience · sélecteur de thème (renvoi UISPEC.05).
+Jeton de couleur d'univers · bouton primaire tokenisé · **bouton de marque** (`.btn-brand`) · **logo**
+(`app-logo`) · **carte d'événement illustrée** (`app-event-card`) · chips/facettes · onglets ·
+sélecteur d'expérience · sélecteur de thème (renvoi UISPEC.05).
 
 ---
 
@@ -128,3 +182,4 @@ l'**identité visuelle**.
 | Version | Description |
 |----------|-------------|
 | 3.0 | Première charte d'identité visuelle par univers (couleurs, tokens, vocabulaire, thèmes, remise en cohérence). |
+| 3.1 | Ajout de la **marque festive** : dégradé signature `--brand-*`, logo vectoriel, boutons `.btn-brand` / titres `.brand-text`, cartes d'événement illustrées (couverture image ou dégradé de repli). Règle de coexistence : marque hors contexte d'expérience, `--exp` à l'intérieur de l'application. |
