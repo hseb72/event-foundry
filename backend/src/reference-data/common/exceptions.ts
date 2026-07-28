@@ -73,3 +73,27 @@ export class TagNotFoundException extends NotFoundException {
     super(`Tag introuvable : ${id}.`);
   }
 }
+
+export class ActivityFamilyNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`ActivityFamily introuvable : ${id}.`);
+  }
+}
+
+export class SubjectNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Subject introuvable : ${id}.`);
+  }
+}
+
+export class ModalityDimensionNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`ModalityDimension introuvable : ${id}.`);
+  }
+}
+
+export class ModalityNotFoundException extends NotFoundException {
+  constructor(id: string) {
+    super(`Modality introuvable : ${id}.`);
+  }
+}

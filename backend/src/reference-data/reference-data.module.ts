@@ -41,6 +41,18 @@ import { VenuesService } from './venues/venues.service';
 import { GeoImportController } from './geo-import/geo-import.controller';
 import { GeoImportRepository } from './geo-import/geo-import.repository';
 import { GeoImportService } from './geo-import/geo-import.service';
+import { ActivityFamilyRepository } from './families/activity-family.repository';
+import { FamiliesController } from './families/families.controller';
+import { FamiliesService } from './families/families.service';
+import { SubjectRepository } from './subjects/subject.repository';
+import { SubjectsController } from './subjects/subjects.controller';
+import { SubjectsService } from './subjects/subjects.service';
+import { ModalityRepository } from './modalities/modality.repository';
+import { ModalitiesController } from './modalities/modalities.controller';
+import { ModalitiesService } from './modalities/modalities.service';
+import { ModalityDimensionRepository } from './modality-dimensions/modality-dimension.repository';
+import { ModalityDimensionsController } from './modality-dimensions/modality-dimensions.controller';
+import { ModalityDimensionsService } from './modality-dimensions/modality-dimensions.service';
 
 /**
  * Administration des référentiels métier (TSPEC.08) : Domain, Activity (+ Alias), EventType,
@@ -62,6 +74,10 @@ import { GeoImportService } from './geo-import/geo-import.service';
     MunicipalitiesController,
     CategoriesController,
     TagsController,
+    FamiliesController,
+    SubjectsController,
+    ModalityDimensionsController,
+    ModalitiesController,
     ProvisionalCurationController,
     GeoImportController,
   ],
@@ -90,6 +106,14 @@ import { GeoImportService } from './geo-import/geo-import.service';
     CategoriesService,
     TagRepository,
     TagsService,
+    ActivityFamilyRepository,
+    FamiliesService,
+    SubjectRepository,
+    SubjectsService,
+    ModalityRepository,
+    ModalitiesService,
+    ModalityDimensionRepository,
+    ModalityDimensionsService,
     ProvisionalCurationRepository,
     ProvisionalCurationService,
     GeoImportRepository,
@@ -108,6 +132,10 @@ import { GeoImportService } from './geo-import/geo-import.service';
     MunicipalityRepository,
     CategoryRepository,
     TagRepository,
+    ActivityFamilyRepository,
+    SubjectRepository,
+    ModalityRepository,
+    ModalityDimensionRepository,
   ],
 })
 export class ReferenceDataModule {}
