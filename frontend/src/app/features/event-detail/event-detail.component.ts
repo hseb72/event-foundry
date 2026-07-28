@@ -265,6 +265,22 @@ import { participationColor, participationLabel } from '../../shared/participati
               }
             </dd>
           }
+          @if (event.subjects.length) {
+            <dt>Sujets</dt>
+            <dd>
+              @for (s of event.subjects; track s) {
+                <span class="chip">{{ s }}</span>
+              }
+            </dd>
+          }
+          @if (event.modalities.length) {
+            <dt>Modalités</dt>
+            <dd>
+              @for (m of event.modalities; track m) {
+                <span class="chip">{{ m }}</span>
+              }
+            </dd>
+          }
           @if (event.organizer) {
             <dt>Organisateur</dt>
             <dd>

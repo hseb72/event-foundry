@@ -3,7 +3,14 @@
 export type FieldType = 'text' | 'url' | 'number' | 'select';
 
 /** Source d'options d'un champ `select` (référentiel parent). */
-export type OptionSource = 'domains' | 'activities' | 'organizers' | 'countries' | 'regions';
+export type OptionSource =
+  | 'domains'
+  | 'activities'
+  | 'organizers'
+  | 'countries'
+  | 'regions'
+  | 'activity-families'
+  | 'modality-dimensions';
 
 export interface FieldDef {
   key: string;
@@ -154,5 +161,60 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
     label: 'Tags',
     singular: 'Tag',
     fields: [NAME],
+  },
+  // DATA.01 v2.0 — Axe A (Family → Subject) et Axe C (ModalityDimension → Modality).
+  {
+    segment: 'activity-families',
+    label: 'Familles',
+    singular: 'Famille',
+    fields: [
+      NAME,
+      {
+        key: 'activityId',
+        label: 'Activité',
+        type: 'select',
+        required: true,
+        optionsFrom: 'activities',
+        immutableOnEdit: true,
+      },
+    ],
+  },
+  {
+    segment: 'subjects',
+    label: 'Sujets',
+    singular: 'Sujet',
+    fields: [
+      NAME,
+      {
+        key: 'familyId',
+        label: 'Famille',
+        type: 'select',
+        required: true,
+        optionsFrom: 'activity-families',
+        immutableOnEdit: true,
+      },
+    ],
+  },
+  {
+    segment: 'modality-dimensions',
+    label: 'Dimensions de modalité',
+    singular: 'Dimension',
+    fields: [NAME],
+  },
+  {
+    segment: 'modalities',
+    label: 'Modalités',
+    singular: 'Modalité',
+    fields: [
+      NAME,
+      {
+        key: 'dimensionId',
+        label: 'Dimension',
+        type: 'select',
+        required: true,
+        optionsFrom: 'modality-dimensions',
+        immutableOnEdit: true,
+      },
+    ],
   },
 ];
