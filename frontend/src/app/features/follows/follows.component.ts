@@ -8,7 +8,7 @@ const TYPE_LABELS: Record<FollowTargetType, string> = {
   ORGANIZER: 'Organisateurs',
   VENUE: 'Lieux',
   ACTIVITY: 'Activités',
-  CATEGORY: 'Catégories',
+  SUBJECT: 'Sujets',
   EVENT_SERIES: "Séries d'événements",
 };
 
@@ -105,7 +105,7 @@ export class FollowsComponent implements OnInit {
   ngOnInit(): void {
     this.followApi.reload().subscribe();
     // Résolution des libellés à partir des référentiels (id → nom).
-    this.referenceData.categories().subscribe((items) => this.mergeNames(items));
+    this.referenceData.subjects().subscribe((items) => this.mergeNames(items));
     this.referenceData.activities().subscribe((items) => this.mergeNames(items));
     this.referenceData.organizers().subscribe((items) => this.mergeNames(items));
     this.referenceData.venues().subscribe((items) => this.mergeNames(items));

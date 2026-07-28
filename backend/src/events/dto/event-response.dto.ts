@@ -42,12 +42,6 @@ export class EventResponseDto {
   @ApiPropertyOptional({ nullable: true })
   eventType!: string | null;
 
-  @ApiProperty({ type: [String], description: 'Formats (cardinalité N — DATA.01 §4).' })
-  eventFormats!: string[];
-
-  @ApiProperty({ type: [String], description: 'Catégories (cardinalité N — DATA.01 §5).' })
-  categories!: string[];
-
   @ApiPropertyOptional({ nullable: true })
   organizer!: string | null;
 
@@ -57,8 +51,8 @@ export class EventResponseDto {
   @ApiProperty({ description: "Identifiant de l'activité (pour le suivi — Follow)." })
   activityId!: string;
 
-  @ApiProperty({ type: [String], description: 'Identifiants des catégories (pour le suivi — Follow).' })
-  categoryIds!: string[];
+  @ApiProperty({ type: [String], description: 'Identifiants des sujets (pour le suivi — Follow, DATA.01 v2.0).' })
+  subjectIds!: string[];
 
   @ApiPropertyOptional({ nullable: true, description: "Identifiant de l'organisateur (pour le suivi)." })
   organizerId!: string | null;

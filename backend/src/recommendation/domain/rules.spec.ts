@@ -2,7 +2,7 @@ import type { EventWithRefs } from '../../events/entities/event.entity';
 import type { RecommendationContext } from './recommendation-rule';
 import {
   ActivityAffinityRule,
-  CategoryAffinityRule,
+  SubjectAffinityRule,
   FollowedAffinityRule,
   FreeSlotRule,
   NoveltyRule,
@@ -22,7 +22,7 @@ function event(overrides: Partial<EventWithRefs> = {}): EventWithRefs {
     publishedAt: new Date('2026-07-18T10:00:00.000Z'),
     activity: { name: 'Magic' },
     formats: [],
-    categories: [{ categoryId: 'cat-compet', category: { name: 'Compétition' } }],
+    subjects: [{ subjectId: 'cat-compet', subject: { name: 'Compétition' } }],
     ...overrides,
   } as unknown as EventWithRefs;
 }
@@ -31,11 +31,11 @@ function context(overrides: Partial<RecommendationContext> = {}): Recommendation
   return {
     surprise: false,
     activityIds: new Set(),
-    categoryIds: new Set(),
+    subjectIds: new Set(),
     municipalityIds: new Set(),
     followedOrganizerIds: new Set(),
     followedActivityIds: new Set(),
-    followedCategoryIds: new Set(),
+    followedSubjectIds: new Set(),
     followedVenueIds: new Set(),
     plannedSlots: [],
     now: NOW,
@@ -71,8 +71,8 @@ describe('Règles de recommandation (déterministes, explicables — ADR.09)', (
     expect(new NoveltyRule().evaluate(event(), context({ activityIds: new Set(['act-magic']) }))).toBeNull();
   });
 
-  it('CategoryAffinity et Proximity : bonus si catégorie / commune fréquentées', () => {
-    expect(new CategoryAffinityRule().evaluate(event(), context({ categoryIds: new Set(['cat-compet']) }))?.points).toBe(25);
+  it('CategoryAffinity et Proximity : bonus si sujet / commune fréquentées', () => {
+    expect(new SubjectAffinityRule().evaluate(event(), context({ subjectIds: new Set(['cat-compet']) }))?.points).toBe(25);
     expect(new ProximityRule().evaluate(event(), context({ municipalityIds: new Set(['mun-toulouse']) }))?.points).toBe(20);
   });
 
@@ -126,9 +126,9 @@ describe('Règles de recommandation (déterministes, explicables — ADR.09)', (
       ).toBe(50);
     });
 
-    it('catégorie suivie : bonus moyen', () => {
+    it('sujet suivie : bonus moyen', () => {
       expect(
-        rule.evaluate(event(), context({ followedCategoryIds: new Set(['cat-compet']) }))?.points,
+        rule.evaluate(event(), context({ followedSubjectIds: new Set(['cat-compet']) }))?.points,
       ).toBe(30);
     });
 

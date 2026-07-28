@@ -19,7 +19,7 @@ export class SearchFacetsDto {
   activities!: SearchFacetCountDto[];
 
   @ApiProperty({ type: [SearchFacetCountDto] })
-  categories!: SearchFacetCountDto[];
+  subjects!: SearchFacetCountDto[];
 
   @ApiProperty({ type: [SearchFacetCountDto] })
   municipalities!: SearchFacetCountDto[];

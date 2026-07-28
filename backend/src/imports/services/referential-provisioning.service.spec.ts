@@ -8,7 +8,6 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
       ReferentialProvisioningRepository,
       | 'resolveOrCreateActivity'
       | 'resolveOrCreateEventType'
-      | 'resolveOrCreateEventFormat'
       | 'resolveOrCreateOrganizer'
       | 'resolveOrCreateVenue'
     >
@@ -18,7 +17,6 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
   const fields: ExtractedEventFields = {
     activity: 'Riftbound',
     eventType: 'Tournoi',
-    eventFormat: 'Constructed',
     organizer: 'Asso',
     venue: 'Le Repaire',
   };
@@ -27,7 +25,6 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
     repo = {
       resolveOrCreateActivity: jest.fn().mockResolvedValue('act-1'),
       resolveOrCreateEventType: jest.fn().mockResolvedValue(undefined),
-      resolveOrCreateEventFormat: jest.fn().mockResolvedValue(undefined),
       resolveOrCreateOrganizer: jest.fn().mockResolvedValue(undefined),
       resolveOrCreateVenue: jest.fn().mockResolvedValue(undefined),
     };
@@ -46,8 +43,6 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
     expect(repo.resolveOrCreateActivity).toHaveBeenCalledWith('Riftbound', 'dom-1');
     // Type transverse (DATA.01 v2.0) : provisionné par nom, sans rattachement à l'activité.
     expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi');
-    // Format transverse (DATA.01 §4) : provisionné sans rattachement à l'activité.
-    expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');
     expect(repo.resolveOrCreateVenue).toHaveBeenCalledWith('Le Repaire');
   });
@@ -57,7 +52,6 @@ describe('ReferentialProvisioningService (auto-provisioning — ADR.24)', () => 
     await service.provision(fields, { autoProvisionReferentials: true, provisioningDefaultDomainId: null });
     // Type transverse : provisionné indépendamment de l'activité (DATA.01 v2.0).
     expect(repo.resolveOrCreateEventType).toHaveBeenCalledWith('Tournoi');
-    expect(repo.resolveOrCreateEventFormat).toHaveBeenCalledWith('Constructed');
     // Les référentiels indépendants sont tout de même provisionnés.
     expect(repo.resolveOrCreateOrganizer).toHaveBeenCalledWith('Asso');
   });

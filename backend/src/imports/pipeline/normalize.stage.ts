@@ -4,7 +4,7 @@ import type { NormalizedEvent } from './pipeline.types';
 import { parseDate, parseNumber, readField, readNested } from './field-access';
 
 /** Champs `ExtractedEventFields` de type chaîne (les seuls alimentés par simple recopie). */
-type StringField = 'title' | 'description' | 'activity' | 'eventType' | 'eventFormat' | 'organizer' | 'venue' | 'city' | 'currency' | 'url';
+type StringField = 'title' | 'description' | 'activity' | 'eventType' | 'organizer' | 'venue' | 'city' | 'currency' | 'url';
 
 /**
  * Table d'alias source → champ commun (harmonisation de format, aucune décision métier). Couvre les
@@ -16,7 +16,6 @@ const FIELD_ALIASES: { field: StringField; keys: string[] }[] = [
   { field: 'description', keys: ['description', 'desc'] },
   { field: 'activity', keys: ['activity', 'activite', 'activité'] },
   { field: 'eventType', keys: ['event_type', 'eventType', 'type'] },
-  { field: 'eventFormat', keys: ['event_format', 'eventFormat', 'format'] },
   { field: 'organizer', keys: ['organizer', 'organisateur'] },
   { field: 'venue', keys: ['venue', 'lieu'] },
   { field: 'city', keys: ['city', 'ville'] },

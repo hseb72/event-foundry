@@ -1,7 +1,5 @@
 import { EventSource } from '@prisma/client';
 import { ActivityRepository } from '../../reference-data/activities/activity.repository';
-import { CategoryRepository } from '../../reference-data/categories/category.repository';
-import { EventFormatRepository } from '../../reference-data/event-formats/event-format.repository';
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
 import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
@@ -21,7 +19,6 @@ import { EventsService } from './events.service';
 describe('EventsService', () => {
   let activityRepo: { findById: jest.Mock };
   let eventTypeRepo: { findById: jest.Mock };
-  let categoryRepo: { findById: jest.Mock };
   let municipalityRepo: { findById: jest.Mock };
   let tagRepo: { findExistingIds: jest.Mock };
   let subjectRepo: { findById: jest.Mock };
@@ -38,7 +35,6 @@ describe('EventsService', () => {
   beforeEach(() => {
     activityRepo = { findById: jest.fn() };
     eventTypeRepo = { findById: jest.fn() };
-    categoryRepo = { findById: jest.fn() };
     municipalityRepo = { findById: jest.fn() };
     tagRepo = { findExistingIds: jest.fn().mockResolvedValue([]) };
     subjectRepo = { findById: jest.fn() };
@@ -55,10 +51,8 @@ describe('EventsService', () => {
       eventRepo as unknown as EventRepository,
       activityRepo as unknown as ActivityRepository,
       eventTypeRepo as unknown as EventTypeRepository,
-      noop as unknown as EventFormatRepository,
       noop as unknown as OrganizerRepository,
       noop as unknown as VenueRepository,
-      categoryRepo as unknown as CategoryRepository,
       municipalityRepo as unknown as MunicipalityRepository,
       tagRepo as unknown as TagRepository,
       subjectRepo as unknown as SubjectRepository,

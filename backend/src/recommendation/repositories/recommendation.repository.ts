@@ -7,7 +7,7 @@ import type { PlanningSlot } from '../../planning/services/conflict-detector';
 /** Signaux déterministes d'un utilisateur, dérivés de ses participations (habitudes + planning). */
 export interface UserSignals {
   activityIds: Set<string>;
-  categoryIds: Set<string>;
+  subjectIds: Set<string>;
   municipalityIds: Set<string>;
   plannedSlots: PlanningSlot[];
 }
@@ -33,21 +33,21 @@ export class RecommendationRepository {
             municipalityId: true,
             startsAt: true,
             endsAt: true,
-            categories: { select: { categoryId: true } },
+            subjects: { select: { subjectId: true } },
           },
         },
       },
     });
     const signals: UserSignals = {
       activityIds: new Set(),
-      categoryIds: new Set(),
+      subjectIds: new Set(),
       municipalityIds: new Set(),
       plannedSlots: [],
     };
     for (const { event } of participations) {
       signals.activityIds.add(event.activityId);
-      for (const link of event.categories) {
-        signals.categoryIds.add(link.categoryId);
+      for (const link of event.subjects) {
+        signals.subjectIds.add(link.subjectId);
       }
       if (event.municipalityId) {
         signals.municipalityIds.add(event.municipalityId);

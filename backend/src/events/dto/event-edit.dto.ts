@@ -21,12 +21,6 @@ export class EventEditDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   eventTypeId!: string | null;
 
-  @ApiProperty({ type: [String], format: 'uuid', description: 'Formats (cardinalité N — TAX-003).' })
-  eventFormatIds!: string[];
-
-  @ApiProperty({ type: [String], format: 'uuid', description: 'Catégories (cardinalité N — TAX-004).' })
-  categoryIds!: string[];
-
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   organizerId!: string | null;
 

@@ -36,11 +36,11 @@ export class RecommendationService {
     const context: RecommendationContext = {
       surprise: options.surprise,
       activityIds: signals.activityIds,
-      categoryIds: signals.categoryIds,
+      subjectIds: signals.subjectIds,
       municipalityIds: signals.municipalityIds,
       followedOrganizerIds: followed.get(FollowTargetType.ORGANIZER) ?? new Set(),
       followedActivityIds: followed.get(FollowTargetType.ACTIVITY) ?? new Set(),
-      followedCategoryIds: followed.get(FollowTargetType.CATEGORY) ?? new Set(),
+      followedSubjectIds: followed.get(FollowTargetType.SUBJECT) ?? new Set(),
       followedVenueIds: followed.get(FollowTargetType.VENUE) ?? new Set(),
       plannedSlots: signals.plannedSlots,
       now,

@@ -25,7 +25,7 @@ export class SearchQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
-  categoryId?: string;
+  subjectId?: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()

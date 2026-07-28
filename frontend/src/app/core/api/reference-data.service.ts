@@ -40,10 +40,6 @@ export class ReferenceDataApi {
     return this.http.post<ReferentialItem>(`${API_BASE}/event-types`, { name });
   }
 
-  createEventFormat(name: string): Observable<ReferentialItem> {
-    return this.http.post<ReferentialItem>(`${API_BASE}/event-formats`, { name });
-  }
-
   createOrganizer(name: string): Observable<ReferentialItem> {
     return this.http.post<ReferentialItem>(`${API_BASE}/organizers`, { name });
   }
@@ -71,21 +67,12 @@ export class ReferenceDataApi {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/event-types`);
   }
 
-  /** Formats : référentiel transverse (DATA.01 §4), indépendant de l'Activité. */
-  eventFormats(): Observable<ReferentialItem[]> {
-    return this.http.get<ReferentialItem[]>(`${API_BASE}/event-formats`);
-  }
-
   organizers(): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/organizers`);
   }
 
   venues(): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/venues`);
-  }
-
-  categories(): Observable<ReferentialItem[]> {
-    return this.http.get<ReferentialItem[]>(`${API_BASE}/categories`);
   }
 
   tags(): Observable<ReferentialItem[]> {

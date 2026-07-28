@@ -2,7 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 
 /** Types de référentiels auto-provisionnables (ADR.24). */
-export type ProvisionalType = 'activity' | 'eventType' | 'eventFormat' | 'organizer' | 'venue';
+export type ProvisionalType =
+  | 'activity'
+  | 'eventType'
+  | 'subject'
+  | 'modality'
+  | 'organizer'
+  | 'venue';
 
 /** Une entrée provisoire, avec son contexte (activité parente pour type/format). */
 export interface ProvisionalEntry {
@@ -23,7 +29,7 @@ export class ProvisionalCurationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(): Promise<ProvisionalEntry[]> {
-    const [activities, eventTypes, eventFormats, organizers, venues] = await Promise.all([
+    const [activities, eventTypes, subjects, modalities, organizers, venues] = await Promise.all([
       this.prisma.activity.findMany({
         where: { provisional: true },
         select: { id: true, name: true, createdAt: true, domain: { select: { name: true } } },
@@ -32,9 +38,14 @@ export class ProvisionalCurationRepository {
         where: { provisional: true },
         select: { id: true, name: true, createdAt: true },
       }),
-      this.prisma.eventFormat.findMany({
+      // Sujets (Axe A) : souvent provisoires à l'import/ingestion (jeux hors référentiel).
+      this.prisma.subject.findMany({
         where: { provisional: true },
-        select: { id: true, name: true, createdAt: true },
+        select: { id: true, name: true, createdAt: true, family: { select: { name: true } } },
+      }),
+      this.prisma.modality.findMany({
+        where: { provisional: true },
+        select: { id: true, name: true, createdAt: true, dimension: { select: { name: true } } },
       }),
       this.prisma.organizer.findMany({
         where: { provisional: true },
@@ -49,7 +60,8 @@ export class ProvisionalCurationRepository {
     const entries: ProvisionalEntry[] = [
       ...activities.map((a) => this.entry('activity', a.id, a.name, a.domain.name, a.createdAt)),
       ...eventTypes.map((t) => this.entry('eventType', t.id, t.name, null, t.createdAt)),
-      ...eventFormats.map((f) => this.entry('eventFormat', f.id, f.name, null, f.createdAt)),
+      ...subjects.map((s) => this.entry('subject', s.id, s.name, s.family.name, s.createdAt)),
+      ...modalities.map((m) => this.entry('modality', m.id, m.name, m.dimension.name, m.createdAt)),
       ...organizers.map((o) => this.entry('organizer', o.id, o.name, null, o.createdAt)),
       ...venues.map((v) => this.entry('venue', v.id, v.name, null, v.createdAt)),
     ];
@@ -70,7 +82,8 @@ export class ProvisionalCurationRepository {
     const map: Record<ProvisionalType, unknown> = {
       activity: this.prisma.activity,
       eventType: this.prisma.eventType,
-      eventFormat: this.prisma.eventFormat,
+      subject: this.prisma.subject,
+      modality: this.prisma.modality,
       organizer: this.prisma.organizer,
       venue: this.prisma.venue,
     };

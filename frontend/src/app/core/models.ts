@@ -36,7 +36,7 @@ export interface FacetCount {
 /** Facettes de navigation de la découverte. */
 export interface Facets {
   activities: FacetCount[];
-  categories: FacetCount[];
+  subjects: FacetCount[];
   municipalities: FacetCount[];
   tags: FacetCount[];
 }
@@ -119,12 +119,9 @@ export interface EventDto {
   description: string | null;
   activity: string;
   eventType: string | null;
-  eventFormats: string[];
-  categories: string[];
   organizer: string | null;
   venue: string | null;
   activityId: string;
-  categoryIds: string[];
   organizerId: string | null;
   venueId: string | null;
   municipality: string | null;
@@ -132,6 +129,8 @@ export interface EventDto {
   country: string | null;
   tags: string[];
   subjects: string[];
+  /** Identifiants des sujets (pour le suivi — Follow, Axe A). */
+  subjectIds: string[];
   modalities: string[];
   media: EventMediaDto[];
   city: string | null;
@@ -239,7 +238,7 @@ export type FollowTargetType =
   | 'ORGANIZER'
   | 'VENUE'
   | 'ACTIVITY'
-  | 'CATEGORY'
+  | 'SUBJECT'
   | 'EVENT_SERIES';
 
 /** Suivi durable utilisateur → objet. */
@@ -320,7 +319,13 @@ export interface AiCallStats {
 }
 
 /** Type de référentiel auto-provisionnable (ADR.24). */
-export type ProvisionalType = 'activity' | 'eventType' | 'eventFormat' | 'organizer' | 'venue';
+export type ProvisionalType =
+  | 'activity'
+  | 'eventType'
+  | 'subject'
+  | 'modality'
+  | 'organizer'
+  | 'venue';
 
 /** Entrée de la file de curation des référentiels provisoires (ADR.24). */
 export interface ProvisionalEntry {
@@ -415,8 +420,6 @@ export interface EventEditValue {
   editable: boolean;
   activityId: string;
   eventTypeId: string | null;
-  eventFormatIds: string[];
-  categoryIds: string[];
   organizerId: string | null;
   venueId: string | null;
   countryId: string | null;
@@ -436,8 +439,6 @@ export interface EventEditValue {
 export interface CreateEventInput {
   activityId: string;
   eventTypeId?: string;
-  eventFormatIds?: string[];
-  categoryIds?: string[];
   organizerId?: string;
   venueId?: string;
   municipalityId?: string;
@@ -497,7 +498,6 @@ export interface EventDraft {
   currency?: string;
   activityName?: string;
   eventTypeName?: string;
-  eventFormatName?: string;
   subjectNames?: string[];
   modalityNames?: string[];
   organizerName?: string;

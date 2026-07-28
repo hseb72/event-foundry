@@ -260,7 +260,7 @@ enum FollowTargetType {
   ORGANIZER
   VENUE
   ACTIVITY
-  CATEGORY
+  SUBJECT
   EVENT_SERIES
 }
 
@@ -652,18 +652,6 @@ model EventType {
 
 /// Format d'un événement (DATA.01 §4) : **référentiel transverse**, indépendant de l'Activité
 /// (au même titre que Category/Tag). Un Event peut porter plusieurs Formats (N-N — TAX-003).
-model EventFormat {
-  id          String            @id @default(uuid()) @db.Uuid
-  name        String            @unique
-  isActive    Boolean           @default(true) @map("is_active")
-  provisional Boolean           @default(false)
-  events      EventFormatLink[]
-  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@map("event_formats")
-}
-
 /// Écriture alternative reconnue par le moteur expert (ex. « MTG » -> Magic).
 /// La valeur est unique : une écriture ne référence qu'une seule valeur métier (FSPEC.07).
 model Alias {
@@ -787,17 +775,6 @@ model Municipality {
 
 /// Catégorie (DATA.01 §5) : référentiel transverse. Un Event peut appartenir à plusieurs
 /// catégories (N-N — TAX-004).
-model Category {
-  id        String              @id @default(uuid()) @db.Uuid
-  name      String              @unique
-  isActive  Boolean             @default(true) @map("is_active")
-  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  events    EventCategoryLink[]
-
-  @@map("categories")
-}
-
 model Tag {
   id        String     @id @default(uuid()) @db.Uuid
   name      String     @unique
@@ -1153,10 +1130,7 @@ model Event {
   organizer              Organizer?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
   venue                  Venue?                   @relation(fields: [venueId], references: [id], onDelete: SetNull)
   municipality           Municipality?            @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
-  formats                EventFormatLink[]
-  categories             EventCategoryLink[]
-  // DATA.01 v2.0 — Axe A (Subject) + Axe C (Modality). Cohabitent avec formats/categories (ancien
-  // Format/Catégorie) pendant la transition ; le rewire Event + la migration des données suivront.
+  // DATA.01 v2.0 — Axe A (Subject) + Axe C (Modality) remplacent Format/Catégorie (retirés).
   subjects               EventSubject[]
   modalities             EventModality[]
   tags                   EventTag[]
@@ -1196,29 +1170,6 @@ model EventTag {
 }
 
 /// Rattachement N-N Event ↔ EventFormat (DATA.01 §4 / TAX-003). Le Format est transverse.
-model EventFormatLink {
-  eventId       String      @map("event_id") @db.Uuid
-  eventFormatId String      @map("event_format_id") @db.Uuid
-  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventFormat   EventFormat @relation(fields: [eventFormatId], references: [id], onDelete: Restrict)
-
-  @@id([eventId, eventFormatId])
-  @@index([eventFormatId])
-  @@map("event_format_links")
-}
-
-/// Rattachement N-N Event ↔ Category (DATA.01 §5 / TAX-004). La Catégorie est transverse.
-model EventCategoryLink {
-  eventId    String   @map("event_id") @db.Uuid
-  categoryId String   @map("category_id") @db.Uuid
-  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-
-  @@id([eventId, categoryId])
-  @@index([categoryId])
-  @@map("event_category_links")
-}
-
 /// Média (image) d'un Event. Le fichier vit dans MinIO (ARCHI.01) ; seule la clé d'objet est en
 /// base. `position` ordonne la galerie. Supprimé en cascade avec l'Event.
 model EventMedia {
@@ -1261,11 +1212,11 @@ model SearchDocument {
   description      String?
   activityId       String                   @map("activity_id") @db.Uuid
   activityName     String                   @map("activity_name")
-  // Catégories et formats projetés en listes (DATA.01 : cardinalité N — TAX-004/003).
-  categoryIds      String[]                 @map("category_ids") @db.Uuid
-  categoryNames    String[]                 @map("category_names")
-  formatIds        String[]                 @map("format_ids") @db.Uuid
-  formatNames      String[]                 @map("format_names")
+  // Sujets et modalités projetés en listes (DATA.01 v2.0 : Axe A / Axe C, cardinalité N).
+  subjectIds       String[]                 @map("subject_ids") @db.Uuid
+  subjectNames     String[]                 @map("subject_names")
+  modalityIds      String[]                 @map("modality_ids") @db.Uuid
+  modalityNames    String[]                 @map("modality_names")
   municipalityId   String?                  @map("municipality_id") @db.Uuid
   municipalityName String?                  @map("municipality_name")
   organizerName    String?                  @map("organizer_name")

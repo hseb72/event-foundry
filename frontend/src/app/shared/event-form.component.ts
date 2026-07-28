@@ -171,26 +171,6 @@ import {
 
       <div class="row">
         <div>
-          <label>Formats <span class="muted">(plusieurs possibles)</span></label>
-          <select class="select" multiple [(ngModel)]="model.eventFormatIds" name="eventFormatIds">
-            @for (f of eventFormats; track f.id) {
-              <option [value]="f.id">{{ f.name }}</option>
-            }
-          </select>
-          @if (unresolved.eventFormat) {
-            <div class="propose">
-              <span>Format « <strong>{{ unresolved.eventFormat }}</strong> » non reconnu.</span>
-              @if (canManageRef) {
-                <div class="propose-actions">
-                  <button type="button" class="btn" [disabled]="busy" (click)="createEventFormatRef()">
-                    Créer ce format
-                  </button>
-                </div>
-              }
-            </div>
-          }
-        </div>
-        <div>
           <label>Organisateur</label>
           <select class="select" [(ngModel)]="model.organizerId" name="organizerId">
             <option value="">— aucun —</option>
@@ -211,9 +191,6 @@ import {
             </div>
           }
         </div>
-      </div>
-
-      <div class="row">
         <div>
           <label>Lieu</label>
           <select class="select" [(ngModel)]="model.venueId" name="venueId">
@@ -234,14 +211,6 @@ import {
               }
             </div>
           }
-        </div>
-        <div>
-          <label>Catégories <span class="muted">(plusieurs possibles)</span></label>
-          <select class="select" multiple [(ngModel)]="model.categoryIds" name="categoryIds">
-            @for (c of categories; track c.id) {
-              <option [value]="c.id">{{ c.name }}</option>
-            }
-          </select>
         </div>
       </div>
 
@@ -393,10 +362,8 @@ export class EventFormComponent implements OnInit {
 
   activities: ActivityDto[] = [];
   eventTypes: ReferentialItem[] = [];
-  eventFormats: ReferentialItem[] = [];
   organizers: ReferentialItem[] = [];
   venues: ReferentialItem[] = [];
-  categories: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
   // DATA.01 v2.0 — Axe A (sujets, dépendent de l'activité) + Axe C (modalités groupées par dimension).
   subjects: ReferentialItem[] = [];
@@ -414,7 +381,6 @@ export class EventFormComponent implements OnInit {
   unresolved: {
     activity?: string;
     eventType?: string;
-    eventFormat?: string;
     organizer?: string;
     venue?: string;
   } = {};
@@ -430,8 +396,6 @@ export class EventFormComponent implements OnInit {
     description: '',
     activityId: '',
     eventTypeId: '',
-    eventFormatIds: [] as string[],
-    categoryIds: [] as string[],
     organizerId: '',
     venueId: '',
     countryId: '',
@@ -477,16 +441,10 @@ export class EventFormComponent implements OnInit {
       this.venues = items;
       this.applyDraftVenue();
     });
-    this.referenceData.categories().subscribe((items) => (this.categories = items));
     // Types : référentiel **transverse** (DATA.01 v2.0), chargé une fois, indépendant de l'activité.
     this.referenceData.eventTypes().subscribe((items) => {
       this.eventTypes = items;
       this.applyDraftEventType();
-    });
-    // Formats : référentiel transverse (DATA.01 §4), chargé une fois, indépendamment de l'activité.
-    this.referenceData.eventFormats().subscribe((items) => {
-      this.eventFormats = items;
-      this.applyDraftEventFormat();
     });
     this.referenceData.tags().subscribe((items) => (this.tags = items));
     // Modalités (Axe C) : référentiel transverse, chargé une fois, groupé par dimension.
@@ -516,8 +474,6 @@ export class EventFormComponent implements OnInit {
     this.model.title = value.title;
     this.model.description = value.description ?? '';
     this.model.activityId = value.activityId;
-    this.model.categoryIds = [...(value.categoryIds ?? [])];
-    this.model.eventFormatIds = [...(value.eventFormatIds ?? [])];
     this.model.organizerId = value.organizerId ?? '';
     this.model.venueId = value.venueId ?? '';
     this.model.tagIds = [...value.tagIds];
@@ -657,8 +613,6 @@ export class EventFormComponent implements OnInit {
       startsAt: toIso(this.model.startsAt),
     };
     if (this.model.eventTypeId) input.eventTypeId = this.model.eventTypeId;
-    if (this.model.eventFormatIds.length) input.eventFormatIds = [...this.model.eventFormatIds];
-    if (this.model.categoryIds.length) input.categoryIds = [...this.model.categoryIds];
     if (this.model.organizerId) input.organizerId = this.model.organizerId;
     if (this.model.venueId) input.venueId = this.model.venueId;
     if (this.model.municipalityId) input.municipalityId = this.model.municipalityId;
@@ -702,18 +656,6 @@ export class EventFormComponent implements OnInit {
     const match = byName(this.eventTypes, this.draft.eventTypeName);
     if (match) this.model.eventTypeId = match.id;
     else this.unresolved.eventType = this.draft.eventTypeName;
-  }
-
-  private applyDraftEventFormat(): void {
-    if (!this.draft?.eventFormatName) return;
-    const match = byName(this.eventFormats, this.draft.eventFormatName);
-    if (match) {
-      if (!this.model.eventFormatIds.includes(match.id)) {
-        this.model.eventFormatIds = [...this.model.eventFormatIds, match.id];
-      }
-    } else {
-      this.unresolved.eventFormat = this.draft.eventFormatName;
-    }
   }
 
   /** Sujets détectés (noms) → sélection par identifiants (résolus une fois les sujets chargés). */
@@ -799,21 +741,6 @@ export class EventFormComponent implements OnInit {
         this.unresolved.eventType = undefined;
       },
       error: (err) => (this.refError = err?.error?.message ?? 'Création du type impossible.'),
-    });
-  }
-
-  createEventFormatRef(): void {
-    const name = this.unresolved.eventFormat?.trim();
-    if (!name) return;
-    this.refError = '';
-    // Format transverse (DATA.01 §4) : créé sans rattachement à l'activité, puis ajouté à la sélection.
-    this.referenceData.createEventFormat(name).subscribe({
-      next: (created) => {
-        this.eventFormats = [...this.eventFormats, created];
-        this.model.eventFormatIds = [...this.model.eventFormatIds, created.id];
-        this.unresolved.eventFormat = undefined;
-      },
-      error: (err) => (this.refError = err?.error?.message ?? 'Création du format impossible.'),
     });
   }
 

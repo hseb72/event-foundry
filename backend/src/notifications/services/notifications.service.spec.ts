@@ -18,7 +18,7 @@ describe('NotificationsService — information Explorer (Follow → notification
     title: 'Tournoi Magic',
     organizerId: 'org-1',
     activityId: 'act-1',
-    categoryIds: ['cat-1'],
+    subjectIds: ['subj-1'],
     venueId: null,
   };
 
@@ -43,7 +43,7 @@ describe('NotificationsService — information Explorer (Follow → notification
     follows.listFollowerIds.mockImplementation((type: FollowTargetType) => {
       if (type === FollowTargetType.ORGANIZER) return Promise.resolve(['u-1']);
       if (type === FollowTargetType.ACTIVITY) return Promise.resolve(['u-1']);
-      if (type === FollowTargetType.CATEGORY) return Promise.resolve(['u-2']);
+      if (type === FollowTargetType.SUBJECT) return Promise.resolve(['u-2']);
       return Promise.resolve([]);
     });
 

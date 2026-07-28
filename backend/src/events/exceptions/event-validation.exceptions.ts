@@ -11,13 +11,6 @@ export class InvalidEventTypeException extends UnprocessableEntityException {
   }
 }
 
-/** L'EventFormat ne correspond pas à l'Activity indiquée (HTTP 422). */
-export class InvalidEventFormatException extends UnprocessableEntityException {
-  constructor(eventFormatId: string) {
-    super(`L'EventFormat ${eventFormatId} n'appartient pas à l'Activity indiquée.`);
-  }
-}
-
 /** Event introuvable (HTTP 404). */
 export class EventNotFoundException extends NotFoundException {
   constructor(id: string) {

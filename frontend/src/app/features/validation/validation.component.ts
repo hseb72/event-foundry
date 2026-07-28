@@ -316,7 +316,6 @@ function toDraft(payload: Record<string, unknown>): EventDraft {
     currency: str(payload['currency']),
     activityName: str(payload['activity']),
     eventTypeName: str(payload['eventType']),
-    eventFormatName: str(payload['eventFormat']),
     organizerName: str(payload['organizer']),
     venueName: str(payload['venue']),
   };

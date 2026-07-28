@@ -41,7 +41,7 @@ export class SearchService {
     return {
       text: query.q || undefined,
       activityId: query.activityId,
-      categoryId: query.categoryId,
+      subjectId: query.subjectId,
       municipalityId: query.municipalityId,
       tagId: query.tagId,
       startsFrom: query.from ? new Date(query.from) : undefined,

@@ -38,10 +38,6 @@ export class ReferentialProvisioningService {
       if (fields.eventType) {
         await this.repository.resolveOrCreateEventType(fields.eventType);
       }
-      // Format : transverse (DATA.01 §4) — provisionné indépendamment de l'activité.
-      if (fields.eventFormat) {
-        await this.repository.resolveOrCreateEventFormat(fields.eventFormat);
-      }
       if (fields.organizer) {
         await this.repository.resolveOrCreateOrganizer(fields.organizer);
       }

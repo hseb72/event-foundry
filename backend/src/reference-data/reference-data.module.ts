@@ -8,18 +8,12 @@ import { ActivityRepository } from './activities/activity.repository';
 import { AliasRepository } from './aliases/alias.repository';
 import { AliasesController } from './aliases/aliases.controller';
 import { AliasesService } from './aliases/aliases.service';
-import { CategoriesController } from './categories/categories.controller';
-import { CategoriesService } from './categories/categories.service';
-import { CategoryRepository } from './categories/category.repository';
 import { CountriesController } from './countries/countries.controller';
 import { CountriesService } from './countries/countries.service';
 import { CountryRepository } from './countries/country.repository';
 import { DomainRepository } from './domains/domain.repository';
 import { DomainsController } from './domains/domains.controller';
 import { DomainsService } from './domains/domains.service';
-import { EventFormatRepository } from './event-formats/event-format.repository';
-import { EventFormatsController } from './event-formats/event-formats.controller';
-import { EventFormatsService } from './event-formats/event-formats.service';
 import { EventTypeRepository } from './event-types/event-type.repository';
 import { EventTypesController } from './event-types/event-types.controller';
 import { EventTypesService } from './event-types/event-types.service';
@@ -55,24 +49,22 @@ import { ModalityDimensionsController } from './modality-dimensions/modality-dim
 import { ModalityDimensionsService } from './modality-dimensions/modality-dimensions.service';
 
 /**
- * Administration des référentiels métier (TSPEC.08) : Domain, Activity (+ Alias), EventType,
- * EventFormat, Organizer, Venue, et les référentiels géographiques Country → Region →
- * Municipality. Lecture ouverte aux utilisateurs authentifiés ; écritures réservées à la
- * permission `reference.manage` (ADR.08).
+ * Administration des référentiels métier (TSPEC.08) : Domain, Activity (+ Alias, Family, Subject),
+ * EventType (transverse), ModalityDimension/Modality, Organizer, Venue, Tag, et les référentiels
+ * géographiques Country → Region → Municipality. Lecture ouverte aux utilisateurs authentifiés ;
+ * écritures réservées à la permission `reference.manage` (ADR.08).
  */
 @Module({
   controllers: [
     DomainsController,
     ActivitiesController,
     EventTypesController,
-    EventFormatsController,
     OrganizersController,
     VenuesController,
     AliasesController,
     CountriesController,
     RegionsController,
     MunicipalitiesController,
-    CategoriesController,
     TagsController,
     FamiliesController,
     SubjectsController,
@@ -88,8 +80,6 @@ import { ModalityDimensionsService } from './modality-dimensions/modality-dimens
     ActivitiesService,
     EventTypeRepository,
     EventTypesService,
-    EventFormatRepository,
-    EventFormatsService,
     OrganizerRepository,
     OrganizersService,
     VenueRepository,
@@ -102,8 +92,6 @@ import { ModalityDimensionsService } from './modality-dimensions/modality-dimens
     RegionsService,
     MunicipalityRepository,
     MunicipalitiesService,
-    CategoryRepository,
-    CategoriesService,
     TagRepository,
     TagsService,
     ActivityFamilyRepository,
@@ -123,14 +111,12 @@ import { ModalityDimensionsService } from './modality-dimensions/modality-dimens
     DomainRepository,
     ActivityRepository,
     EventTypeRepository,
-    EventFormatRepository,
     OrganizerRepository,
     VenueRepository,
     AliasRepository,
     CountryRepository,
     RegionRepository,
     MunicipalityRepository,
-    CategoryRepository,
     TagRepository,
     ActivityFamilyRepository,
     SubjectRepository,

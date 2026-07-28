@@ -57,7 +57,7 @@ describe('NotificationEventSubscriber — pilotage des notifications par le bus 
       firstPublish: true,
       organizerId: 'org-1',
       activityId: 'act-1',
-      categoryIds: ['cat-1'],
+      subjectIds: ['subj-1'],
       venueId: null,
     };
     await bus.publish(makeDomainEvent<EventPublishedPayload>(DOMAIN_EVENTS.EVENT_PUBLISHED, payload));
@@ -68,7 +68,7 @@ describe('NotificationEventSubscriber — pilotage des notifications par le bus 
         title: 'Tournoi Magic',
         organizerId: 'org-1',
         activityId: 'act-1',
-        categoryIds: ['cat-1'],
+        subjectIds: ['subj-1'],
         venueId: null,
       },
       'u-org',
@@ -134,7 +134,7 @@ describe('NotificationEventSubscriber — pilotage des notifications par le bus 
       firstPublish: false,
       organizerId: 'org-1',
       activityId: 'act-1',
-      categoryIds: [],
+      subjectIds: [],
       venueId: null,
     };
     await bus.publish(makeDomainEvent<EventPublishedPayload>(DOMAIN_EVENTS.EVENT_PUBLISHED, payload));

@@ -194,7 +194,7 @@ type SortKey = 'startsAt' | 'title' | 'category' | 'status';
                 <tr>
                   <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
                   <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
-                  <th class="sortable" (click)="sort('category')">Catégorie <span class="arr">{{ arrow('category') }}</span></th>
+                  <th class="sortable" (click)="sort('category')">Sujets <span class="arr">{{ arrow('category') }}</span></th>
                   <th>Archivage</th>
                 </tr>
               </thead>
@@ -431,7 +431,7 @@ export class SubmitEventComponent implements OnInit {
   }
 
   categoryOf(e: EventDto): string {
-    return e.categories?.length ? e.categories.join(', ') : '—';
+    return e.subjects?.length ? e.subjects.join(', ') : '—';
   }
 
   sort(key: SortKey): void {
@@ -492,7 +492,6 @@ function toDraft(payload: Record<string, unknown>): EventDraft {
     currency: str(payload['currency']),
     activityName: str(payload['activity']),
     eventTypeName: str(payload['eventType']),
-    eventFormatName: str(payload['eventFormat']),
     subjectNames: strList(payload['subjects']),
     modalityNames: strList(payload['modalities']),
     organizerName: str(payload['organizer']),

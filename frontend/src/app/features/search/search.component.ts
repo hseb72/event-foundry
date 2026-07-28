@@ -5,7 +5,7 @@ import { SearchApi } from '../../core/api/search.service';
 import { EventDto, Facets } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
 
-type FacetKind = 'activityId' | 'categoryId' | 'municipalityId' | 'tagId';
+type FacetKind = 'activityId' | 'subjectId' | 'municipalityId' | 'tagId';
 
 @Component({
   selector: 'app-search',
@@ -117,12 +117,12 @@ type FacetKind = 'activityId' | 'categoryId' | 'municipalityId' | 'tagId';
               </div>
             </div>
           }
-          @if (facets.categories.length) {
+          @if (facets.subjects.length) {
             <div class="facet-group">
-              <h3>Catégories</h3>
+              <h3>Sujets</h3>
               <div class="chips">
-                @for (f of facets.categories; track f.id) {
-                  <button class="chip" [class.on]="categoryId === f.id" (click)="toggle('categoryId', f.id)">
+                @for (f of facets.subjects; track f.id) {
+                  <button class="chip" [class.on]="subjectId === f.id" (click)="toggle('subjectId', f.id)">
                     {{ f.name }}<span class="n">{{ f.count }}</span>
                   </button>
                 }
@@ -183,7 +183,7 @@ export class SearchComponent implements OnInit {
   q = '';
   sort = 'relevance';
   activityId = '';
-  categoryId = '';
+  subjectId = '';
   municipalityId = '';
   tagId = '';
   results: EventDto[] = [];
@@ -211,7 +211,7 @@ export class SearchComponent implements OnInit {
     const params: Record<string, string> = { sort: this.sort };
     if (this.q) params['q'] = this.q;
     if (this.activityId) params['activityId'] = this.activityId;
-    if (this.categoryId) params['categoryId'] = this.categoryId;
+    if (this.subjectId) params['subjectId'] = this.subjectId;
     if (this.municipalityId) params['municipalityId'] = this.municipalityId;
     if (this.tagId) params['tagId'] = this.tagId;
 
@@ -237,19 +237,19 @@ export class SearchComponent implements OnInit {
   }
 
   hasFilters(): boolean {
-    return Boolean(this.activityId || this.categoryId || this.municipalityId || this.tagId);
+    return Boolean(this.activityId || this.subjectId || this.municipalityId || this.tagId);
   }
 
   hasAnyFacet(): boolean {
     const f = this.facets;
     return Boolean(
-      f && (f.activities.length || f.categories.length || f.municipalities.length || f.tags.length),
+      f && (f.activities.length || f.subjects.length || f.municipalities.length || f.tags.length),
     );
   }
 
   reset(): void {
     this.activityId = '';
-    this.categoryId = '';
+    this.subjectId = '';
     this.municipalityId = '';
     this.tagId = '';
     this.runSearch();

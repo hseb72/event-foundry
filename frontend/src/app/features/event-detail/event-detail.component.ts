@@ -244,32 +244,24 @@ import { participationColor, participationLabel } from '../../shared/participati
                 @if (event.eventType) {
                   · {{ event.eventType }}
                 }
-                @if (event.eventFormats.length) {
-                  · {{ event.eventFormats.join(' · ') }}
+                @if (event.modalities.length) {
+                  · {{ event.modalities.join(' · ') }}
                 }
               </span>
               <app-follow-button targetType="ACTIVITY" [targetId]="event.activityId" />
             </span>
           </dd>
 
-          @if (event.categories.length) {
-            <dt>Catégories</dt>
-            <dd>
-              @for (category of event.categories; track category; let i = $index) {
-                <span class="loc-line">
-                  <span>{{ category }}</span>
-                  @if (event.categoryIds[i]) {
-                    <app-follow-button targetType="CATEGORY" [targetId]="event.categoryIds[i]" />
-                  }
-                </span>
-              }
-            </dd>
-          }
           @if (event.subjects.length) {
             <dt>Sujets</dt>
             <dd>
-              @for (s of event.subjects; track s) {
-                <span class="chip">{{ s }}</span>
+              @for (subject of event.subjects; track subject; let i = $index) {
+                <span class="loc-line">
+                  <span>{{ subject }}</span>
+                  @if (event.subjectIds[i]) {
+                    <app-follow-button targetType="SUBJECT" [targetId]="event.subjectIds[i]" />
+                  }
+                </span>
               }
             </dd>
           }

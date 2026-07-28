@@ -20,12 +20,6 @@ export class EventTypeNotFoundException extends NotFoundException {
   }
 }
 
-export class EventFormatNotFoundException extends NotFoundException {
-  constructor(id: string) {
-    super(`EventFormat introuvable : ${id}.`);
-  }
-}
-
 export class OrganizerNotFoundException extends NotFoundException {
   constructor(id: string) {
     super(`Organizer introuvable : ${id}.`);
@@ -59,12 +53,6 @@ export class RegionNotFoundException extends NotFoundException {
 export class MunicipalityNotFoundException extends NotFoundException {
   constructor(id: string) {
     super(`Municipality introuvable : ${id}.`);
-  }
-}
-
-export class CategoryNotFoundException extends NotFoundException {
-  constructor(id: string) {
-    super(`Category introuvable : ${id}.`);
   }
 }
 

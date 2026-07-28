@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/client';
 import {
   ActivityNotFoundException,
-  CategoryNotFoundException,
   ModalityNotFoundException,
   MunicipalityNotFoundException,
   OrganizerNotFoundException,
@@ -10,8 +9,6 @@ import {
   VenueNotFoundException,
 } from '../../reference-data/common/exceptions';
 import { ActivityRepository } from '../../reference-data/activities/activity.repository';
-import { CategoryRepository } from '../../reference-data/categories/category.repository';
-import { EventFormatRepository } from '../../reference-data/event-formats/event-format.repository';
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
 import { ModalityRepository } from '../../reference-data/modalities/modality.repository';
 import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
@@ -28,7 +25,6 @@ import type { EventWithRefs, EventWithRefsAndParticipation } from '../entities/e
 import {
   EventNotEditableException,
   EventNotFoundException,
-  InvalidEventFormatException,
   InvalidEventTypeException,
   InvalidTagsException,
 } from '../exceptions/event-validation.exceptions';
@@ -43,10 +39,8 @@ export class EventsService {
     private readonly repository: EventRepository,
     private readonly activityRepository: ActivityRepository,
     private readonly eventTypeRepository: EventTypeRepository,
-    private readonly eventFormatRepository: EventFormatRepository,
     private readonly organizerRepository: OrganizerRepository,
     private readonly venueRepository: VenueRepository,
-    private readonly categoryRepository: CategoryRepository,
     private readonly municipalityRepository: MunicipalityRepository,
     private readonly tagRepository: TagRepository,
     private readonly subjectRepository: SubjectRepository,
@@ -240,14 +234,6 @@ export class EventsService {
     const built = await this.buildValidatedEventData(dto, event.source);
     const tagIds =
       (built.tags?.create as { tagId: string }[] | undefined)?.map((tag) => tag.tagId) ?? [];
-    const eventFormatIds =
-      (built.formats?.create as { eventFormatId: string }[] | undefined)?.map(
-        (link) => link.eventFormatId,
-      ) ?? [];
-    const categoryIds =
-      (built.categories?.create as { categoryId: string }[] | undefined)?.map(
-        (link) => link.categoryId,
-      ) ?? [];
     const subjectIds =
       (built.subjects?.create as { subjectId: string }[] | undefined)?.map(
         (link) => link.subjectId,
@@ -257,7 +243,7 @@ export class EventsService {
         (link) => link.modalityId,
       ) ?? [];
     // Ne met à jour que les champs éditables : source, statut et créateur restent inchangés.
-    // Les relations transverses (formats, catégories, tags) sont remplacées intégralement.
+    // Les relations transverses (sujets, modalités, tags) sont remplacées intégralement.
     const data: Prisma.EventUncheckedUpdateInput = {
       activityId: built.activityId,
       eventTypeId: built.eventTypeId,
@@ -271,13 +257,7 @@ export class EventsService {
       price: built.price,
       currency: built.currency,
     };
-    return this.repository.updateWithRefs(id, data, {
-      tagIds,
-      eventFormatIds,
-      categoryIds,
-      subjectIds,
-      modalityIds,
-    });
+    return this.repository.updateWithRefs(id, data, { tagIds, subjectIds, modalityIds });
   }
 
   /**
@@ -304,15 +284,12 @@ export class EventsService {
     if (dto.eventTypeId && !(await this.eventTypeRepository.findById(dto.eventTypeId))) {
       throw new InvalidEventTypeException(dto.eventTypeId);
     }
-    // Formats transverses (DATA.01 §4 / TAX-009) : existence seule, aucun rattachement à l'Activité.
-    const eventFormatIds = await this.validateEventFormats(dto.eventFormatIds);
     if (dto.organizerId && !(await this.organizerRepository.findById(dto.organizerId))) {
       throw new OrganizerNotFoundException(dto.organizerId);
     }
     if (dto.venueId && !(await this.venueRepository.findById(dto.venueId))) {
       throw new VenueNotFoundException(dto.venueId);
     }
-    const categoryIds = await this.validateCategories(dto.categoryIds);
     if (dto.municipalityId && !(await this.municipalityRepository.findById(dto.municipalityId))) {
       throw new MunicipalityNotFoundException(dto.municipalityId);
     }
@@ -333,12 +310,6 @@ export class EventsService {
       endsAt: dto.endsAt ?? null,
       price: dto.price ?? null,
       currency: dto.currency ?? null,
-      formats: eventFormatIds.length
-        ? { create: eventFormatIds.map((eventFormatId) => ({ eventFormatId })) }
-        : undefined,
-      categories: categoryIds.length
-        ? { create: categoryIds.map((categoryId) => ({ categoryId })) }
-        : undefined,
       tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
       subjects: subjectIds.length
         ? { create: subjectIds.map((subjectId) => ({ subjectId })) }
@@ -347,34 +318,6 @@ export class EventsService {
         ? { create: modalityIds.map((modalityId) => ({ modalityId })) }
         : undefined,
     };
-  }
-
-  /** Vérifie l'existence de chaque Format (transverse) ; renvoie la liste dédoublonnée. */
-  private async validateEventFormats(ids: string[] | undefined): Promise<string[]> {
-    if (!ids || ids.length === 0) {
-      return [];
-    }
-    const unique = [...new Set(ids)];
-    for (const id of unique) {
-      if (!(await this.eventFormatRepository.findById(id))) {
-        throw new InvalidEventFormatException(id);
-      }
-    }
-    return unique;
-  }
-
-  /** Vérifie l'existence de chaque Catégorie (transverse) ; renvoie la liste dédoublonnée. */
-  private async validateCategories(ids: string[] | undefined): Promise<string[]> {
-    if (!ids || ids.length === 0) {
-      return [];
-    }
-    const unique = [...new Set(ids)];
-    for (const id of unique) {
-      if (!(await this.categoryRepository.findById(id))) {
-        throw new CategoryNotFoundException(id);
-      }
-    }
-    return unique;
   }
 
   /** Vérifie que tous les tags existent ; renvoie la liste dédoublonnée. */

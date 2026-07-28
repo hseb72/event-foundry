@@ -14,10 +14,10 @@ export interface IndexableDocument {
   description: string | null;
   activityId: string;
   activityName: string;
-  categoryIds: string[];
-  categoryNames: string[];
-  formatIds: string[];
-  formatNames: string[];
+  subjectIds: string[];
+  subjectNames: string[];
+  modalityIds: string[];
+  modalityNames: string[];
   municipalityId: string | null;
   municipalityName: string | null;
   organizerName: string | null;
@@ -32,7 +32,7 @@ export interface IndexableDocument {
 export interface SearchFilter {
   text?: string;
   activityId?: string;
-  categoryId?: string;
+  subjectId?: string;
   municipalityId?: string;
   tagId?: string;
   startsFrom?: Date;
@@ -51,7 +51,7 @@ export interface SearchFacet {
 
 export interface SearchFacets {
   activities: SearchFacet[];
-  categories: SearchFacet[];
+  subjects: SearchFacet[];
   municipalities: SearchFacet[];
   tags: SearchFacet[];
 }
@@ -83,10 +83,10 @@ export class SearchRepository {
       description: event.description,
       activityId: event.activityId,
       activityName: event.activity.name,
-      categoryIds: event.categories.map((link) => link.categoryId),
-      categoryNames: event.categories.map((link) => link.category.name),
-      formatIds: event.formats.map((link) => link.eventFormatId),
-      formatNames: event.formats.map((link) => link.eventFormat.name),
+      subjectIds: event.subjects.map((link) => link.subjectId),
+      subjectNames: event.subjects.map((link) => link.subject.name),
+      modalityIds: event.modalities.map((link) => link.modalityId),
+      modalityNames: event.modalities.map((link) => link.modality.name),
       municipalityId: event.municipalityId,
       municipalityName: event.municipality?.name ?? null,
       organizerName: event.organizer?.name ?? null,
@@ -109,10 +109,10 @@ export class SearchRepository {
         description: doc.description,
         activityId: doc.activityId,
         activityName: doc.activityName,
-        categoryIds: doc.categoryIds,
-        categoryNames: doc.categoryNames,
-        formatIds: doc.formatIds,
-        formatNames: doc.formatNames,
+        subjectIds: doc.subjectIds,
+        subjectNames: doc.subjectNames,
+        modalityIds: doc.modalityIds,
+        modalityNames: doc.modalityNames,
         municipalityId: doc.municipalityId,
         municipalityName: doc.municipalityName,
         organizerName: doc.organizerName,
@@ -158,12 +158,12 @@ export class SearchRepository {
       UPDATE search_documents SET search_vector =
         setweight(to_tsvector('french', coalesce(title, '')), 'A') ||
         setweight(to_tsvector('french',
-          coalesce(activity_name, '') || ' ' || array_to_string(category_names, ' ') || ' ' ||
+          coalesce(activity_name, '') || ' ' || array_to_string(subject_names, ' ') || ' ' ||
           array_to_string(tag_names, ' ')), 'B') ||
         setweight(to_tsvector('french',
           coalesce(description, '') || ' ' || coalesce(organizer_name, '') || ' ' ||
           coalesce(venue_name, '') || ' ' || coalesce(municipality_name, '') || ' ' ||
-          array_to_string(format_names, ' ')), 'C')
+          array_to_string(modality_names, ' ')), 'C')
       ${scope}
     `;
   }
@@ -210,9 +210,9 @@ export class SearchRepository {
       GROUP BY d.activity_id, d.activity_name
       ORDER BY count DESC, name ASC
     `;
-    const categories = await this.prisma.$queryRaw<SearchFacet[]>`
+    const subjects = await this.prisma.$queryRaw<SearchFacet[]>`
       SELECT ct.id, ct.name, count(*)::int AS count FROM (
-        SELECT unnest(d.category_ids) AS id, unnest(d.category_names) AS name
+        SELECT unnest(d.subject_ids) AS id, unnest(d.subject_names) AS name
         FROM search_documents d ${from} ${where}
       ) ct
       GROUP BY ct.id, ct.name
@@ -232,7 +232,7 @@ export class SearchRepository {
       GROUP BY tg.id, tg.name
       ORDER BY count DESC, name ASC
     `;
-    return { activities, categories, municipalities, tags };
+    return { activities, subjects, municipalities, tags };
   }
 
   /** Recharge les événements du Catalog pour les identifiants classés (hydratation des résultats). */
@@ -292,8 +292,8 @@ export class SearchRepository {
     if (filter.activityId) {
       conditions.push(Prisma.sql`d.activity_id = ${filter.activityId}::uuid`);
     }
-    if (filter.categoryId) {
-      conditions.push(Prisma.sql`${filter.categoryId}::uuid = ANY(d.category_ids)`);
+    if (filter.subjectId) {
+      conditions.push(Prisma.sql`${filter.subjectId}::uuid = ANY(d.subject_ids)`);
     }
     if (filter.municipalityId) {
       conditions.push(Prisma.sql`d.municipality_id = ${filter.municipalityId}::uuid`);

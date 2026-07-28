@@ -8,7 +8,6 @@ import { REFERENCE_DATA_PROVIDER } from './reference/reference-data-provider.int
 import { ActivityRule } from './rules/activity.rule';
 import { CapacityRule } from './rules/capacity.rule';
 import { DateRule } from './rules/date.rule';
-import { EventFormatRule } from './rules/event-format.rule';
 import { EventTypeRule } from './rules/event-type.rule';
 import { ModalityRule } from './rules/modality.rule';
 import { OrganizerRule } from './rules/organizer.rule';
@@ -27,7 +26,6 @@ const RULE_CLASSES = [
   TimeRule,
   ActivityRule,
   EventTypeRule,
-  EventFormatRule,
   SubjectRule,
   ModalityRule,
   OrganizerRule,

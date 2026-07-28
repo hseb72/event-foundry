@@ -89,8 +89,6 @@ export class EventRepository extends BaseRepository<Event> {
     data: Prisma.EventUncheckedUpdateInput,
     refs: {
       tagIds: string[];
-      eventFormatIds: string[];
-      categoryIds: string[];
       subjectIds: string[];
       modalityIds: string[];
     },
@@ -100,14 +98,6 @@ export class EventRepository extends BaseRepository<Event> {
       data: {
         ...data,
         tags: { deleteMany: {}, create: refs.tagIds.map((tagId) => ({ tagId })) },
-        formats: {
-          deleteMany: {},
-          create: refs.eventFormatIds.map((eventFormatId) => ({ eventFormatId })),
-        },
-        categories: {
-          deleteMany: {},
-          create: refs.categoryIds.map((categoryId) => ({ categoryId })),
-        },
         subjects: { deleteMany: {}, create: refs.subjectIds.map((subjectId) => ({ subjectId })) },
         modalities: {
           deleteMany: {},

@@ -28,7 +28,7 @@ export interface PublishedEventTargets {
   title: string;
   organizerId: string | null;
   activityId: string;
-  categoryIds: string[];
+  subjectIds: string[];
   venueId: string | null;
 }
 
@@ -100,9 +100,9 @@ export class NotificationsService {
       const targets: [FollowTargetType, string | null][] = [
         [FollowTargetType.ORGANIZER, event.organizerId],
         [FollowTargetType.ACTIVITY, event.activityId],
-        // Catégories transverses (DATA.01 §5) : un abonné à l'une d'elles est notifié.
-        ...event.categoryIds.map(
-          (categoryId): [FollowTargetType, string | null] => [FollowTargetType.CATEGORY, categoryId],
+        // Sujets (Axe A — DATA.01 v2.0) : un abonné à l'un d'eux est notifié.
+        ...event.subjectIds.map(
+          (subjectId): [FollowTargetType, string | null] => [FollowTargetType.SUBJECT, subjectId],
         ),
         [FollowTargetType.VENUE, event.venueId],
       ];

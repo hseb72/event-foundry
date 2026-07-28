@@ -12,12 +12,6 @@ export interface ReferenceNamed {
   name: string;
 }
 
-/** Format d'événement : référentiel **transverse** (DATA.01 §4), sans rattachement à une Activité. */
-export interface ReferenceFormat {
-  id: string;
-  name: string;
-}
-
 /** Sujet (Axe A — DATA.01 v2.0). Reconnu par nom, indépendamment de l'activité détectée. */
 export interface ReferenceSubject {
   id: string;
@@ -44,7 +38,6 @@ export interface ReferenceVenue {
 export interface ReferenceSnapshot {
   activities: ReferenceActivity[];
   eventTypes: ReferenceNamed[];
-  eventFormats: ReferenceFormat[];
   subjects: ReferenceSubject[];
   modalities: ReferenceModality[];
   organizers: ReferenceOrganizer[];
@@ -54,7 +47,6 @@ export interface ReferenceSnapshot {
 export const EMPTY_SNAPSHOT: ReferenceSnapshot = {
   activities: [],
   eventTypes: [],
-  eventFormats: [],
   subjects: [],
   modalities: [],
   organizers: [],

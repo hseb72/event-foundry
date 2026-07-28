@@ -17,8 +17,8 @@ export class FacetsDto {
   @ApiProperty({ type: [FacetCountDto] })
   activities!: FacetCountDto[];
 
-  @ApiProperty({ type: [FacetCountDto] })
-  categories!: FacetCountDto[];
+  @ApiProperty({ type: [FacetCountDto], description: 'Sujets (Axe A — DATA.01 v2.0).' })
+  subjects!: FacetCountDto[];
 
   @ApiProperty({ type: [FacetCountDto] })
   municipalities!: FacetCountDto[];

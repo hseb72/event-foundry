@@ -8,9 +8,7 @@ export const EVENT_REFS_INCLUDE = {
   organizer: true,
   venue: true,
   municipality: { include: { region: { include: { country: true } } } },
-  formats: { include: { eventFormat: true } },
-  categories: { include: { category: true } },
-  // DATA.01 v2.0 — Axe A (sujets) + Axe C (modalités).
+  // DATA.01 v2.0 — Axe A (sujets) + Axe C (modalités) ; Format/Catégorie retirés.
   subjects: { include: { subject: true } },
   modalities: { include: { modality: true } },
   tags: { include: { tag: true } },

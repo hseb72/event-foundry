@@ -67,22 +67,6 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
     fields: [NAME],
   },
   {
-    segment: 'event-formats',
-    label: 'Formats',
-    singular: 'Format',
-    fields: [
-      NAME,
-      {
-        key: 'activityId',
-        label: 'Activité',
-        type: 'select',
-        required: true,
-        optionsFrom: 'activities',
-        immutableOnEdit: true,
-      },
-    ],
-  },
-  {
     segment: 'organizers',
     label: 'Organisateurs',
     singular: 'Organisateur',
@@ -140,12 +124,6 @@ export const REFERENCE_ENTITIES: EntityDef[] = [
       },
       { key: 'postalCode', label: 'Code postal', type: 'text' },
     ],
-  },
-  {
-    segment: 'categories',
-    label: 'Catégories',
-    singular: 'Catégorie',
-    fields: [NAME],
   },
   {
     segment: 'tags',

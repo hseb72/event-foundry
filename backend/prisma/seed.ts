@@ -7,7 +7,8 @@
  *     grants de permissions, + rôles legacy V1 (ADMIN, USER) conservés pour compatibilité ;
  *   - offres d'abonnement (Free / Pro / Premium — ADR.11) ;
  *   - un administrateur de développement + une organisation de démonstration ;
- *   - les référentiels métier de base (Domain TCG + Activities V1, quelques EventType et alias).
+ *   - la taxonomie DATA.01 v2.0 (Domain « Général », activités, familles, sujets, types
+ *     transverses, dimensions/modalités, tags).
  *
  * Idempotent (upsert + ressynchronisation des grants). Aucune donnée fonctionnelle
  * (Events, ImportJobs…) n'est créée ici.
@@ -232,17 +233,6 @@ const SUBSCRIPTION_PLANS = [
   { key: 'PREMIUM', name: 'Premium', level: 2 },
 ];
 
-// Activities TCG ciblées par la V1 (VISION).
-const TCG_ACTIVITIES = [
-  'Magic',
-  'Pokémon',
-  'Lorcana',
-  'One Piece',
-  'Star Wars Unlimited',
-  'Flesh and Blood',
-  'Riftbound',
-];
-
 // --- Taxonomie généraliste DATA.01 v1.1 (Domain « Général ») ---
 // §3 : chaque Activité porte ses Types (mapping réconcilié ; un nom de Type peut se répéter
 // entre Activités — TAX-011). Source de vérité : docs/v3/09-DATA.01-EventAttributes.
@@ -281,18 +271,6 @@ const GENERAL_TAXONOMY: Record<string, string[]> = {
   Communauté: ['Rencontre', 'Meetup', 'Assemblée', 'Vide-grenier', 'Marché artisanal', 'Fête de quartier'],
 };
 
-// §4 : Formats transverses (indépendants de l'Activité — TAX-009).
-const EVENT_FORMATS = [
-  'Présentiel', 'En ligne', 'Hybride',
-  'Libre', 'Sur inscription', 'Sur invitation',
-  'Gratuit', 'Payant',
-  'Compétitif', 'Coopératif',
-  'Permanent', 'Temporaire', 'Ponctuel', 'Récurrent',
-  'Intérieur', 'Extérieur',
-  'Solo', 'Équipe',
-  'Avec réservation', 'Sans réservation',
-  'Ouvert', 'Privé',
-];
 
 async function seedPermissions(): Promise<void> {
   for (const [key, description] of Object.entries(PERMISSIONS)) {
@@ -404,35 +382,6 @@ async function seedAdminAndDemoOrg(): Promise<void> {
   });
 }
 
-async function seedReferenceData(): Promise<void> {
-  const tcg = await prisma.domain.upsert({
-    where: { name: 'TCG' },
-    update: {},
-    create: { name: 'TCG' },
-  });
-
-  for (const name of TCG_ACTIVITIES) {
-    await prisma.activity.upsert({
-      where: { domainId_name: { domainId: tcg.id, name } },
-      update: {},
-      create: { name, domainId: tcg.id },
-    });
-  }
-
-  const magic = await prisma.activity.findUnique({
-    where: { domainId_name: { domainId: tcg.id, name: 'Magic' } },
-  });
-  if (magic) {
-    // Types désormais transverses (DATA.01 v2.0) : semés globalement par seedGeneralTaxonomy.
-    for (const value of ['MTG', 'Magic The Gathering']) {
-      await prisma.alias.upsert({
-        where: { value },
-        update: {},
-        create: { value, activityId: magic.id },
-      });
-    }
-  }
-}
 
 // Amorce géographique minimale (France → régions → villes) — EPIC 02.
 const GEOGRAPHY: { country: string; code: string; regions: { name: string; cities: [string, string][] }[] } = {
@@ -445,46 +394,14 @@ const GEOGRAPHY: { country: string; code: string; regions: { name: string; citie
   ],
 };
 
-// Référentiels transverses DATA.01 §5 (Catégories) et §6 (Tags).
-const CATEGORIES = [
-  // Public
-  'Tout public', 'Famille', 'Enfant', 'Adolescent', 'Étudiant', 'Senior', 'Professionnel', 'Expert', 'Débutant',
-  // Accessibilité
-  'PMR', 'Langue des signes', 'Audiodescription', 'Sous-titré',
-  // Ambiance
-  'Festif', 'Culturel', 'Compétitif', 'Éducatif', 'Caritatif', 'Convivial',
-  // Rayonnement
-  'Local', 'Régional', 'National', 'International',
-  // Organisateur
-  'Association', 'Collectivité', 'Entreprise', 'Particulier', 'Institution',
-];
+// Tags libres (DATA.01 v2.0 Axe D) : mots-clés qui n'entrent dans aucun autre axe (ni Sujet, ni
+// Type, ni Modalité — règle de disjonction TAX-000). Format/Catégorie sont retirés (→ Modalités).
 const TAGS = [
-  // Jeux de cartes
-  'Magic', 'Pokémon', 'Lorcana', 'Altered', 'Star Wars Unlimited', 'Yu-Gi-Oh', 'Flesh and Blood', 'KeyForge',
-  // Jeux de société
-  'Catane', 'Terraforming Mars', 'Brass', 'Ark Nova', 'Carcassonne', '7 Wonders', 'Azul',
-  // Sports
-  'Football', 'Rugby', 'Basket', 'Handball', 'Tennis', 'Natation', 'Escalade', 'Judo',
-  // Esport
-  'League of Legends', 'Valorant', 'Counter Strike', 'Rocket League', 'Fortnite', 'Dota 2', 'Overwatch',
-  // Musique
-  'Rock', 'Metal', 'Jazz', 'Classique', 'Pop', 'Rap', 'Électro', 'Blues', 'Reggae', 'Country',
-  // Culture
-  'Impressionnisme', 'Art moderne', 'Photographie', 'Street Art', 'Architecture', 'Histoire', 'Archéologie',
-  // Tourisme
-  'UNESCO', 'Médiéval', 'Antiquité', 'Nature', 'Panorama',
-  // Gastronomie
-  'Vin', 'Bière', 'Fromage', 'Chocolat', 'Cuisine italienne', 'Cuisine japonaise', 'Cuisine française',
+  'Deckbuilding', 'Cosplay', 'Vintage', 'Nocturne', 'Édition limitée', 'Collector', 'Speedrun',
+  'Afterwork', 'Kids', 'Bring your own deck', 'Prize support',
 ];
 
 async function seedCatalogReferentials(): Promise<void> {
-  // Formats transverses (DATA.01 §4).
-  for (const name of EVENT_FORMATS) {
-    await prisma.eventFormat.upsert({ where: { name }, update: {}, create: { name } });
-  }
-  for (const name of CATEGORIES) {
-    await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
-  }
   for (const name of TAGS) {
     await prisma.tag.upsert({ where: { name }, update: {}, create: { name } });
   }
@@ -545,15 +462,14 @@ async function main(): Promise<void> {
   await seedRoles();
   await seedSubscriptionPlans();
   await seedAdminAndDemoOrg();
-  await seedReferenceData();
   await seedGeneralTaxonomy();
   await seedCatalogReferentials();
   await seedTaxonomyV2(prisma);
   await seedGeography();
   console.log(
     'Seed terminé : permissions + rôles V2 + abonnements + admin + organisation démo + ' +
-      'référentiels TCG + taxonomie généraliste DATA.01 v1.1 + taxonomie v2.0 ' +
-      '(familles/sujets/dimensions/modalités) + géographie FR.',
+      'taxonomie DATA.01 v2.0 (domaines/activités/familles/sujets/types transverses/' +
+      'dimensions/modalités/tags) + géographie FR.',
   );
 }
 

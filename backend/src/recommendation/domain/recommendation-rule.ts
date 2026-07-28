@@ -16,14 +16,14 @@ export interface RecommendationContext {
   surprise: boolean;
   /** Activités auxquelles l'utilisateur participe déjà (habitudes). */
   activityIds: ReadonlySet<string>;
-  /** Catégories fréquentées. */
-  categoryIds: ReadonlySet<string>;
+  /** Sujets fréquentées. */
+  subjectIds: ReadonlySet<string>;
   /** Communes fréquentées. */
   municipalityIds: ReadonlySet<string>;
   /** Suivis explicites de l'utilisateur (Follow — ADR.19), signal d'intérêt fort. */
   followedOrganizerIds: ReadonlySet<string>;
   followedActivityIds: ReadonlySet<string>;
-  followedCategoryIds: ReadonlySet<string>;
+  followedSubjectIds: ReadonlySet<string>;
   followedVenueIds: ReadonlySet<string>;
   /** Créneaux déjà planifiés (participations), pour détecter conflits et créneaux libres. */
   plannedSlots: PlanningSlot[];

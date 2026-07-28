@@ -73,10 +73,10 @@ import { FollowButtonComponent } from '../../shared/follow-button.component';
           <option [value]="activity.id">{{ activity.name }}</option>
         }
       </select>
-      <select class="select" [(ngModel)]="categoryId">
-        <option value="">Toutes les catégories</option>
-        @for (category of categories; track category.id) {
-          <option [value]="category.id">{{ category.name }}</option>
+      <select class="select" [(ngModel)]="subjectId">
+        <option value="">Tous les sujets</option>
+        @for (subject of subjects; track subject.id) {
+          <option [value]="subject.id">{{ subject.name }}</option>
         }
       </select>
       <select class="select" [(ngModel)]="tagId">
@@ -107,14 +107,14 @@ import { FollowButtonComponent } from '../../shared/follow-button.component';
       <button class="btn" (click)="surprise()">🎲 Surprends-moi</button>
     </div>
 
-    @if (categoryFacets.length) {
+    @if (subjectFacets.length) {
       <div class="facets">
-        @for (facet of categoryFacets; track facet.id) {
+        @for (facet of subjectFacets; track facet.id) {
           <div class="facet-wrap">
-            <button class="facet" [class.on]="categoryId === facet.id" (click)="pickCategory(facet.id)">
+            <button class="facet" [class.on]="subjectId === facet.id" (click)="pickSubject(facet.id)">
               {{ facet.name }}<span class="n">{{ facet.count }}</span>
             </button>
-            <app-follow-button targetType="CATEGORY" [targetId]="facet.id" />
+            <app-follow-button targetType="SUBJECT" [targetId]="facet.id" />
           </div>
         }
       </div>
@@ -135,13 +135,13 @@ import { FollowButtonComponent } from '../../shared/follow-button.component';
 })
 export class CatalogueComponent implements OnInit {
   activities: ActivityDto[] = [];
-  categories: ReferentialItem[] = [];
+  subjects: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
-  categoryFacets: FacetCount[] = [];
+  subjectFacets: FacetCount[] = [];
   events: EventDto[] = [];
   q = '';
   activityId = '';
-  categoryId = '';
+  subjectId = '';
   tagId = '';
   period = '';
   participation = '';
@@ -156,9 +156,9 @@ export class CatalogueComponent implements OnInit {
 
   ngOnInit(): void {
     this.referenceDataApi.activities().subscribe((activities) => (this.activities = activities));
-    this.referenceDataApi.categories().subscribe((categories) => (this.categories = categories));
+    this.referenceDataApi.subjects().subscribe((subjects) => (this.subjects = subjects));
     this.referenceDataApi.tags().subscribe((tags) => (this.tags = tags));
-    this.discoveryApi.facets().subscribe((facets) => (this.categoryFacets = facets.categories));
+    this.discoveryApi.facets().subscribe((facets) => (this.subjectFacets = facets.subjects));
     this.search();
   }
 
@@ -166,7 +166,7 @@ export class CatalogueComponent implements OnInit {
     const params: Record<string, string> = {};
     if (this.q) params['q'] = this.q;
     if (this.activityId) params['activityId'] = this.activityId;
-    if (this.categoryId) params['categoryId'] = this.categoryId;
+    if (this.subjectId) params['subjectId'] = this.subjectId;
     if (this.tagId) params['tagId'] = this.tagId;
     if (this.period) params['period'] = this.period;
     if (this.participation) params['participation'] = this.participation;
@@ -183,8 +183,8 @@ export class CatalogueComponent implements OnInit {
   }
 
   /** Bascule la catégorie sélectionnée depuis une facette et relance la recherche. */
-  pickCategory(id: string): void {
-    this.categoryId = this.categoryId === id ? '' : id;
+  pickSubject(id: string): void {
+    this.subjectId = this.subjectId === id ? '' : id;
     this.search();
   }
 

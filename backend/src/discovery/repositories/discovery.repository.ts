@@ -12,7 +12,7 @@ export interface FacetCount {
 
 export interface Facets {
   activities: FacetCount[];
-  categories: FacetCount[];
+  subjects: FacetCount[];
   municipalities: FacetCount[];
   tags: FacetCount[];
 }
@@ -29,11 +29,11 @@ export class DiscoveryRepository {
 
   /** Comptes par référentiel parmi les événements publiés (base de la navigation à facettes). */
   async facets(): Promise<Facets> {
-    const [activities, categories, municipalities, tags] = await Promise.all([
+    const [activities, subjects, municipalities, tags] = await Promise.all([
       this.prisma.event.groupBy({ by: ['activityId'], where: PUBLISHED, _count: { _all: true } }),
-      // Catégories transverses en N-N (DATA.01 §5) : comptage via la table de liaison.
-      this.prisma.eventCategoryLink.groupBy({
-        by: ['categoryId'],
+      // Sujets (Axe A — DATA.01 v2.0) en N-N : comptage via la table de liaison.
+      this.prisma.eventSubject.groupBy({
+        by: ['subjectId'],
         where: { event: PUBLISHED },
         _count: { _all: true },
       }),
@@ -54,9 +54,9 @@ export class DiscoveryRepository {
         activities.map((row) => ({ id: row.activityId, count: row._count._all })),
         (ids) => this.prisma.activity.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
       ),
-      categories: await this.resolve(
-        categories.map((row) => ({ id: row.categoryId, count: row._count._all })),
-        (ids) => this.prisma.category.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
+      subjects: await this.resolve(
+        subjects.map((row) => ({ id: row.subjectId, count: row._count._all })),
+        (ids) => this.prisma.subject.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
       ),
       municipalities: await this.resolve(
         municipalities.map((row) => ({ id: row.municipalityId as string, count: row._count._all })),

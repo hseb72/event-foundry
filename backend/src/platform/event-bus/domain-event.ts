@@ -54,7 +54,7 @@ export type EventPublishedPayload = {
   firstPublish: boolean;
   organizerId: string | null;
   activityId: string;
-  categoryIds: string[];
+  subjectIds: string[];
   venueId: string | null;
 };
 

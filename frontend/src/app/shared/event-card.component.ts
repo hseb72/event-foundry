@@ -100,8 +100,8 @@ import { participationColor, participationLabel } from './participation-color';
         }
       </div>
       <div class="meta">
-        @if (event.categories.length) {
-          {{ event.categories.join(', ') }} ·
+        @if (event.subjects.length) {
+          {{ event.subjects.join(', ') }} ·
         }
         @if (event.municipality) {
           {{ event.municipality }}

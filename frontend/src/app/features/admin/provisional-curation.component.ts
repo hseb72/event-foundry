@@ -6,7 +6,8 @@ import { formatDateTime } from '../../shared/date-format';
 const TYPE_LABELS: Record<ProvisionalType, string> = {
   activity: 'Activité',
   eventType: "Type d'événement",
-  eventFormat: 'Format',
+  subject: 'Sujet',
+  modality: 'Modalité',
   organizer: 'Organisateur',
   venue: 'Lieu',
 };

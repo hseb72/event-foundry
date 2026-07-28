@@ -21,16 +21,16 @@ export class ActivityAffinityRule implements RecommendationRule {
   }
 }
 
-/** Affinité de catégorie : la catégorie fait partie de celles qui intéressent l'utilisateur. */
-export class CategoryAffinityRule implements RecommendationRule {
-  readonly name = 'category-affinity';
+/** Affinité de sujet : le sujet fait partie de ceux qui intéressent l'utilisateur (Axe A). */
+export class SubjectAffinityRule implements RecommendationRule {
+  readonly name = 'subject-affinity';
 
   evaluate(event: EventWithRefs, context: RecommendationContext): RuleContribution | null {
-    // Cardinalité N (DATA.01 §5) : une seule catégorie partagée suffit.
-    if (!event.categories.some((link) => context.categoryIds.has(link.categoryId))) {
+    // Cardinalité N (DATA.01 v2.0) : un seul sujet partagé suffit.
+    if (!event.subjects.some((link) => context.subjectIds.has(link.subjectId))) {
       return null;
     }
-    return { points: context.surprise ? 5 : 25, reason: 'Catégorie qui vous intéresse' };
+    return { points: context.surprise ? 5 : 25, reason: 'Sujet qui vous intéresse' };
   }
 }
 
@@ -62,7 +62,7 @@ export class NoveltyRule implements RecommendationRule {
 
 /**
  * Affinité de suivi (Follow — ADR.19) : l'événement relève d'un objet **explicitement suivi**
- * (organisateur, activité, catégorie ou lieu). Signal d'intérêt fort — priorité au match le plus
+ * (organisateur, activité, sujet ou lieu). Signal d'intérêt fort — priorité au match le plus
  * spécifique, avec une justification claire. En mode « Surprends-moi », le poids est réduit.
  */
 export class FollowedAffinityRule implements RecommendationRule {
@@ -77,13 +77,13 @@ export class FollowedAffinityRule implements RecommendationRule {
     if (context.followedActivityIds.has(event.activityId)) {
       return { points: strong, reason: `Vous suivez cette activité : ${event.activity.name}` };
     }
-    const followedCategory = event.categories.find((link) =>
-      context.followedCategoryIds.has(link.categoryId),
+    const followedSubject = event.subjects.find((link) =>
+      context.followedSubjectIds.has(link.subjectId),
     );
-    if (followedCategory) {
+    if (followedSubject) {
       return {
         points: medium,
-        reason: `Vous suivez cette catégorie : ${followedCategory.category.name}`.trim(),
+        reason: `Vous suivez ce sujet : ${followedSubject.subject.name}`.trim(),
       };
     }
     if (event.venueId && context.followedVenueIds.has(event.venueId)) {
@@ -132,7 +132,7 @@ export function defaultRecommendationRules(): RecommendationRule[] {
   return [
     new FollowedAffinityRule(),
     new ActivityAffinityRule(),
-    new CategoryAffinityRule(),
+    new SubjectAffinityRule(),
     new ProximityRule(),
     new NoveltyRule(),
     new FreeSlotRule(),

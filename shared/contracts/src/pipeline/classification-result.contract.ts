@@ -21,7 +21,6 @@ export interface ExtractedEventFields {
   currency?: string;
   activity?: string;
   eventType?: string;
-  eventFormat?: string;
   /** Sujets détectés (Axe A — DATA.01 v2.0), 0..N noms. */
   subjects?: string[];
   /** Modalités détectées (Axe C — DATA.01 v2.0), 0..N noms. */

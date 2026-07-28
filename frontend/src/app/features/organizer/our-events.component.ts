@@ -203,7 +203,7 @@ type SortKey = 'startsAt' | 'title' | 'status';
                 <tr>
                   <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
                   <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
-                  <th>Catégorie</th>
+                  <th>Sujets</th>
                   <th>Créateur</th>
                   <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
                   <th>Archivage</th>
@@ -455,7 +455,7 @@ export class OurEventsComponent implements OnInit {
   }
 
   categoryOf(e: EventDto): string {
-    return e.categories?.length ? e.categories.join(', ') : '—';
+    return e.subjects?.length ? e.subjects.join(', ') : '—';
   }
 
   isPublished(e: EventDto): boolean {
@@ -534,7 +534,6 @@ function toDraft(payload: Record<string, unknown>): EventDraft {
     currency: str(payload['currency']),
     activityName: str(payload['activity']),
     eventTypeName: str(payload['eventType']),
-    eventFormatName: str(payload['eventFormat']),
     organizerName: str(payload['organizer']),
     venueName: str(payload['venue']),
   };
