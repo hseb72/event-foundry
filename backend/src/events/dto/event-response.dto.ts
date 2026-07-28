@@ -78,6 +78,12 @@ export class EventResponseDto {
   @ApiProperty({ type: [String], description: 'Tags de classification.' })
   tags!: string[];
 
+  @ApiProperty({ type: [String], description: 'Sujets (Axe A — DATA.01 v2.0).' })
+  subjects!: string[];
+
+  @ApiProperty({ type: [String], description: 'Modalités (Axe C — DATA.01 v2.0).' })
+  modalities!: string[];
+
   @ApiProperty({ type: [EventMediaDto], description: 'Galerie (peuplée sur la fiche détaillée).' })
   media!: EventMediaDto[];
 

@@ -5,6 +5,8 @@ import { EventFormatRepository } from '../../reference-data/event-formats/event-
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
 import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
+import { ModalityRepository } from '../../reference-data/modalities/modality.repository';
+import { SubjectRepository } from '../../reference-data/subjects/subject.repository';
 import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { CreateEventDto } from '../dto/create-event.dto';
@@ -22,6 +24,8 @@ describe('EventsService', () => {
   let categoryRepo: { findById: jest.Mock };
   let municipalityRepo: { findById: jest.Mock };
   let tagRepo: { findExistingIds: jest.Mock };
+  let subjectRepo: { findById: jest.Mock };
+  let modalityRepo: { findById: jest.Mock };
   let eventRepo: {
     createWithRefs: jest.Mock;
     findByIdWithRefs: jest.Mock;
@@ -37,6 +41,8 @@ describe('EventsService', () => {
     categoryRepo = { findById: jest.fn() };
     municipalityRepo = { findById: jest.fn() };
     tagRepo = { findExistingIds: jest.fn().mockResolvedValue([]) };
+    subjectRepo = { findById: jest.fn() };
+    modalityRepo = { findById: jest.fn() };
     eventRepo = {
       createWithRefs: jest.fn(),
       findByIdWithRefs: jest.fn(),
@@ -55,6 +61,8 @@ describe('EventsService', () => {
       categoryRepo as unknown as CategoryRepository,
       municipalityRepo as unknown as MunicipalityRepository,
       tagRepo as unknown as TagRepository,
+      subjectRepo as unknown as SubjectRepository,
+      modalityRepo as unknown as ModalityRepository,
     );
   });
 

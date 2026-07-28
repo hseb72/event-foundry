@@ -10,6 +10,9 @@ export const EVENT_REFS_INCLUDE = {
   municipality: { include: { region: { include: { country: true } } } },
   formats: { include: { eventFormat: true } },
   categories: { include: { category: true } },
+  // DATA.01 v2.0 — Axe A (sujets) + Axe C (modalités).
+  subjects: { include: { subject: true } },
+  modalities: { include: { modality: true } },
   tags: { include: { tag: true } },
   // Pseudo de l'auteur : exposé uniquement dans la vue d'organisation (FSPEC.22), jamais en découverte.
   createdBy: { select: { displayName: true } },

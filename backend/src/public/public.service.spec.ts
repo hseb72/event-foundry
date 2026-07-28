@@ -13,6 +13,8 @@ const evt = (id: string, lat: number | null, lng: number | null): EventWithRefs 
     eventType: null,
     formats: [],
     categories: [],
+    subjects: [],
+    modalities: [],
     organizer: null,
     venue: lat == null ? null : { name: 'V', latitude: lat, longitude: lng },
     municipality: null,

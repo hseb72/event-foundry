@@ -87,20 +87,32 @@ export class EventRepository extends BaseRepository<Event> {
   updateWithRefs(
     id: string,
     data: Prisma.EventUncheckedUpdateInput,
-    tagIds: string[],
-    eventFormatIds: string[],
-    categoryIds: string[],
+    refs: {
+      tagIds: string[];
+      eventFormatIds: string[];
+      categoryIds: string[];
+      subjectIds: string[];
+      modalityIds: string[];
+    },
   ): Promise<EventWithRefs> {
     return this.prisma.event.update({
       where: { id },
       data: {
         ...data,
-        tags: { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) },
+        tags: { deleteMany: {}, create: refs.tagIds.map((tagId) => ({ tagId })) },
         formats: {
           deleteMany: {},
-          create: eventFormatIds.map((eventFormatId) => ({ eventFormatId })),
+          create: refs.eventFormatIds.map((eventFormatId) => ({ eventFormatId })),
         },
-        categories: { deleteMany: {}, create: categoryIds.map((categoryId) => ({ categoryId })) },
+        categories: {
+          deleteMany: {},
+          create: refs.categoryIds.map((categoryId) => ({ categoryId })),
+        },
+        subjects: { deleteMany: {}, create: refs.subjectIds.map((subjectId) => ({ subjectId })) },
+        modalities: {
+          deleteMany: {},
+          create: refs.modalityIds.map((modalityId) => ({ modalityId })),
+        },
       },
       include: EVENT_REFS_INCLUDE,
     });

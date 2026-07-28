@@ -71,6 +71,28 @@ export class CreateEventDto {
   @IsUUID('4', { each: true })
   tagIds?: string[];
 
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Sujets (Axe A — DATA.01 v2.0, 0..N — TAX-002).',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  subjectIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    format: 'uuid',
+    description: 'Modalités (Axe C — DATA.01 v2.0, 0..N — TAX-005).',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  modalityIds?: string[];
+
   @ApiProperty()
   @IsString()
   @MinLength(2)

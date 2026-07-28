@@ -3,16 +3,20 @@ import { EventSource, EventStatus, EventVisibility, Prisma } from '@prisma/clien
 import {
   ActivityNotFoundException,
   CategoryNotFoundException,
+  ModalityNotFoundException,
   MunicipalityNotFoundException,
   OrganizerNotFoundException,
+  SubjectNotFoundException,
   VenueNotFoundException,
 } from '../../reference-data/common/exceptions';
 import { ActivityRepository } from '../../reference-data/activities/activity.repository';
 import { CategoryRepository } from '../../reference-data/categories/category.repository';
 import { EventFormatRepository } from '../../reference-data/event-formats/event-format.repository';
 import { EventTypeRepository } from '../../reference-data/event-types/event-type.repository';
+import { ModalityRepository } from '../../reference-data/modalities/modality.repository';
 import { MunicipalityRepository } from '../../reference-data/municipalities/municipality.repository';
 import { OrganizerRepository } from '../../reference-data/organizers/organizer.repository';
+import { SubjectRepository } from '../../reference-data/subjects/subject.repository';
 import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { computeDateRange } from '../date-range.util';
@@ -45,6 +49,8 @@ export class EventsService {
     private readonly categoryRepository: CategoryRepository,
     private readonly municipalityRepository: MunicipalityRepository,
     private readonly tagRepository: TagRepository,
+    private readonly subjectRepository: SubjectRepository,
+    private readonly modalityRepository: ModalityRepository,
   ) {}
 
   async getOrThrow(id: string): Promise<EventWithRefs> {
@@ -242,6 +248,14 @@ export class EventsService {
       (built.categories?.create as { categoryId: string }[] | undefined)?.map(
         (link) => link.categoryId,
       ) ?? [];
+    const subjectIds =
+      (built.subjects?.create as { subjectId: string }[] | undefined)?.map(
+        (link) => link.subjectId,
+      ) ?? [];
+    const modalityIds =
+      (built.modalities?.create as { modalityId: string }[] | undefined)?.map(
+        (link) => link.modalityId,
+      ) ?? [];
     // Ne met à jour que les champs éditables : source, statut et créateur restent inchangés.
     // Les relations transverses (formats, catégories, tags) sont remplacées intégralement.
     const data: Prisma.EventUncheckedUpdateInput = {
@@ -257,7 +271,13 @@ export class EventsService {
       price: built.price,
       currency: built.currency,
     };
-    return this.repository.updateWithRefs(id, data, tagIds, eventFormatIds, categoryIds);
+    return this.repository.updateWithRefs(id, data, {
+      tagIds,
+      eventFormatIds,
+      categoryIds,
+      subjectIds,
+      modalityIds,
+    });
   }
 
   /**
@@ -299,6 +319,8 @@ export class EventsService {
       throw new MunicipalityNotFoundException(dto.municipalityId);
     }
     const tagIds = await this.validateTags(dto.tagIds);
+    const subjectIds = await this.validateSubjects(dto.subjectIds);
+    const modalityIds = await this.validateModalities(dto.modalityIds);
 
     return {
       source,
@@ -320,6 +342,12 @@ export class EventsService {
         ? { create: categoryIds.map((categoryId) => ({ categoryId })) }
         : undefined,
       tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
+      subjects: subjectIds.length
+        ? { create: subjectIds.map((subjectId) => ({ subjectId })) }
+        : undefined,
+      modalities: modalityIds.length
+        ? { create: modalityIds.map((modalityId) => ({ modalityId })) }
+        : undefined,
     };
   }
 
@@ -361,6 +389,34 @@ export class EventsService {
     const missing = unique.filter((id) => !existing.includes(id));
     if (missing.length > 0) {
       throw new InvalidTagsException(missing);
+    }
+    return unique;
+  }
+
+  /** Vérifie l'existence de chaque Subject (Axe A) ; renvoie la liste dédoublonnée. */
+  private async validateSubjects(ids: string[] | undefined): Promise<string[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(ids)];
+    for (const id of unique) {
+      if (!(await this.subjectRepository.findById(id))) {
+        throw new SubjectNotFoundException(id);
+      }
+    }
+    return unique;
+  }
+
+  /** Vérifie l'existence de chaque Modality (Axe C) ; renvoie la liste dédoublonnée. */
+  private async validateModalities(ids: string[] | undefined): Promise<string[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
+    const unique = [...new Set(ids)];
+    for (const id of unique) {
+      if (!(await this.modalityRepository.findById(id))) {
+        throw new ModalityNotFoundException(id);
+      }
     }
     return unique;
   }

@@ -45,6 +45,12 @@ export class EventEditDto {
   @ApiProperty({ type: [String], format: 'uuid' })
   tagIds!: string[];
 
+  @ApiProperty({ type: [String], format: 'uuid', description: 'Sujets (Axe A — TAX-002).' })
+  subjectIds!: string[];
+
+  @ApiProperty({ type: [String], format: 'uuid', description: 'Modalités (Axe C — TAX-005).' })
+  modalityIds!: string[];
+
   @ApiProperty()
   title!: string;
 
