@@ -482,6 +482,7 @@ model Organization {
   addresses          OrganizationAddress[]
   invitations        OrganizationInvitation[]
   coveredActivities  OrganizationActivity[]
+  coveredSubjects    OrganizationSubject[]
   /// Événements créés dans le cadre de cette organisation (origine durable — FSPEC.22).
   events             Event[]
   /// Soumissions (imports) réalisées au nom de cette organisation (visibles de toute l'équipe).
@@ -627,6 +628,8 @@ model Activity {
   aliases       Alias[]
   events        Event[]
   organizations OrganizationActivity[]
+  families      ActivityFamily[]
+  venues        VenueActivity[]
   createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -697,20 +700,30 @@ model Organizer {
 }
 
 model Venue {
-  id          String     @id @default(uuid()) @db.Uuid
-  organizerId String?    @map("organizer_id") @db.Uuid
+  id          String          @id @default(uuid()) @db.Uuid
+  organizerId String?         @map("organizer_id") @db.Uuid
   name        String
+  // Enrichissement (import boutiques / DATA.01 v2.0 §10.4) : fiche de lieu plus complète.
+  description String?
+  venueType   VenueType?      @map("venue_type")
   address     String?
-  postalCode  String?    @map("postal_code")
+  postalCode  String?         @map("postal_code")
   city        String?
+  country     String?
+  phone       String?
+  website     String?
   latitude    Float?
   longitude   Float?
-  isActive    Boolean    @default(true) @map("is_active")
-  provisional Boolean    @default(false)
-  organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  isActive    Boolean         @default(true) @map("is_active")
+  provisional Boolean         @default(false)
+  organizer   Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
   events      Event[]
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  // Axe A partagé (Sujet) porté par le lieu, + Tags libres sur le lieu (DATA.01 v2.0).
+  activities  VenueActivity[]
+  subjects    VenueSubject[]
+  tags        VenueTag[]
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([organizerId])
   @@map("venues")
@@ -796,8 +809,162 @@ model Tag {
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   eventTags EventTag[]
+  venueTags VenueTag[]
 
   @@map("tags")
+}
+
+// ============================================================================================
+// DATA.01 v2.0 — Taxonomie 4 axes. Axe A : Domain → Activity → ActivityFamily → Subject.
+// Axe C : ModalityDimension → Modality. Introduits en additif (cohabitent avec EventType scopé /
+// EventFormat / Category le temps de la migration des données — cf. DATA.01 §9).
+// ============================================================================================
+
+/// Family (niveau matérialisé entre Activity et Subject) : TCG, Jeu de plateau, Jazz & Blues…
+model ActivityFamily {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  activityId  String    @map("activity_id") @db.Uuid
+  isActive    Boolean   @default(true) @map("is_active")
+  provisional Boolean   @default(false)
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  subjects    Subject[]
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([activityId, name])
+  @@index([activityId])
+  @@map("activity_families")
+}
+
+/// Subject (« le sujet lui-même ») : Magic, Pokémon, Catane, Rock, Football… Unique par Family.
+model Subject {
+  id            String                @id @default(uuid()) @db.Uuid
+  name          String
+  familyId      String                @map("family_id") @db.Uuid
+  isActive      Boolean               @default(true) @map("is_active")
+  provisional   Boolean               @default(false)
+  family        ActivityFamily        @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  events        EventSubject[]
+  venues        VenueSubject[]
+  organizations OrganizationSubject[]
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([familyId, name])
+  @@index([familyId])
+  @@map("subjects")
+}
+
+/// Dimension de modalité (Participation, Tarification, Public visé, Format de jeu…).
+model ModalityDimension {
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String     @unique
+  isActive   Boolean    @default(true) @map("is_active")
+  modalities Modality[]
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("modality_dimensions")
+}
+
+/// Modalité (terme d'une dimension) : Présentiel, Payant, Compétitif, Draft… `name` unique global.
+model Modality {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  dimensionId String            @map("dimension_id") @db.Uuid
+  isActive    Boolean           @default(true) @map("is_active")
+  provisional Boolean           @default(false)
+  dimension   ModalityDimension @relation(fields: [dimensionId], references: [id], onDelete: Restrict)
+  events      EventModality[]
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([dimensionId])
+  @@map("modalities")
+}
+
+/// N-N Event ↔ Subject (0..N sujets par Event — Axe A).
+model EventSubject {
+  eventId   String  @map("event_id") @db.Uuid
+  subjectId String  @map("subject_id") @db.Uuid
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, subjectId])
+  @@index([subjectId])
+  @@map("event_subjects")
+}
+
+/// N-N Event ↔ Modality (0..N modalités par Event — Axe C ; remplacera format/category links).
+model EventModality {
+  eventId    String   @map("event_id") @db.Uuid
+  modalityId String   @map("modality_id") @db.Uuid
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  modality   Modality @relation(fields: [modalityId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, modalityId])
+  @@index([modalityId])
+  @@map("event_modalities")
+}
+
+/// N-N Venue ↔ Activity (Axe A partagé porté par le lieu).
+model VenueActivity {
+  venueId    String   @map("venue_id") @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  venue      Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([venueId, activityId])
+  @@index([activityId])
+  @@map("venue_activities")
+}
+
+/// N-N Venue ↔ Subject (Axe A partagé porté par le lieu).
+model VenueSubject {
+  venueId   String  @map("venue_id") @db.Uuid
+  subjectId String  @map("subject_id") @db.Uuid
+  venue     Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([venueId, subjectId])
+  @@index([subjectId])
+  @@map("venue_subjects")
+}
+
+/// N-N Venue ↔ Tag (Axe D porté par le lieu).
+model VenueTag {
+  venueId String @map("venue_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([venueId, tagId])
+  @@index([tagId])
+  @@map("venue_tags")
+}
+
+/// N-N Organization ↔ Subject (Axe A partagé porté par l'organisation).
+model OrganizationSubject {
+  organizationId String       @map("organization_id") @db.Uuid
+  subjectId      String       @map("subject_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([organizationId, subjectId])
+  @@index([subjectId])
+  @@map("organization_subjects")
+}
+
+/// Type de lieu (import boutiques / DATA.01 v2.0 §10.4).
+enum VenueType {
+  GAME_STORE
+  BAR
+  EVENT_HALL
+  CLUB
+  ASSOCIATION
+  ONLINE
+  OTHER
 }
 
 // --- Acquisition & pipeline d'import (EPIC 5) ---
@@ -992,6 +1159,10 @@ model Event {
   municipality           Municipality?            @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
   formats                EventFormatLink[]
   categories             EventCategoryLink[]
+  // DATA.01 v2.0 — Axe A (Subject) + Axe C (Modality). Cohabitent avec formats/categories (ancien
+  // Format/Catégorie) pendant la transition ; le rewire Event + la migration des données suivront.
+  subjects               EventSubject[]
+  modalities             EventModality[]
   tags                   EventTag[]
   media                  EventMedia[]
   statusEvents           EventStatusEvent[]
