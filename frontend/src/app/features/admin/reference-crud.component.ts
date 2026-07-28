@@ -2,6 +2,7 @@ import { Component, Input, OnChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminReferenceApi, ReferenceRow } from '../../core/api/admin-reference.service';
 import { ReferentialItem } from '../../core/models';
+import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
 import { EntityDef, FieldDef } from './reference-admin.model';
 
 /**
@@ -11,7 +12,7 @@ import { EntityDef, FieldDef } from './reference-admin.model';
 @Component({
   selector: 'app-reference-crud',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DataTableComponent],
   styles: [
     `
       .bar {
@@ -98,44 +99,23 @@ import { EntityDef, FieldDef } from './reference-admin.model';
     @if (loading) {
       <p class="muted">Chargement…</p>
     } @else {
-      <table>
-        <thead>
-          <tr>
-            @for (f of entity.fields; track f.key) {
-              <th>{{ f.label }}</th>
-            }
-            <th>État</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (row of rows; track row.id) {
-            <tr [class.inactive]="!row.isActive">
-              @for (f of entity.fields; track f.key) {
-                <td>{{ display(row, f) }}</td>
-              }
-              <td>
-                <span class="pill" [class.on]="row.isActive" [class.off]="!row.isActive">
-                  {{ row.isActive ? 'Actif' : 'Inactif' }}
-                </span>
-              </td>
-              <td>
-                <div class="row-actions">
-                  <button class="btn" (click)="openEdit(row)">Éditer</button>
-                  @if (row.isActive) {
-                    <button class="btn" (click)="deactivate(row)">Désactiver</button>
-                  }
-                </div>
-              </td>
-            </tr>
+      <app-data-table
+        [columns]="tableColumns"
+        [rows]="rows"
+        [rowActions]="actions"
+        actionsLabel="Actions"
+        [pageSize]="15"
+        [searchPlaceholder]="'Rechercher un ' + entity.singular.toLowerCase() + '…'"
+        [rowClass]="rowClassFn"
+      />
+      <ng-template #actions let-row>
+        <div class="row-actions">
+          <button class="btn" (click)="openEdit(row)">Éditer</button>
+          @if (row.isActive) {
+            <button class="btn" (click)="deactivate(row)">Désactiver</button>
           }
-          @if (rows.length === 0) {
-            <tr>
-              <td [attr.colspan]="entity.fields.length + 2" class="muted">Aucune entrée.</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+        </div>
+      </ng-template>
     }
 
     @if (formOpen) {
@@ -231,6 +211,27 @@ export class ReferenceCrudComponent implements OnChanges {
       error: () => (this.loading = false),
     });
   }
+
+  /** Colonnes du tableau générique : champs de l'entité + colonne d'état (triables/cherchables). */
+  get tableColumns(): DataColumn[] {
+    const cols: DataColumn[] = this.entity.fields.map((f) => ({
+      key: f.key,
+      label: f.label,
+      sortable: true,
+      value: (row) => this.display(row as ReferenceRow, f),
+    }));
+    cols.push({
+      key: 'isActive',
+      label: 'État',
+      sortable: true,
+      value: (row) => (row['isActive'] ? 'Actif' : 'Inactif'),
+    });
+    return cols;
+  }
+
+  readonly rowClassFn = (row: Record<string, unknown>): Record<string, boolean> => ({
+    inactive: !row['isActive'],
+  });
 
   optionsFor(field: FieldDef): ReferentialItem[] {
     return field.optionsFrom ? (this.optionsCache[field.optionsFrom] ?? []) : [];
