@@ -76,6 +76,36 @@ type SortKey = 'startsAt' | 'title' | 'status';
       .switch input:checked + .slider { background: var(--green, #2e7d32); }
       .switch input:checked + .slider::before { transform: translateX(18px); }
       .switch input:disabled + .slider { opacity: 0.45; cursor: not-allowed; }
+
+      /* En-tête de la liste : titre + sélecteur de vue (cartes / tableau). */
+      .events-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+      .events-head h2 { margin: 0; }
+      .view-toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 0.2rem; gap: 0.15rem; }
+      .view-toggle button { border: 0; background: transparent; color: var(--muted); border-radius: 8px; padding: 0.3rem 0.6rem; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+      .view-toggle button.on { background: var(--organizer); color: #fff; }
+      .sort-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; color: var(--muted); font-size: 0.85rem; }
+      .sort-bar select { border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.55rem; font: inherit; background: var(--surface); color: var(--text); }
+      .sort-bar .dir { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 0.3rem 0.55rem; cursor: pointer; }
+
+      /* Vue « cartes de gestion » : couverture illustrée + contrôles conservés. */
+      .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.1rem; }
+      .mcard { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+      .mcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .mcard.archived { opacity: 0.72; }
+      .mcard .cover { position: relative; height: 130px; background-size: cover; background-position: center; }
+      .mcard .cover .chip { position: absolute; top: 0.55rem; left: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0.12rem 0.55rem; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
+      .mcard .cover .status { position: absolute; top: 0.55rem; right: 0.55rem; font-size: 0.66rem; font-weight: 800; padding: 0.12rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+      .status.pub { background: rgba(22, 163, 74, 0.92); color: #fff; }
+      .status.draft { background: rgba(255, 255, 255, 0.9); color: #1f2333; }
+      .status.arch { background: rgba(220, 38, 38, 0.9); color: #fff; }
+      .mcard .mbody { padding: 0.7rem 0.85rem; display: grid; gap: 0.22rem; flex: 1; }
+      .mcard .mtitle { font-weight: 700; }
+      .mcard .mtitle a { color: inherit; }
+      .mcard .mtitle a:hover { color: var(--organizer); }
+      .mcard .mmeta { font-size: 0.8rem; color: var(--muted); }
+      .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
+      .pub-toggle { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+      .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
     `,
   ],
   template: `
@@ -189,52 +219,106 @@ type SortKey = 'startsAt' | 'title' | 'status';
         </section>
       }
 
-      <!-- Tableau des événements de l'organisation (paginé côté serveur) -->
+      <!-- Événements de l'organisation (paginés côté serveur) — vue au choix : cartes ou tableau. -->
       <section class="card">
-        <h2>Nos événements</h2>
+        <div class="events-head">
+          <h2>Nos événements</h2>
+          <div class="view-toggle" role="tablist" aria-label="Affichage de la liste">
+            <button type="button" [class.on]="view() === 'cards'" (click)="setView('cards')" aria-label="Vue cartes">▦ Cartes</button>
+            <button type="button" [class.on]="view() === 'table'" (click)="setView('table')" aria-label="Vue tableau">▤ Tableau</button>
+          </div>
+        </div>
+
         @if (loading()) {
           <p class="muted">Chargement…</p>
         } @else if (!events().length) {
           <p class="muted">Aucun événement pour l'instant.</p>
         } @else {
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
-                  <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
-                  <th>Sujets</th>
-                  <th>Créateur</th>
-                  <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
-                  <th>Archivage</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (e of events(); track e.id) {
-                  <tr>
-                    <td>{{ date(e) }}</td>
-                    <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
-                    <td>{{ categoryOf(e) }}</td>
-                    <td>{{ e.createdByName || '—' }}</td>
-                    <td>
-                      <label class="switch" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
+          @if (view() === 'cards') {
+            <!-- Tri (les en-têtes cliquables du tableau n'existent pas en vue cartes). -->
+            <div class="sort-bar">
+              <span>Trier</span>
+              <select [ngModel]="sortKey()" (ngModelChange)="setSort($event)">
+                <option value="startsAt">Date de début</option>
+                <option value="title">Titre</option>
+                <option value="status">Publication</option>
+              </select>
+              <button class="dir" type="button" (click)="toggleDir()" [title]="sortDir() === 'asc' ? 'Croissant' : 'Décroissant'">
+                {{ sortDir() === 'asc' ? '▲' : '▼' }}
+              </button>
+            </div>
+            <div class="mgrid">
+              @for (e of events(); track e.id) {
+                <article class="mcard" [class.archived]="e.status === 'ARCHIVED'">
+                  <div class="cover" [style.background]="coverBg(e)">
+                    <span class="chip">{{ e.activity }}</span>
+                    <span class="status" [class.pub]="isPublished(e)" [class.arch]="e.status === 'ARCHIVED'"
+                      [class.draft]="!isPublished(e) && e.status !== 'ARCHIVED'">{{ pubStatus(e) }}</span>
+                  </div>
+                  <div class="mbody">
+                    <span class="mtitle"><a [routerLink]="['/events', e.id]">{{ e.title }}</a></span>
+                    <span class="mmeta">{{ date(e) }}</span>
+                    <span class="mmeta">{{ categoryOf(e) }}</span>
+                    <span class="who">par <strong>{{ e.createdByName || '—' }}</strong></span>
+                  </div>
+                  <div class="mfoot">
+                    <label class="pub-toggle" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
+                      <span class="switch">
                         <input type="checkbox" [checked]="isPublished(e)" [disabled]="e.status === 'ARCHIVED' || busyRow() === e.id"
                           (change)="togglePublish(e)" />
                         <span class="slider"></span>
-                      </label>
-                    </td>
-                    <td>
-                      @if (e.status === 'ARCHIVED') {
-                        <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
-                      } @else {
-                        <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
-                      }
-                    </td>
+                      </span>
+                      {{ isPublished(e) ? 'Publié' : (e.status === 'ARCHIVED' ? 'Archivé' : 'Non publié') }}
+                    </label>
+                    @if (e.status === 'ARCHIVED') {
+                      <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                    } @else {
+                      <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
+                    <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
+                    <th>Sujets</th>
+                    <th>Créateur</th>
+                    <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
+                    <th>Archivage</th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  @for (e of events(); track e.id) {
+                    <tr>
+                      <td>{{ date(e) }}</td>
+                      <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
+                      <td>{{ categoryOf(e) }}</td>
+                      <td>{{ e.createdByName || '—' }}</td>
+                      <td>
+                        <label class="switch" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
+                          <input type="checkbox" [checked]="isPublished(e)" [disabled]="e.status === 'ARCHIVED' || busyRow() === e.id"
+                            (change)="togglePublish(e)" />
+                          <span class="slider"></span>
+                        </label>
+                      </td>
+                      <td>
+                        @if (e.status === 'ARCHIVED') {
+                          <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                        } @else {
+                          <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
           <div class="pager">
             <span class="muted">{{ total() }} événement(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
             <button class="btn btn-sm" [disabled]="page() === 0" (click)="goTo(page() - 1)">‹</button>
@@ -282,6 +366,36 @@ export class OurEventsComponent implements OnInit {
   readonly page = signal(0);
   readonly pageSize = 10;
   readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize)));
+
+  /** Affichage au choix de l'utilisateur : cartes illustrées ou tableau (préférence persistée). */
+  private static readonly VIEW_KEY = 'ef-org-events-view';
+  readonly view = signal<'cards' | 'table'>(OurEventsComponent.readView());
+
+  /** Dégradés festifs (déclinés de la marque) pour la couverture d'un événement sans image. */
+  private static readonly PLACEHOLDERS = [
+    'linear-gradient(135deg, #f97316, #ec4899)',
+    'linear-gradient(135deg, #8b5cf6, #6366f1)',
+    'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    'linear-gradient(135deg, #6366f1, #06b6d4)',
+    'linear-gradient(135deg, #f59e0b, #ef4444)',
+  ];
+
+  private static readView(): 'cards' | 'table' {
+    try {
+      return localStorage.getItem(OurEventsComponent.VIEW_KEY) === 'table' ? 'table' : 'cards';
+    } catch {
+      return 'cards';
+    }
+  }
+
+  setView(view: 'cards' | 'table'): void {
+    this.view.set(view);
+    try {
+      localStorage.setItem(OurEventsComponent.VIEW_KEY, view);
+    } catch {
+      /* stockage indisponible : la préférence reste en mémoire pour la session. */
+    }
+  }
 
   ngOnInit(): void {
     this.refresh();
@@ -462,6 +576,24 @@ export class OurEventsComponent implements OnInit {
     return e.status === 'PUBLISHED';
   }
 
+  /** Libellé de statut de publication affiché sur la couverture (vue cartes). */
+  pubStatus(e: EventDto): string {
+    if (e.status === 'ARCHIVED') return 'Archivé';
+    return this.isPublished(e) ? 'Publié' : 'Brouillon';
+  }
+
+  /** Fond de la couverture (vue cartes) : 1ʳᵉ image de l'événement, sinon dégradé festif déterministe. */
+  coverBg(e: EventDto): string {
+    const image = e.media?.find((m) => m.contentType?.startsWith('image/')) ?? e.media?.[0];
+    if (image) {
+      return `center / cover no-repeat url("${image.url}")`;
+    }
+    let hash = 0;
+    for (const ch of e.id) hash = (hash + ch.charCodeAt(0)) | 0;
+    const list = OurEventsComponent.PLACEHOLDERS;
+    return list[Math.abs(hash) % list.length];
+  }
+
   /** Change la colonne / le sens de tri puis recharge la première page (tri côté serveur). */
   sort(key: SortKey): void {
     if (this.sortKey() === key) {
@@ -470,6 +602,20 @@ export class OurEventsComponent implements OnInit {
       this.sortKey.set(key);
       this.sortDir.set('asc');
     }
+    this.page.set(0);
+    this.loadEvents();
+  }
+
+  /** Change la colonne de tri via le sélecteur (vue cartes). */
+  setSort(key: SortKey): void {
+    this.sortKey.set(key);
+    this.page.set(0);
+    this.loadEvents();
+  }
+
+  /** Inverse le sens de tri (vue cartes). */
+  toggleDir(): void {
+    this.sortDir.set(this.sortDir() === 'asc' ? 'desc' : 'asc');
     this.page.set(0);
     this.loadEvents();
   }

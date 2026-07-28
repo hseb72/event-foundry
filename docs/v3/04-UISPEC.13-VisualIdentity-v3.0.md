@@ -80,6 +80,11 @@ dégradé unique par instance (plusieurs logos sur une page). Le favicon reprend
 - **Fiche d'événement** (`event-detail`) : même couverture en **bandeau pleine largeur** (~210 px) avec
   titre, badges et date/activité **en surimpression** (voile dégradé pour la lisibilité), suivi d'un
   **filet** de participation coloré. La galerie de gestion des médias reste inchangée en dessous.
+- **Choix de vue (cartes / tableau)** : les listes de gestion volumineuses (Organizer « Nos
+  événements ») offrent un **sélecteur** ▦ Cartes / ▤ Tableau. La vue **cartes** décline la carte
+  illustrée avec les contrôles de gestion (bascule de publication, archivage, pseudo de l'auteur, badge
+  de statut) ; la vue **tableau** conserve la densité. La préférence est **persistée** (localStorage) et
+  les deux vues partagent le même tri / pagination **côté serveur**.
 
 ---
 
