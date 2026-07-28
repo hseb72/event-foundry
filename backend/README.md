@@ -54,6 +54,11 @@ gastronomie, technologie, patrimoine…), les trois statuts (publié / brouillon
 événements **publics et privés**, gratuits et payants, passés et à venir — de quoi éprouver la
 Découverte, la recherche, le planning, la vue Organizer et la page de garde publique.
 
+- **Organisation de démonstration** : le seed crée l'organisation **« EventFoundry Demo »**, y
+  rattache l'admin de développement comme **Owner** et en fait son **organisation active**. Les
+  événements publics de démonstration portent son `organizationId` — c'est ce rattachement qui
+  alimente la vue Organizer « Nos événements » (filtrée sur l'organisation active, FSPEC.22) et qui
+  débloque les menus Organizer complets.
 - **Idempotence & suppression ciblée** : les objets de démonstration portent des identifiants
   déterministes (préfixe `de300000-…`), ce qui permet de les recréer sans doublon et de les retirer
   sans toucher aux données saisies à la main.

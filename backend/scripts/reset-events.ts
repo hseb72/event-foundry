@@ -30,7 +30,7 @@ export const DEMO_ID_PREFIX = 'de300000-0000-4000-8000-';
 
 /**
  * Identifiant déterministe d'un objet de démonstration : `family` (1 chiffre : 0 événement,
- * 1 organisateur, 2 lieu) + `key` (2 chiffres), complété en UUID valide.
+ * 1 organisateur, 2 lieu, 3 organisation) + `key` (2 chiffres), complété en UUID valide.
  */
 export function demoId(family: string, key: string): string {
   return `${DEMO_ID_PREFIX}${family.padStart(3, '0')}${key.padStart(9, '0')}`;
@@ -58,10 +58,14 @@ export async function resetEvents(prisma: PrismaClient, options: ResetOptions): 
   const eventIds = DEMO_EVENTS.map((demo) => demoId('0', demo.key));
   const organizerIds = DEMO_ORGANIZERS.map((organizer) => demoId('1', organizer.key));
   const venueIds = DEMO_VENUES.map((venue) => demoId('2', venue.key));
+  const organizationId = demoId('3', '01');
 
   const { count } = await prisma.event.deleteMany({ where: { id: { in: eventIds } } });
   await prisma.venue.deleteMany({ where: { id: { in: venueIds } } });
   await prisma.organizer.deleteMany({ where: { id: { in: organizerIds } } });
+  // L'organisation de démonstration part avec ses appartenances (cascade). Les comptes restent
+  // intacts : `activeOrganizationId` est simplement remis à nul par la base (SET NULL).
+  await prisma.organization.deleteMany({ where: { id: organizationId } });
   return count;
 }
 

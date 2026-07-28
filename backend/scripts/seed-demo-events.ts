@@ -46,6 +46,56 @@ function startOf(demo: DemoEvent): Date {
   return date;
 }
 
+/** Organisation de démonstration : nom et identifiant déterministe (cf. `demoId`). */
+const DEMO_ORGANIZATION = { key: '01', name: 'EventFoundry Demo', slug: 'eventfoundry-demo' };
+
+/**
+ * Organisation de démonstration + appartenance **Owner** de l'admin de développement.
+ *
+ * Indispensable pour éprouver la vue Organizer « Nos événements » : celle-ci filtre sur
+ * l'**organisation active** de l'utilisateur (FSPEC.22). Sans organisation ni appartenance, la liste
+ * reste vide. L'organisation devient également l'organisation active du compte (les menus Organizer
+ * complets apparaissent alors — entonnoir d'affiliation).
+ *
+ * Renvoie l'identifiant de l'organisation, ou `null` si l'admin de développement est absent.
+ */
+async function seedOrganization(ownerId: string | null): Promise<string | null> {
+  const id = demoId('3', DEMO_ORGANIZATION.key);
+  const plan = await prisma.subscriptionPlan.findUnique({ where: { key: 'FREE' }, select: { id: true } });
+  const data = {
+    name: DEMO_ORGANIZATION.name,
+    slug: DEMO_ORGANIZATION.slug,
+    description: 'Organisation fictive créée par le seed de démonstration (phase de test).',
+    subscriptionPlanId: plan?.id ?? null,
+    createdById: ownerId,
+  };
+  await prisma.organization.upsert({ where: { id }, update: data, create: { id, ...data } });
+
+  if (!ownerId) {
+    return id;
+  }
+  // Appartenance + fonction Owner (FSPEC.19) : sans rôle d'organisation, aucun droit ne s'applique.
+  const membership = await prisma.organizationMembership.upsert({
+    where: { userId_organizationId: { userId: ownerId, organizationId: id } },
+    update: {},
+    create: { userId: ownerId, organizationId: id },
+    select: { id: true },
+  });
+  const ownerRole = await prisma.role.findUnique({ where: { name: 'Owner' }, select: { id: true } });
+  if (ownerRole) {
+    await prisma.membershipRole.upsert({
+      where: { membershipId_roleId: { membershipId: membership.id, roleId: ownerRole.id } },
+      update: {},
+      create: { membershipId: membership.id, roleId: ownerRole.id },
+    });
+  } else {
+    console.warn('⚠️  Rôle « Owner » introuvable : exécutez `npm run prisma:seed`.');
+  }
+  // Organisation active du compte : la vue Organizer se cale dessus dès la connexion.
+  await prisma.user.update({ where: { id: ownerId }, data: { activeOrganizationId: id } });
+  return id;
+}
+
 /** Organisateurs fictifs (identifiants déterministes → idempotence et suppression ciblée). */
 async function seedOrganizers(): Promise<Map<string, string>> {
   const byName = new Map<string, string>();
@@ -146,6 +196,7 @@ async function seedEvent(
   organizers: Map<string, string>,
   venues: Map<string, DemoVenueRef>,
   ownerId: string | null,
+  organizationId: string | null,
 ): Promise<boolean> {
   const refs = await resolve(demo);
   if (!refs) {
@@ -163,6 +214,10 @@ async function seedEvent(
     status,
     // Un événement privé est personnel (FSPEC.22) : rattaché à son créateur, jamais publié.
     visibility: demo.private ? EventVisibility.PRIVATE : EventVisibility.PUBLIC,
+    // Origine durable (FSPEC.22) : un événement public de démonstration appartient à l'organisation
+    // de démonstration (c'est ce rattachement qui alimente la vue Organizer « Nos événements ») ;
+    // un événement privé reste personnel, sans organisation.
+    organizationId: demo.private ? null : organizationId,
     activityId: refs.activityId,
     eventTypeId: refs.eventTypeId,
     organizerId: demo.organizer ? (organizers.get(demo.organizer) ?? null) : null,
@@ -228,18 +283,22 @@ async function main(): Promise<void> {
     );
   }
 
+  const organizationId = await seedOrganization(owner?.id ?? null);
   const organizers = await seedOrganizers();
   const venues = await seedVenues();
 
   let created = 0;
   let skipped = 0;
   for (const demo of DEMO_EVENTS) {
-    (await seedEvent(demo, organizers, venues, owner?.id ?? null)) ? created++ : skipped++;
+    (await seedEvent(demo, organizers, venues, owner?.id ?? null, organizationId)) ? created++ : skipped++;
   }
 
   const indexed = await rebuildSearchIndex();
 
   console.log(`✅ ${created} événement(s) de démonstration en base (préfixe ${DEMO_ID_PREFIX}).`);
+  console.log(
+    `   Organisation « ${DEMO_ORGANIZATION.name} »${owner ? ' (admin de dev = Owner, organisation active)' : ''}.`,
+  );
   console.log(`   ${DEMO_ORGANIZERS.length} organisateur(s) et ${DEMO_VENUES.length} lieu(x) fictifs.`);
   console.log(`   Index de recherche reconstruit : ${indexed} document(s).`);
   if (skipped > 0) {

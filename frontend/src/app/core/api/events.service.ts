@@ -61,6 +61,15 @@ export class EventsApi {
     return this.http.get<EventEditValue>(`${API_BASE}/events/${id}/edit`);
   }
 
+  /**
+   * Source de **duplication** : mêmes caractéristiques que la vue d'édition, pour préremplir un
+   * formulaire de **création**. Aucune écriture — l'enregistrement produit un nouvel événement (et
+   * donc un nouvel identifiant). Un événement privé n'est duplicable que par son créateur.
+   */
+  duplicateSource(id: string): Observable<EventEditValue> {
+    return this.http.get<EventEditValue>(`${API_BASE}/events/${id}/duplicate-source`);
+  }
+
   /** Corrige un événement éditable (brouillon / soumis). */
   update(id: string, body: CreateEventInput): Observable<EventDto> {
     return this.http.patch<EventDto>(`${API_BASE}/events/${id}`, body);

@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventsApi } from '../../core/api/events.service';
 import { ModerationApi } from '../../core/api/moderation.service';
 import { ParticipationApi } from '../../core/api/participation.service';
@@ -419,16 +419,16 @@ import { participationColor, participationLabel } from '../../shared/participati
           </div>
         }
 
-        @if (canArchive() || canRestore()) {
-          <div class="admin-actions">
-            @if (event.status !== 'ARCHIVED' && canArchive()) {
-              <button class="btn" (click)="archive()">Archiver</button>
-            }
-            @if (event.status === 'ARCHIVED' && canRestore()) {
-              <button class="btn btn-primary" (click)="restore()">Restaurer</button>
-            }
-          </div>
-        }
+        <div class="admin-actions">
+          <!-- Duplication : ouvre le formulaire de création prérempli (nouvel événement au final). -->
+          <button class="btn" title="Créer un événement identique" (click)="duplicate()">📄 Dupliquer</button>
+          @if (event.status !== 'ARCHIVED' && canArchive()) {
+            <button class="btn" (click)="archive()">Archiver</button>
+          }
+          @if (event.status === 'ARCHIVED' && canRestore()) {
+            <button class="btn btn-primary" (click)="restore()">Restaurer</button>
+          }
+        </div>
 
         <div class="actions">
           <button class="btn" [class.active]="participation.interested" (click)="toggleInterested()">
@@ -491,6 +491,7 @@ export class EventDetailComponent implements OnInit {
 
   private readonly auth = inject(AuthService);
   private readonly aiConfigApi = inject(AiConfigApi);
+  private readonly router = inject(Router);
 
   // Cas d'usage IA « texte » activés par l'utilisateur (assistance à l'affichage — ADR.16).
   private aiEnabled: Record<string, boolean> = {};
@@ -587,6 +588,22 @@ export class EventDetailComponent implements OnInit {
 
   canUpdate(): boolean {
     return this.auth.hasPermission('event.update');
+  }
+
+  /**
+   * Duplication : redirige vers la surface de création adaptée, qui préremplit le formulaire à
+   * partir de cet événement (`?duplicate=<id>`). Un événement privé se duplique dans l'espace
+   * personnel ; sinon on privilégie l'espace Organizer quand l'utilisateur peut y créer.
+   */
+  duplicate(): void {
+    if (!this.event) {
+      return;
+    }
+    const target =
+      this.event.visibility === 'PRIVATE' || !this.auth.hasPermission('event.create')
+        ? '/my-events'
+        : '/organizer/events';
+    void this.router.navigate([target], { queryParams: { duplicate: this.event.id } });
   }
 
   onFile(evt: Event): void {

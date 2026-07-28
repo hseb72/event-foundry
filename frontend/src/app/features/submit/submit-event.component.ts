@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -11,6 +11,7 @@ import {
   EventCandidateDto,
   EventDraft,
   EventDto,
+  EventEditValue,
   ImportResponse,
 } from '../../core/models';
 import { EventsApi } from '../../core/api/events.service';
@@ -60,6 +61,7 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
       .err { color: var(--red); }
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
       .note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgba(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
+      .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
     `,
   ],
   template: `
@@ -129,7 +131,19 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
               <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
             </div>
           } @else {
-            <app-event-form submitLabel="Créer mon événement privé" [busy]="createBusy()" (save)="onCreate($event)" />
+            @if (duplicatePending()) {
+              <p class="muted">Chargement de l'événement à dupliquer…</p>
+            } @else {
+              @if (duplicateSource(); as src) {
+                <div class="dup-note">
+                  📄 Duplication de « {{ src.title }} » — tous les champs sont modifiables ;
+                  l'enregistrement crée un <strong>nouvel</strong> événement privé.
+                  <button class="btn btn-sm" (click)="cancelDuplicate()">Repartir d'un formulaire vide</button>
+                </div>
+              }
+              <app-event-form submitLabel="Créer mon événement privé" [busy]="createBusy()"
+                [initial]="duplicateInitial()" (save)="onCreate($event)" />
+            }
             @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
           }
           @if (error()) { <p class="err">{{ error() }}</p> }
@@ -186,18 +200,21 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
             [columns]="privateColumns"
             [rows]="$any(events())"
             [rowActions]="rowActions"
-            actionsLabel="Archivage"
+            actionsLabel="Actions"
             [rowClickable]="true"
             (rowClick)="openEvent($event)"
             [pageSize]="10"
             searchPlaceholder="Rechercher un événement…"
           />
           <ng-template #rowActions let-e>
-            @if (e.status === 'ARCHIVED') {
-              <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">Restaurer</button>
-            } @else {
-              <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">Archiver</button>
-            }
+            <span style="display:flex;gap:0.4rem">
+              <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate($any(e))">Dupliquer</button>
+              @if (e.status === 'ARCHIVED') {
+                <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">Restaurer</button>
+              } @else {
+                <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">Archiver</button>
+              }
+            </span>
           </ng-template>
         }
         @if (error()) { <p class="err">{{ error() }}</p> }
@@ -210,6 +227,7 @@ export class SubmitEventComponent implements OnInit {
   private readonly candidates = inject(EventCandidatesApi);
   private readonly eventsApi = inject(EventsApi);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -226,6 +244,20 @@ export class SubmitEventComponent implements OnInit {
   readonly error = signal('');
   readonly createBusy = signal(false);
   readonly createMsg = signal('');
+
+  /**
+   * Duplication (FSPEC.13) : l'événement source sert à **préremplir** le formulaire de création.
+   * Rien n'est écrit tant que l'utilisateur n'enregistre pas ; la copie est un **nouvel** événement
+   * privé (nouvel identifiant), librement modifiable au préalable.
+   */
+  readonly duplicateSource = signal<EventEditValue | null>(null);
+  readonly duplicatePending = signal(false);
+
+  /** Valeurs injectées dans le formulaire : la source, titre suffixé pour distinguer la copie. */
+  readonly duplicateInitial = computed<EventEditValue | null>(() => {
+    const source = this.duplicateSource();
+    return source ? { ...source, title: `${source.title} (copie)` } : null;
+  });
 
   file: File | null = null;
   fileUseAi = false;
@@ -254,6 +286,42 @@ export class SubmitEventComponent implements OnInit {
 
   ngOnInit(): void {
     this.refresh();
+    // Duplication demandée depuis une autre vue (fiche d'événement) : `?duplicate=<id>`.
+    const sourceId = this.route.snapshot.queryParamMap.get('duplicate');
+    if (sourceId) {
+      this.loadDuplicate(sourceId);
+    }
+  }
+
+  /** Ouvre le formulaire de création prérempli avec les caractéristiques de l'événement choisi. */
+  duplicate(event: EventDto): void {
+    this.loadDuplicate(event.id);
+  }
+
+  /** Repart d'un formulaire vierge (abandon de la duplication en cours). */
+  cancelDuplicate(): void {
+    this.duplicateSource.set(null);
+    this.createMsg.set('');
+  }
+
+  private loadDuplicate(id: string): void {
+    this.submitOpen.set(true);
+    this.tab.set('create');
+    this.createMsg.set('');
+    // Le formulaire n'est rendu qu'une fois la source chargée : son préremplissage a lieu à
+    // l'initialisation du composant, il ne peut pas être appliqué après coup.
+    this.duplicateSource.set(null);
+    this.duplicatePending.set(true);
+    this.eventsApi.duplicateSource(id).subscribe({
+      next: (source) => {
+        this.duplicateSource.set(source);
+        this.duplicatePending.set(false);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.duplicatePending.set(false);
+        this.error.set(err?.error?.message ?? "L'événement à dupliquer est introuvable.");
+      },
+    });
   }
 
   refresh(): void {
@@ -322,8 +390,10 @@ export class SubmitEventComponent implements OnInit {
     this.eventsApi.createPrivate(input).subscribe({
       next: () => {
         this.createBusy.set(false);
-        this.createMsg.set('✅ Événement privé créé.');
+        this.createMsg.set(this.duplicateSource() ? '✅ Copie créée.' : '✅ Événement privé créé.');
         this.message.set('Événement privé créé.');
+        // La duplication est consommée : le formulaire repart vierge pour la création suivante.
+        this.duplicateSource.set(null);
         this.refresh();
       },
       error: (err: { error?: { message?: string } }) => {

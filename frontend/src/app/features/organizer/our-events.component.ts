@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -12,6 +12,7 @@ import {
   EventCandidateDto,
   EventDraft,
   EventDto,
+  EventEditValue,
   ImportResponse,
 } from '../../core/models';
 import { EventFormComponent } from '../../shared/event-form.component';
@@ -106,6 +107,7 @@ type SortKey = 'startsAt' | 'title' | 'status';
       .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
       .pub-toggle { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
       .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+      .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
     `,
   ],
   template: `
@@ -174,7 +176,19 @@ type SortKey = 'startsAt' | 'title' | 'status';
               <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
             </div>
           } @else {
-            <app-event-form submitLabel="Créer l'événement" [busy]="createBusy()" (save)="onCreate($event)" />
+            @if (duplicatePending()) {
+              <p class="muted">Chargement de l'événement à dupliquer…</p>
+            } @else {
+              @if (duplicateSource(); as src) {
+                <div class="dup-note">
+                  📄 Duplication de « {{ src.title }} » — tous les champs sont modifiables ;
+                  l'enregistrement crée un <strong>nouvel</strong> événement.
+                  <button class="btn btn-sm" (click)="cancelDuplicate()">Repartir d'un formulaire vide</button>
+                </div>
+              }
+              <app-event-form submitLabel="Créer l'événement" [busy]="createBusy()"
+                [initial]="duplicateInitial()" (save)="onCreate($event)" />
+            }
             @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
           }
           @if (error()) { <p class="err">{{ error() }}</p> }
@@ -270,11 +284,14 @@ type SortKey = 'startsAt' | 'title' | 'status';
                       </span>
                       {{ isPublished(e) ? 'Publié' : (e.status === 'ARCHIVED' ? 'Archivé' : 'Non publié') }}
                     </label>
-                    @if (e.status === 'ARCHIVED') {
-                      <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
-                    } @else {
-                      <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
-                    }
+                    <span style="display:flex;gap:0.4rem">
+                      <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
+                      @if (e.status === 'ARCHIVED') {
+                        <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                      } @else {
+                        <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                      }
+                    </span>
                   </div>
                 </article>
               }
@@ -289,7 +306,7 @@ type SortKey = 'startsAt' | 'title' | 'status';
                     <th>Sujets</th>
                     <th>Créateur</th>
                     <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
-                    <th>Archivage</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,11 +324,14 @@ type SortKey = 'startsAt' | 'title' | 'status';
                         </label>
                       </td>
                       <td>
-                        @if (e.status === 'ARCHIVED') {
-                          <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
-                        } @else {
-                          <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
-                        }
+                        <span style="display:flex;gap:0.4rem">
+                          <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
+                          @if (e.status === 'ARCHIVED') {
+                            <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                          } @else {
+                            <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                          }
+                        </span>
                       </td>
                     </tr>
                   }
@@ -334,6 +354,7 @@ export class OurEventsComponent implements OnInit {
   private readonly imports = inject(ImportsApi);
   private readonly candidates = inject(EventCandidatesApi);
   private readonly eventsApi = inject(EventsApi);
+  private readonly route = inject(ActivatedRoute);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -352,6 +373,20 @@ export class OurEventsComponent implements OnInit {
   readonly error = signal('');
   readonly createBusy = signal(false);
   readonly createMsg = signal('');
+
+  /**
+   * Duplication (FSPEC.13) : l'événement source, chargé par identifiant, sert à **préremplir** le
+   * formulaire de création. Rien n'est écrit tant que l'utilisateur n'enregistre pas ; l'événement
+   * produit est un **nouvel** événement (nouvel identifiant), librement modifiable au préalable.
+   */
+  readonly duplicateSource = signal<EventEditValue | null>(null);
+  readonly duplicatePending = signal(false);
+
+  /** Valeurs injectées dans le formulaire : la source, titre suffixé pour distinguer la copie. */
+  readonly duplicateInitial = computed<EventEditValue | null>(() => {
+    const source = this.duplicateSource();
+    return source ? { ...source, title: `${source.title} (copie)` } : null;
+  });
 
   file: File | null = null;
   fileUseAi = false;
@@ -399,6 +434,42 @@ export class OurEventsComponent implements OnInit {
 
   ngOnInit(): void {
     this.refresh();
+    // Duplication demandée depuis une autre vue (fiche d'événement) : `?duplicate=<id>`.
+    const sourceId = this.route.snapshot.queryParamMap.get('duplicate');
+    if (sourceId) {
+      this.loadDuplicate(sourceId);
+    }
+  }
+
+  /** Ouvre le formulaire de création prérempli avec les caractéristiques de l'événement choisi. */
+  duplicate(event: EventDto): void {
+    this.loadDuplicate(event.id);
+  }
+
+  /** Repart d'un formulaire vierge (abandon de la duplication en cours). */
+  cancelDuplicate(): void {
+    this.duplicateSource.set(null);
+    this.createMsg.set('');
+  }
+
+  private loadDuplicate(id: string): void {
+    this.submitOpen.set(true);
+    this.tab.set('create');
+    this.createMsg.set('');
+    // Le formulaire n'est rendu qu'une fois la source chargée : son préremplissage a lieu à
+    // l'initialisation du composant, il ne peut pas être appliqué après coup.
+    this.duplicateSource.set(null);
+    this.duplicatePending.set(true);
+    this.eventsApi.duplicateSource(id).subscribe({
+      next: (source) => {
+        this.duplicateSource.set(source);
+        this.duplicatePending.set(false);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.duplicatePending.set(false);
+        this.error.set(err?.error?.message ?? "L'événement à dupliquer est introuvable.");
+      },
+    });
   }
 
   /** Recharge les trois inventaires partagés de l'organisation (soumissions, brouillons, événements). */
@@ -483,7 +554,11 @@ export class OurEventsComponent implements OnInit {
     this.eventsApi.create(input).subscribe({
       next: () => {
         this.createBusy.set(false);
-        this.createMsg.set('✅ Événement créé (brouillon).');
+        this.createMsg.set(
+          this.duplicateSource() ? '✅ Copie créée (brouillon).' : '✅ Événement créé (brouillon).',
+        );
+        // La duplication est consommée : le formulaire repart vierge pour la création suivante.
+        this.duplicateSource.set(null);
         this.refresh();
       },
       error: (err: { error?: { message?: string } }) => {

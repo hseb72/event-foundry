@@ -173,6 +173,26 @@ export class EventsController {
   }
 
   /**
+   * Source de **duplication** d'un Event : mêmes caractéristiques (référentiels par identifiant) que
+   * la vue d'édition, mais destinée à préremplir un formulaire de **création**. Aucune écriture ici —
+   * la duplication proprement dite est une création ordinaire, qui produit un nouvel identifiant.
+   *
+   * Distinct de `:id/edit`, qui exige `event.update` : dupliquer ne suppose aucun droit sur
+   * l'original. L'accès est gouverné par la seule **garde de visibilité** (`getForReader`) — un
+   * événement privé n'est duplicable que par son créateur (FSPEC.22 §15). Aucune permission
+   * supplémentaire n'est requise : la création d'un événement **privé** est self-service (cf.
+   * `POST me/private`), et cette route n'expose que ce que `GET :id` expose déjà, par identifiant.
+   */
+  @Get(':id/duplicate-source')
+  @ApiOkResponse({ type: EventEditDto })
+  async duplicateSource(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventEditDto> {
+    return EventMapper.toEditDto(await this.service.getForReader(id, user.userId));
+  }
+
+  /**
    * Corrige un Event éditable (brouillon / soumis) — FSPEC.13. Réservé à `event.update` (Organizer).
    * Permet de rattraper une erreur de saisie sans recréer l'événement.
    */
