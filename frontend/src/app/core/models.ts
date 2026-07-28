@@ -498,6 +498,8 @@ export interface EventDraft {
   activityName?: string;
   eventTypeName?: string;
   eventFormatName?: string;
+  subjectNames?: string[];
+  modalityNames?: string[];
   organizerName?: string;
   venueName?: string;
 }

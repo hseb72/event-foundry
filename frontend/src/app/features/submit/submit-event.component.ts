@@ -481,6 +481,8 @@ export class SubmitEventComponent implements OnInit {
 function toDraft(payload: Record<string, unknown>): EventDraft {
   const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
   const num = (v: unknown): number | undefined => (typeof v === 'number' && !Number.isNaN(v) ? v : undefined);
+  const strList = (v: unknown): string[] | undefined =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : undefined;
   return {
     title: str(payload['title']),
     description: str(payload['description']),
@@ -491,6 +493,8 @@ function toDraft(payload: Record<string, unknown>): EventDraft {
     activityName: str(payload['activity']),
     eventTypeName: str(payload['eventType']),
     eventFormatName: str(payload['eventFormat']),
+    subjectNames: strList(payload['subjects']),
+    modalityNames: strList(payload['modalities']),
     organizerName: str(payload['organizer']),
     venueName: str(payload['venue']),
   };

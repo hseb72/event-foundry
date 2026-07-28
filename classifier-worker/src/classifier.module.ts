@@ -10,7 +10,9 @@ import { CapacityRule } from './rules/capacity.rule';
 import { DateRule } from './rules/date.rule';
 import { EventFormatRule } from './rules/event-format.rule';
 import { EventTypeRule } from './rules/event-type.rule';
+import { ModalityRule } from './rules/modality.rule';
 import { OrganizerRule } from './rules/organizer.rule';
+import { SubjectRule } from './rules/subject.rule';
 import { PriceRule } from './rules/price.rule';
 import { TimeRule } from './rules/time.rule';
 import { TitleRule } from './rules/title.rule';
@@ -26,6 +28,8 @@ const RULE_CLASSES = [
   ActivityRule,
   EventTypeRule,
   EventFormatRule,
+  SubjectRule,
+  ModalityRule,
   OrganizerRule,
   VenueRule,
   PriceRule,

@@ -488,7 +488,10 @@ export class EventFormComponent implements OnInit {
     });
     this.referenceData.tags().subscribe((items) => (this.tags = items));
     // Modalités (Axe C) : référentiel transverse, chargé une fois, groupé par dimension.
-    this.referenceData.modalityDimensions().subscribe((items) => (this.modalityDimensions = items));
+    this.referenceData.modalityDimensions().subscribe((items) => {
+      this.modalityDimensions = items;
+      this.applyDraftModalities();
+    });
     this.referenceData.countries().subscribe((items) => (this.countries = items));
     this.referenceData.activities().subscribe((items) => {
       this.activities = items;
@@ -632,7 +635,10 @@ export class EventFormComponent implements OnInit {
       this.eventTypes = items;
       this.applyDraftEventType();
     });
-    this.referenceData.subjects(this.model.activityId).subscribe((items) => (this.subjects = items));
+    this.referenceData.subjects(this.model.activityId).subscribe((items) => {
+      this.subjects = items;
+      this.applyDraftSubjects();
+    });
   }
 
   toggleModality(id: string): void {
@@ -713,6 +719,29 @@ export class EventFormComponent implements OnInit {
       }
     } else {
       this.unresolved.eventFormat = this.draft.eventFormatName;
+    }
+  }
+
+  /** Sujets détectés (noms) → sélection par identifiants (résolus une fois les sujets chargés). */
+  private applyDraftSubjects(): void {
+    if (!this.draft?.subjectNames?.length) return;
+    for (const name of this.draft.subjectNames) {
+      const match = byName(this.subjects, name);
+      if (match && !this.model.subjectIds.includes(match.id)) {
+        this.model.subjectIds = [...this.model.subjectIds, match.id];
+      }
+    }
+  }
+
+  /** Modalités détectées (noms) → sélection par identifiants (toutes dimensions confondues). */
+  private applyDraftModalities(): void {
+    if (!this.draft?.modalityNames?.length) return;
+    const all = this.modalityDimensions.flatMap((dim) => dim.modalities);
+    for (const name of this.draft.modalityNames) {
+      const match = byName(all, name);
+      if (match && !this.model.modalityIds.includes(match.id)) {
+        this.model.modalityIds = [...this.model.modalityIds, match.id];
+      }
     }
   }
 
