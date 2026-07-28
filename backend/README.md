@@ -58,7 +58,9 @@ Découverte, la recherche, le planning, la vue Organizer et la page de garde pub
   rattache l'admin de développement comme **Owner** et en fait son **organisation active**. Les
   événements publics de démonstration portent son `organizationId` — c'est ce rattachement qui
   alimente la vue Organizer « Nos événements » (filtrée sur l'organisation active, FSPEC.22) et qui
-  débloque les menus Organizer complets.
+  débloque les menus Organizer complets. Si une organisation portant déjà le slug
+  `eventfoundry-demo` existe (créée à la main), elle est **réutilisée en l'état** — le seed s'y
+  rattache sans rien écraser, et la remise à zéro ciblée ne la supprime pas.
 - **Idempotence & suppression ciblée** : les objets de démonstration portent des identifiants
   déterministes (préfixe `de300000-…`), ce qui permet de les recréer sans doublon et de les retirer
   sans toucher aux données saisies à la main.

@@ -57,19 +57,42 @@ const DEMO_ORGANIZATION = { key: '01', name: 'EventFoundry Demo', slug: 'eventfo
  * reste vide. L'organisation devient également l'organisation active du compte (les menus Organizer
  * complets apparaissent alors — entonnoir d'affiliation).
  *
+ * Une organisation portant déjà ce **slug** (créée à la main depuis l'interface, avec un autre
+ * identifiant) est **adoptée telle quelle** : le seed s'y rattache sans rien écraser de son identité,
+ * plutôt que d'échouer sur la contrainte d'unicité du slug. Elle n'est alors pas supprimée par la
+ * remise à zéro ciblée, qui ne retire que les objets aux identifiants de démonstration.
+ *
  * Renvoie l'identifiant de l'organisation, ou `null` si l'admin de développement est absent.
  */
 async function seedOrganization(ownerId: string | null): Promise<string | null> {
-  const id = demoId('3', DEMO_ORGANIZATION.key);
-  const plan = await prisma.subscriptionPlan.findUnique({ where: { key: 'FREE' }, select: { id: true } });
-  const data = {
-    name: DEMO_ORGANIZATION.name,
-    slug: DEMO_ORGANIZATION.slug,
-    description: 'Organisation fictive créée par le seed de démonstration (phase de test).',
-    subscriptionPlanId: plan?.id ?? null,
-    createdById: ownerId,
-  };
-  await prisma.organization.upsert({ where: { id }, update: data, create: { id, ...data } });
+  const demoOrgId = demoId('3', DEMO_ORGANIZATION.key);
+  const existing = await prisma.organization.findFirst({
+    where: { OR: [{ id: demoOrgId }, { slug: DEMO_ORGANIZATION.slug }] },
+    select: { id: true },
+  });
+
+  let id: string;
+  if (existing) {
+    id = existing.id;
+    if (id !== demoOrgId) {
+      console.log(
+        `ℹ️  Organisation « ${DEMO_ORGANIZATION.slug} » déjà présente : réutilisée en l'état (créée hors seed).`,
+      );
+    }
+  } else {
+    const plan = await prisma.subscriptionPlan.findUnique({ where: { key: 'FREE' }, select: { id: true } });
+    id = demoOrgId;
+    await prisma.organization.create({
+      data: {
+        id,
+        name: DEMO_ORGANIZATION.name,
+        slug: DEMO_ORGANIZATION.slug,
+        description: 'Organisation fictive créée par le seed de démonstration (phase de test).',
+        subscriptionPlanId: plan?.id ?? null,
+        createdById: ownerId,
+      },
+    });
+  }
 
   if (!ownerId) {
     return id;
@@ -267,8 +290,10 @@ async function rebuildSearchIndex(): Promise<number> {
 async function main(): Promise<void> {
   const withReset = process.argv.includes('--reset');
   if (withReset) {
+    // `--reset` vide l'intégralité du catalogue (pas seulement la démonstration) : c'est le
+    // comportement documenté, à réserver aux bases de test.
     const removed = await resetEvents(prisma, { scope: 'all' });
-    console.log(`↺ Remise à zéro : ${removed} événement(s) supprimé(s).`);
+    console.log(`↺ Remise à zéro de TOUS les événements : ${removed} supprimé(s).`);
   }
 
   // Propriétaire des événements de démonstration : l'admin de développement s'il existe.
