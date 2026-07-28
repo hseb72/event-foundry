@@ -133,8 +133,9 @@ export class CasesService {
     }));
   }
 
-  list(filter: CaseFilter) {
-    return this.repository.list(filter);
+  async list(filter: CaseFilter) {
+    const { items, total } = await this.repository.list(filter);
+    return { items, total, skip: filter.skip ?? 0, take: filter.take ?? 25 };
   }
 
   dashboard() {

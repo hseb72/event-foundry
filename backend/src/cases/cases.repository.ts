@@ -24,6 +24,19 @@ export interface CreateCaseInput {
   metadata?: Prisma.InputJsonValue;
 }
 
+/** Colonnes triables de la file des Cases (liste blanche — jamais de champ arbitraire). */
+export const CASE_SORT_FIELDS = [
+  'reference',
+  'subject',
+  'domain',
+  'workQueue',
+  'priority',
+  'status',
+  'createdAt',
+  'updatedAt',
+] as const;
+export type CaseSortField = (typeof CASE_SORT_FIELDS)[number];
+
 export interface CaseFilter {
   status?: CaseStatus;
   domain?: string;
@@ -31,9 +44,20 @@ export interface CaseFilter {
   priority?: CasePriority;
   assigneeId?: string;
   unassigned?: boolean;
+  /** Recherche texte (référence ou objet). */
+  search?: string;
+  sort?: CaseSortField;
+  order?: 'asc' | 'desc';
+  skip?: number;
+  take?: number;
 }
 
 const REQUESTER_SELECT = { select: { id: true, displayName: true, email: true } };
+
+/** Case avec ses parties (demandeur + assignee) chargées, pour la file Operator. */
+export type CaseWithParties = Prisma.CaseGetPayload<{
+  include: { requester: typeof REQUESTER_SELECT; assignee: typeof REQUESTER_SELECT };
+}>;
 
 /**
  * Accès PostgreSQL du domaine Cases (Prisma confiné — ADR.02). Écritures + journal immuable
@@ -83,7 +107,8 @@ export class CasesRepository {
     });
   }
 
-  list(filter: CaseFilter, limit = 100) {
+  async list(filter: CaseFilter): Promise<{ items: CaseWithParties[]; total: number }> {
+    const search = filter.search?.trim();
     const where: Prisma.CaseWhereInput = {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.domain ? { domain: filter.domain } : {}),
@@ -91,13 +116,34 @@ export class CasesRepository {
       ...(filter.priority ? { priority: filter.priority } : {}),
       ...(filter.assigneeId ? { assigneeId: filter.assigneeId } : {}),
       ...(filter.unassigned ? { assigneeId: null } : {}),
+      ...(search
+        ? {
+            OR: [
+              { reference: { contains: search, mode: 'insensitive' } },
+              { subject: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
-    return this.prisma.case.findMany({
-      where,
-      include: { requester: REQUESTER_SELECT, assignee: REQUESTER_SELECT },
-      orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
-      take: limit,
-    });
+    // Tri : colonne de la liste blanche + sens ; départage stable par créationDate puis id.
+    const sortField = filter.sort ?? 'priority';
+    const order = filter.order ?? (filter.sort ? 'asc' : 'desc');
+    const orderBy: Prisma.CaseOrderByWithRelationInput[] = [
+      { [sortField]: order } as Prisma.CaseOrderByWithRelationInput,
+      { createdAt: 'asc' },
+      { id: 'asc' },
+    ];
+    const [items, total] = await Promise.all([
+      this.prisma.case.findMany({
+        where,
+        include: { requester: REQUESTER_SELECT, assignee: REQUESTER_SELECT },
+        orderBy,
+        skip: filter.skip ?? 0,
+        take: filter.take ?? 25,
+      }),
+      this.prisma.case.count({ where }),
+    ]);
+    return { items, total };
   }
 
   listForRequester(requesterId: string) {

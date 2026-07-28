@@ -17,6 +17,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
 import { CASE_DOMAINS, CASE_TYPES, workQueueFor, type CaseDomain, type CaseOrigin } from './case-catalog';
+import { CASE_SORT_FIELDS, type CaseSortField } from './cases.repository';
 import { CasesService } from './cases.service';
 import type { CaseRoutingRule } from '@prisma/client';
 import {
@@ -116,7 +117,7 @@ export class CasesController {
 
   @Get()
   @RequirePermissions('case.manage')
-  @ApiOkResponse({ description: 'File des Cases (filtres configurables).' })
+  @ApiOkResponse({ description: 'File des Cases : filtrable, triable, paginée (serveur).' })
   list(
     @Query('status') status?: CaseStatus,
     @Query('domain') domain?: string,
@@ -124,7 +125,16 @@ export class CasesController {
     @Query('priority') priority?: CasePriority,
     @Query('assigneeId') assigneeId?: string,
     @Query('unassigned') unassigned?: string,
+    @Query('search') search?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
   ): Promise<unknown> {
+    // Tri : seule une colonne de la liste blanche est acceptée (sinon tri par défaut).
+    const sortField = (CASE_SORT_FIELDS as readonly string[]).includes(sort ?? '')
+      ? (sort as CaseSortField)
+      : undefined;
     return this.service.list({
       status,
       domain,
@@ -132,6 +142,11 @@ export class CasesController {
       priority,
       assigneeId,
       unassigned: unassigned === 'true',
+      search,
+      sort: sortField,
+      order: order === 'desc' ? 'desc' : order === 'asc' ? 'asc' : undefined,
+      skip: Math.max(0, Number(skip) || 0),
+      take: Math.min(100, Math.max(1, Number(take) || 25)),
     });
   }
 

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   CaseCatalog,
@@ -28,6 +28,9 @@ import { ModerationApi } from '../../core/api/moderation.service';
       .kpi { background: var(--card, #211a2e); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.6rem 1rem; }
       .kpi b { font-size: 1.4rem; display: block; }
       table { width: 100%; border-collapse: collapse; }
+      th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+      th .arr { color: var(--op, var(--exp)); font-size: 0.8em; }
+      .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
       th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem; }
       tr.sel { background: rgba(219,39,119,0.12); }
       .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255,255,255,0.12); }
@@ -51,37 +54,53 @@ import { ModerationApi } from '../../core/api/moderation.service';
       }
 
       <section class="card">
-        <div class="row" style="margin-bottom:0.6rem">
-          <select [(ngModel)]="fStatus" (ngModelChange)="load()">
+        <div class="row" style="margin-bottom:0.6rem;flex-wrap:wrap">
+          <input class="input" [(ngModel)]="fSearch" (keyup.enter)="applyFilter()"
+                 placeholder="Rechercher (réf. ou objet)…" style="min-width:200px" />
+          <select [(ngModel)]="fStatus" (ngModelChange)="applyFilter()">
             <option value="">Tout statut</option>
             @for (s of catalog()?.statuses ?? []; track s) { <option [value]="s">{{ label(s) }}</option> }
           </select>
-          <select [(ngModel)]="fDomain" (ngModelChange)="load()">
+          <select [(ngModel)]="fDomain" (ngModelChange)="applyFilter()">
             <option value="">Tout domaine</option>
             @for (dm of catalog()?.domains ?? []; track dm) { <option [value]="dm">{{ label(dm) }}</option> }
           </select>
-          <select [(ngModel)]="fPriority" (ngModelChange)="load()">
+          <select [(ngModel)]="fPriority" (ngModelChange)="applyFilter()">
             <option value="">Toute priorité</option>
             @for (p of catalog()?.priorities ?? []; track p) { <option [value]="p">{{ label(p) }}</option> }
           </select>
-          <label class="muted"><input type="checkbox" [(ngModel)]="fUnassigned" (ngModelChange)="load()" /> Non affectées</label>
+          <label class="muted"><input type="checkbox" [(ngModel)]="fUnassigned" (ngModelChange)="applyFilter()" /> Non affectées</label>
         </div>
 
-        <table>
-          <thead><tr><th>Réf.</th><th>Objet</th><th>Domaine</th><th>Priorité</th><th>Statut</th><th>Assignee</th></tr></thead>
-          <tbody>
-            @for (c of cases(); track c.id) {
-              <tr [class.sel]="detail()?.id === c.id" (click)="select(c)" style="cursor:pointer">
-                <td>{{ c.reference }}</td>
-                <td>{{ c.subject }}</td>
-                <td>{{ label(c.domain) }}</td>
-                <td><span class="badge" [class.crit]="c.priority === 'CRITICAL'">{{ label(c.priority) }}</span></td>
-                <td><span class="badge">{{ label(c.status) }}</span></td>
-                <td>{{ c.assignee?.displayName ?? '—' }}</td>
-              </tr>
-            } @empty { <tr><td colspan="6" class="muted">Aucune Case.</td></tr> }
-          </tbody>
-        </table>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th class="sortable" (click)="sortBy('reference')">Réf. <span class="arr">{{ arrow('reference') }}</span></th>
+              <th class="sortable" (click)="sortBy('subject')">Objet <span class="arr">{{ arrow('subject') }}</span></th>
+              <th class="sortable" (click)="sortBy('domain')">Domaine <span class="arr">{{ arrow('domain') }}</span></th>
+              <th class="sortable" (click)="sortBy('priority')">Priorité <span class="arr">{{ arrow('priority') }}</span></th>
+              <th class="sortable" (click)="sortBy('status')">Statut <span class="arr">{{ arrow('status') }}</span></th>
+              <th>Assignee</th>
+            </tr></thead>
+            <tbody>
+              @for (c of cases(); track c.id) {
+                <tr [class.sel]="detail()?.id === c.id" (click)="select(c)" style="cursor:pointer">
+                  <td>{{ c.reference }}</td>
+                  <td>{{ c.subject }}</td>
+                  <td>{{ label(c.domain) }}</td>
+                  <td><span class="badge" [class.crit]="c.priority === 'CRITICAL'">{{ label(c.priority) }}</span></td>
+                  <td><span class="badge">{{ label(c.status) }}</span></td>
+                  <td>{{ c.assignee?.displayName ?? '—' }}</td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="muted">Aucune Case.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span class="muted">{{ total() }} dossier(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
+          <button class="btn btn-sm" [disabled]="page() === 0" (click)="goToPage(-1)">‹</button>
+          <button class="btn btn-sm" [disabled]="page() >= pageCount() - 1" (click)="goToPage(1)">›</button>
+        </div>
       </section>
 
       <section class="card">
@@ -230,6 +249,14 @@ export class CasesConsoleComponent implements OnInit {
   fDomain = '';
   fPriority = '';
   fUnassigned = false;
+  fSearch = '';
+  // Tri + pagination serveur.
+  readonly total = signal(0);
+  readonly page = signal(0);
+  readonly pageSize = 25;
+  readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize)));
+  sortField = '';
+  sortOrder: 'asc' | 'desc' = 'asc';
   commentBody = '';
   commentInternal = true;
   // Changement d'état motivé (§11) et re-routage.
@@ -278,8 +305,46 @@ export class CasesConsoleComponent implements OnInit {
         domain: this.fDomain,
         priority: this.fPriority,
         unassigned: this.fUnassigned ? 'true' : '',
+        search: this.fSearch.trim(),
+        sort: this.sortField,
+        order: this.sortOrder,
+        skip: String(this.page() * this.pageSize),
+        take: String(this.pageSize),
       })
-      .subscribe((list) => this.cases.set(list));
+      .subscribe((res) => {
+        this.cases.set(res.items);
+        this.total.set(res.total);
+      });
+  }
+
+  /** Filtre/recherche modifiés → on repart en page 1. */
+  applyFilter(): void {
+    this.page.set(0);
+    this.load();
+  }
+
+  /** Tri par colonne (bascule le sens si déjà triée) ; revient en page 1. */
+  sortBy(field: string): void {
+    if (this.sortField === field) {
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortOrder = 'asc';
+    }
+    this.page.set(0);
+    this.load();
+  }
+
+  arrow(field: string): string {
+    return this.sortField === field ? (this.sortOrder === 'asc' ? '▲' : '▼') : '';
+  }
+
+  goToPage(delta: number): void {
+    const next = Math.min(Math.max(0, this.page() + delta), this.pageCount() - 1);
+    if (next !== this.page()) {
+      this.page.set(next);
+      this.load();
+    }
   }
 
   private refreshDash(): void {

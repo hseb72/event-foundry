@@ -34,6 +34,13 @@ export interface CaseDetail extends CaseSummary {
   allowedTransitions?: string[];
 }
 
+export interface PaginatedCases {
+  items: CaseSummary[];
+  total: number;
+  skip: number;
+  take: number;
+}
+
 export interface CaseCatalog {
   types: string[];
   domains: string[];
@@ -71,14 +78,15 @@ export class CasesApi {
   }
 
   // Operator
-  list(filter: Record<string, string>): Observable<CaseSummary[]> {
+  /** File Operator : filtrable, triable, paginée côté serveur. */
+  list(filter: Record<string, string>): Observable<PaginatedCases> {
     let params = new HttpParams();
     for (const [k, v] of Object.entries(filter)) {
-      if (v) {
+      if (v !== '' && v != null) {
         params = params.set(k, v);
       }
     }
-    return this.http.get<CaseSummary[]>(`${API_BASE}/cases`, { params });
+    return this.http.get<PaginatedCases>(`${API_BASE}/cases`, { params });
   }
 
   dashboard(): Observable<CaseDashboard> {
