@@ -36,6 +36,34 @@ npm run start:dev --workspace @event-foundry/backend
 
 API préfixée `/api/v1`, documentation Swagger sur `/docs`.
 
+## Données de démonstration (phase de test)
+
+`npm run prisma:seed` n'initialise que les **référentiels**, les rôles et l'admin de développement
+(aucune donnée fonctionnelle — TSPEC.02). Pour disposer d'un catalogue réaliste pendant les tests,
+deux scripts **séparés** sont fournis (workspace `@event-foundry/backend`) :
+
+```bash
+npm run demo:events              # ~25 événements fictifs (idempotent, ré-exécutable)
+npm run demo:events -- --reset   # remise à zéro complète puis re-création
+npm run events:reset             # supprime UNIQUEMENT les événements de démonstration
+npm run events:reset -- --all    # supprime TOUS les événements du catalogue
+```
+
+Le jeu de démonstration couvre une quinzaine d'activités (jeux, musique, sport, cinéma,
+gastronomie, technologie, patrimoine…), les trois statuts (publié / brouillon / archivé), des
+événements **publics et privés**, gratuits et payants, passés et à venir — de quoi éprouver la
+Découverte, la recherche, le planning, la vue Organizer et la page de garde publique.
+
+- **Idempotence & suppression ciblée** : les objets de démonstration portent des identifiants
+  déterministes (préfixe `de300000-…`), ce qui permet de les recréer sans doublon et de les retirer
+  sans toucher aux données saisies à la main.
+- **Index de recherche** : le seed reconstruit `search_documents` via le `SearchIndexService` réel
+  (la Découverte et la recherche lisent cette projection — sans reconstruction, rien n'apparaît).
+- **Référentiels intacts** : la remise à zéro ne supprime jamais référentiels, comptes ni
+  organisations. Les libellés de taxonomie introuvables sont ignorés avec un avertissement.
+- Aucune image n'est attachée (les médias vivent dans MinIO) : les cartes affichent le **dégradé
+  festif de repli**, conforme à la charte UISPEC.13.
+
 ## Authentification (EPIC 2)
 
 RBAC par JWT. Guards globaux : `JwtAuthGuard` (authentifie, sauf routes `@Public()`) puis

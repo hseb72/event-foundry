@@ -1,0 +1,15 @@
+{
+  // Configuration dédiée aux scripts d'outillage (`scripts/*.ts`, exécutés via ts-node).
+  // Le tsconfig applicatif restreint le programme à `src/` (rootDir) pour la compilation Nest ;
+  // les scripts vivent hors de cette racine tout en réutilisant les services du Backend (index de
+  // recherche, PrismaService) — d'où ce programme élargi, sans émission de fichiers.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test"]
+}

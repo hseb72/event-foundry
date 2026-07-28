@@ -18,7 +18,9 @@
     "prisma:migrate:deploy": "dotenv -e ../.env -- prisma migrate deploy",
     "prisma:seed": "dotenv -e ../.env -- ts-node prisma/seed.ts",
     "geonames:import": "dotenv -e ../.env -- ts-node scripts/import-geonames.ts",
-    "venues:import": "dotenv -e ../.env -- ts-node scripts/import-venues.ts"
+    "venues:import": "dotenv -e ../.env -- ts-node scripts/import-venues.ts",
+    "demo:events": "dotenv -e ../.env -- ts-node -P tsconfig.scripts.json scripts/seed-demo-events.ts",
+    "events:reset": "dotenv -e ../.env -- ts-node -P tsconfig.scripts.json scripts/reset-events.ts"
   },
   "dependencies": {
     "@event-foundry/contracts": "*",
