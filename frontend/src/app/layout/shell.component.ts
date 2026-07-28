@@ -19,6 +19,12 @@ interface NavItem {
   path: string;
   experiences: Experience[];
   permission?: string;
+  /**
+   * Menu conditionné à l'appartenance à au moins une organisation. Tant que l'utilisateur n'est
+   * affilié à aucune organisation (ni n'a créé la sienne), seul « Organisations » reste visible dans
+   * l'expérience Organizer — l'entonnoir invite d'abord à créer / rejoindre une organisation.
+   */
+  requiresOrganization?: boolean;
 }
 
 const EXPERIENCES: ExperienceMeta[] = [
@@ -38,8 +44,8 @@ const NAV: NavItem[] = [
   { label: 'Mes événements privés', path: '/my-events', experiences: ['EXPLORER'], permission: 'planning.manage' },
   { label: 'Mes suivis', path: '/follows', experiences: ['EXPLORER'] },
   { label: 'Aide & demandes', path: '/support', experiences: ['EXPLORER'] },
-  { label: 'Tableau de bord', path: '/organizer/dashboard', experiences: ['ORGANIZER'], permission: 'event.create' },
-  { label: 'Nos événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create' },
+  { label: 'Tableau de bord', path: '/organizer/dashboard', experiences: ['ORGANIZER'], permission: 'event.create', requiresOrganization: true },
+  { label: 'Nos événements', path: '/organizer/events', experiences: ['ORGANIZER'], permission: 'event.create', requiresOrganization: true },
   { label: 'Organisations', path: '/organizer/organizations', experiences: ['ORGANIZER'] },
   { label: 'Validation', path: '/validation', experiences: ['OPERATOR'], permission: 'validation.review' },
   { label: 'Dossiers', path: '/operator/cases', experiences: ['OPERATOR'], permission: 'case.manage' },
@@ -386,10 +392,14 @@ export class ShellComponent implements OnInit {
     if (!me || !experience) {
       return [];
     }
+    const hasOrganization = (me.organizations ?? []).length > 0;
     return NAV.filter(
       (item) =>
         item.experiences.includes(experience) &&
-        (!item.permission || me.permissions.includes(item.permission)),
+        (!item.permission || me.permissions.includes(item.permission)) &&
+        // Entonnoir Organizer : les menus liés à une organisation restent masqués tant que
+        // l'utilisateur n'est rattaché à aucune (seul « Organisations » demeure).
+        (!item.requiresOrganization || hasOrganization),
     );
   });
 
@@ -412,10 +422,13 @@ export class ShellComponent implements OnInit {
       return;
     }
     this.identity.changeExperience(experience).subscribe(() => {
-      // Atterrissage sur l'accueil de l'expérience choisie (les autres restent sur place).
+      // Atterrissage sur l'accueil de l'expérience choisie (les autres restent sur place). Un
+      // organisateur sans organisation est dirigé vers « Organisations » (entonnoir) plutôt que
+      // vers un tableau de bord masqué.
+      const hasOrganization = this.organizations().length > 0;
       const landing: Partial<Record<Experience, string>> = {
         EXPLORER: '/home',
-        ORGANIZER: '/organizer/dashboard',
+        ORGANIZER: hasOrganization ? '/organizer/dashboard' : '/organizer/organizations',
       };
       const path = landing[experience];
       if (path) {

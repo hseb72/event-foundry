@@ -69,7 +69,7 @@ describe('computeEffectiveIdentity', () => {
     expect(result.experiences).toEqual([Experience.EXPLORER, Experience.ORGANIZER, Experience.OPERATOR]);
   });
 
-  it('sans organisation active, les permissions d’organisation ne s’appliquent pas', () => {
+  it('sélectionne l’organisation par défaut dès qu’il existe une appartenance (aucune active stockée)', () => {
     const result = computeEffectiveIdentity(
       graph({
         platformRoles: [EXPLORER],
@@ -77,12 +77,52 @@ describe('computeEffectiveIdentity', () => {
         memberships: [{ organizationId: 'org-1', plan: 'PRO', roles: [ORGANIZER] }],
       }),
     );
+    // Nouvelle règle (entonnoir Organizer) : l'unique organisation devient active par défaut.
+    expect(result.activeOrganizationId).toBe('org-1');
+    expect(result.permissions).toContain('event.publish');
+    expect(result.subscription).toBe('PRO');
+  });
+
+  it('sans aucune appartenance, aucune organisation n’est active et les droits d’org ne s’appliquent pas', () => {
+    const result = computeEffectiveIdentity(graph({ platformRoles: [EXPLORER] }));
+    expect(result.activeOrganizationId).toBeNull();
     expect(result.permissions).not.toContain('event.publish');
     expect(result.subscription).toBeNull();
-    // ORGANIZER reste une expérience DISPONIBLE (déduite des rôles), même hors contexte org.
-    expect(availableExperiences(graph({ platformRoles: [EXPLORER], memberships: [{ organizationId: 'org-1', plan: null, roles: [ORGANIZER] }] }))).toContain(
-      Experience.ORGANIZER,
+  });
+
+  it('choisit la première organisation par ordre de nom quand plusieurs appartenances existent', () => {
+    const result = computeEffectiveIdentity(
+      graph({
+        platformRoles: [EXPLORER],
+        activeOrganizationId: null,
+        memberships: [
+          { organizationId: 'zeta', plan: null, roles: [ORGANIZER] },
+          { organizationId: 'alpha', plan: 'PRO', roles: [ORGANIZER] },
+        ],
+      }),
     );
+    // Ordre déterministe : « alpha » avant « zeta » (le nom de l'org = son id dans ce harnais de test).
+    expect(result.activeOrganizationId).toBe('alpha');
+    expect(result.subscription).toBe('PRO');
+  });
+
+  it('retombe sur une appartenance valide si l’organisation active stockée n’en est plus une', () => {
+    const result = computeEffectiveIdentity(
+      graph({
+        platformRoles: [EXPLORER],
+        activeOrganizationId: 'org-supprimee',
+        memberships: [{ organizationId: 'org-1', plan: null, roles: [ORGANIZER] }],
+      }),
+    );
+    expect(result.activeOrganizationId).toBe('org-1');
+  });
+
+  it('ORGANIZER reste une expérience disponible même sans organisation active', () => {
+    expect(
+      availableExperiences(
+        graph({ platformRoles: [EXPLORER], memberships: [{ organizationId: 'org-1', plan: null, roles: [ORGANIZER] }] }),
+      ),
+    ).toContain(Experience.ORGANIZER);
   });
 
   it('retombe sur une expérience disponible si l’expérience stockée ne l’est pas', () => {

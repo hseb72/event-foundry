@@ -9,6 +9,7 @@ import {
   OrganizationMember,
   OrganizationsApi,
 } from '../../core/api/organizations.service';
+import { IdentityService } from '../../core/api/identity.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
 import { ActivityDto } from '../../core/models';
 
@@ -194,6 +195,7 @@ import { ActivityDto } from '../../core/models';
 export class OrganizationsComponent implements OnInit {
   private readonly api = inject(OrganizationsApi);
   private readonly refData = inject(ReferenceDataApi);
+  private readonly identity = inject(IdentityService);
 
   readonly configOrg = signal<string | null>(null);
   readonly info = signal<OrganizationGeneralInfo | null>(null);
@@ -240,11 +242,22 @@ export class OrganizationsComponent implements OnInit {
   create(): void {
     this.busy.set(true);
     this.api.create(this.newName.trim()).subscribe({
-      next: () => {
-        this.busy.set(false);
+      next: (org) => {
         this.newName = '';
-        this.message.set('✅ Organisation créée. Activez l’expérience Organizer pour la gérer.');
-        this.reload();
+        // L'organisation créée devient active par défaut : re-contextualise l'identité (jetons +
+        // vue « moi ») pour que les menus Organizer complets apparaissent immédiatement (entonnoir).
+        this.identity.switchOrganization(org.id).subscribe({
+          next: () => {
+            this.busy.set(false);
+            this.message.set('✅ Organisation créée. Vous en êtes le Owner ; elle est désormais active.');
+            this.reload();
+          },
+          error: () => {
+            this.busy.set(false);
+            this.message.set('✅ Organisation créée.');
+            this.reload();
+          },
+        });
       },
       error: (err) => {
         this.busy.set(false);
