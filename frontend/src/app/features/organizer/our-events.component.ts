@@ -12,7 +12,6 @@ import {
   EventCandidateDto,
   EventDraft,
   EventDto,
-  EventEditValue,
   ImportResponse,
 } from '../../core/models';
 import { EventFormComponent } from '../../shared/event-form.component';
@@ -107,7 +106,6 @@ type SortKey = 'startsAt' | 'title' | 'status';
       .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
       .pub-toggle { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
       .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
-      .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
     `,
   ],
   template: `
@@ -176,19 +174,7 @@ type SortKey = 'startsAt' | 'title' | 'status';
               <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
             </div>
           } @else {
-            @if (duplicatePending()) {
-              <p class="muted">Chargement de l'événement à dupliquer…</p>
-            } @else {
-              @if (duplicateSource(); as src) {
-                <div class="dup-note">
-                  📄 Duplication de « {{ src.title }} » — tous les champs sont modifiables ;
-                  l'enregistrement crée un <strong>nouvel</strong> événement.
-                  <button class="btn btn-sm" (click)="cancelDuplicate()">Repartir d'un formulaire vide</button>
-                </div>
-              }
-              <app-event-form submitLabel="Créer l'événement" [busy]="createBusy()"
-                [initial]="duplicateInitial()" (save)="onCreate($event)" />
-            }
+            <app-event-form submitLabel="Créer l'événement" [busy]="createBusy()" (save)="onCreate($event)" />
             @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
           }
           @if (error()) { <p class="err">{{ error() }}</p> }
@@ -381,20 +367,6 @@ export class OurEventsComponent implements OnInit {
   readonly createBusy = signal(false);
   readonly createMsg = signal('');
 
-  /**
-   * Duplication (FSPEC.13) : l'événement source, chargé par identifiant, sert à **préremplir** le
-   * formulaire de création. Rien n'est écrit tant que l'utilisateur n'enregistre pas ; l'événement
-   * produit est un **nouvel** événement (nouvel identifiant), librement modifiable au préalable.
-   */
-  readonly duplicateSource = signal<EventEditValue | null>(null);
-  readonly duplicatePending = signal(false);
-
-  /** Valeurs injectées dans le formulaire : la source, titre suffixé pour distinguer la copie. */
-  readonly duplicateInitial = computed<EventEditValue | null>(() => {
-    const source = this.duplicateSource();
-    return source ? { ...source, title: `${source.title} (copie)` } : null;
-  });
-
   file: File | null = null;
   fileUseAi = false;
   text = '';
@@ -444,13 +416,31 @@ export class OurEventsComponent implements OnInit {
     // Duplication demandée depuis une autre vue (fiche d'événement) : `?duplicate=<id>`.
     const sourceId = this.route.snapshot.queryParamMap.get('duplicate');
     if (sourceId) {
-      this.loadDuplicate(sourceId);
+      this.runDuplicate(sourceId);
     }
   }
 
-  /** Ouvre le formulaire de création prérempli avec les caractéristiques de l'événement choisi. */
+  /**
+   * Duplique un événement : la copie est **créée immédiatement** (nouvel identifiant, brouillon),
+   * puis sa correction s'ouvre. L'original reste intact.
+   */
   duplicate(event: EventDto): void {
-    this.loadDuplicate(event.id);
+    this.runDuplicate(event.id);
+  }
+
+  private runDuplicate(id: string): void {
+    this.busyRow.set(id);
+    this.error.set('');
+    this.eventsApi.duplicate(id).subscribe({
+      next: (copy) => {
+        this.busyRow.set(null);
+        void this.router.navigate(['/events', copy.id, 'edit']);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.busyRow.set(null);
+        this.error.set(err?.error?.message ?? 'La duplication a échoué.');
+      },
+    });
   }
 
   /** Un événement se corrige directement tant qu'il est brouillon ou soumis (règle de publication). */
@@ -492,32 +482,6 @@ export class OurEventsComponent implements OnInit {
       error: (err: { error?: { message?: string } }) => {
         this.busyRow.set(null);
         this.error.set(err?.error?.message ?? 'La dépublication a échoué.');
-      },
-    });
-  }
-
-  /** Repart d'un formulaire vierge (abandon de la duplication en cours). */
-  cancelDuplicate(): void {
-    this.duplicateSource.set(null);
-    this.createMsg.set('');
-  }
-
-  private loadDuplicate(id: string): void {
-    this.submitOpen.set(true);
-    this.tab.set('create');
-    this.createMsg.set('');
-    // Le formulaire n'est rendu qu'une fois la source chargée : son préremplissage a lieu à
-    // l'initialisation du composant, il ne peut pas être appliqué après coup.
-    this.duplicateSource.set(null);
-    this.duplicatePending.set(true);
-    this.eventsApi.duplicateSource(id).subscribe({
-      next: (source) => {
-        this.duplicateSource.set(source);
-        this.duplicatePending.set(false);
-      },
-      error: (err: { error?: { message?: string } }) => {
-        this.duplicatePending.set(false);
-        this.error.set(err?.error?.message ?? "L'événement à dupliquer est introuvable.");
       },
     });
   }
@@ -604,11 +568,7 @@ export class OurEventsComponent implements OnInit {
     this.eventsApi.create(input).subscribe({
       next: () => {
         this.createBusy.set(false);
-        this.createMsg.set(
-          this.duplicateSource() ? '✅ Copie créée (brouillon).' : '✅ Événement créé (brouillon).',
-        );
-        // La duplication est consommée : le formulaire repart vierge pour la création suivante.
-        this.duplicateSource.set(null);
+        this.createMsg.set('✅ Événement créé (brouillon).');
         this.refresh();
       },
       error: (err: { error?: { message?: string } }) => {

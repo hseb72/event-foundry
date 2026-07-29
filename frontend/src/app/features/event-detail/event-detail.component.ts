@@ -421,7 +421,10 @@ import { participationColor, participationLabel } from '../../shared/participati
 
         <div class="admin-actions">
           <!-- Duplication : ouvre le formulaire de création prérempli (nouvel événement au final). -->
-          <button class="btn" title="Créer un événement identique" (click)="duplicate()">📄 Dupliquer</button>
+          @if (canEditHere()) {
+            <button class="btn" [disabled]="actionBusy" title="Corriger cet événement" (click)="edit()">✏️ Modifier</button>
+          }
+          <button class="btn" [disabled]="actionBusy" title="Créer une copie puis la modifier" (click)="duplicate()">📄 Dupliquer</button>
           @if (event.status !== 'ARCHIVED' && canArchive()) {
             <button class="btn" (click)="archive()">Archiver</button>
           }
@@ -483,6 +486,8 @@ import { participationColor, participationLabel } from '../../shared/participati
 export class EventDetailComponent implements OnInit {
   event: EventDto | null = null;
   loading = true;
+  /** Une action de la barre (duplication) est en cours : évite les doubles envois. */
+  actionBusy = false;
   participation: ParticipationState = {
     interested: false,
     reservationStatus: 'NONE',
@@ -590,20 +595,57 @@ export class EventDetailComponent implements OnInit {
     return this.auth.hasPermission('event.update');
   }
 
+  /** Vrai si l'événement peut être corrigé depuis cette fiche (droit + statut éditable). */
+  canEditHere(): boolean {
+    const event = this.event;
+    if (!event) {
+      return false;
+    }
+    const editableStatus = event.status === 'DRAFT' || event.status === 'SUBMITTED';
+    return editableStatus && (event.visibility === 'PRIVATE' ? true : this.canUpdate());
+  }
+
   /**
-   * Duplication : redirige vers la surface de création adaptée, qui préremplit le formulaire à
-   * partir de cet événement (`?duplicate=<id>`). Un événement privé se duplique dans l'espace
-   * personnel ; sinon on privilégie l'espace Organizer quand l'utilisateur peut y créer.
+   * Correction de **cet** événement (même identifiant). Un événement privé se corrige dans l'espace
+   * personnel ; les autres passent par le formulaire d'édition de l'espace Organizer.
    */
-  duplicate(): void {
-    if (!this.event) {
+  edit(): void {
+    const event = this.event;
+    if (!event) {
       return;
     }
-    const target =
-      this.event.visibility === 'PRIVATE' || !this.auth.hasPermission('event.create')
-        ? '/my-events'
-        : '/organizer/events';
-    void this.router.navigate([target], { queryParams: { duplicate: this.event.id } });
+    if (event.visibility === 'PRIVATE') {
+      void this.router.navigate(['/my-events'], { queryParams: { edit: event.id } });
+      return;
+    }
+    void this.router.navigate(['/events', event.id, 'edit']);
+  }
+
+  /**
+   * Duplication : crée **immédiatement** une copie (nouvel identifiant, brouillon) reprenant toutes
+   * les caractéristiques de cet événement, puis ouvre la correction de la copie. L'original reste
+   * intact. La copie est personnelle pour un événement privé (ou faute de droit de création), sinon
+   * elle rejoint l'organisation active.
+   */
+  duplicate(): void {
+    const event = this.event;
+    if (!event || this.actionBusy) {
+      return;
+    }
+    const asPrivate = event.visibility === 'PRIVATE' || !this.auth.hasPermission('event.create');
+    this.actionBusy = true;
+    const request = asPrivate
+      ? this.eventsApi.duplicateAsPrivate(event.id)
+      : this.eventsApi.duplicate(event.id);
+    request.subscribe({
+      next: (copy) => {
+        this.actionBusy = false;
+        void (asPrivate
+          ? this.router.navigate(['/my-events'], { queryParams: { edit: copy.id } })
+          : this.router.navigate(['/events', copy.id, 'edit']));
+      },
+      error: () => (this.actionBusy = false),
+    });
   }
 
   onFile(evt: Event): void {

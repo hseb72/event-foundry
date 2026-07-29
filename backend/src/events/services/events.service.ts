@@ -188,6 +188,49 @@ export class EventsService {
   }
 
   /**
+   * **Duplication** d'un événement : crée immédiatement une copie (nouvel identifiant) reprenant
+   * toutes les caractéristiques de la source, en **brouillon**, que l'utilisateur corrigera ensuite.
+   * L'original n'est jamais modifié. La source doit être lisible par l'utilisateur (garde de
+   * visibilité — un événement privé n'est duplicable que par son créateur, FSPEC.22 §15).
+   *
+   * `asPrivate` détermine la nature de la copie : événement personnel (Explorer) ou événement
+   * d'organisation (Organizer). La création réutilise les chemins existants, donc la validation
+   * référentielle et le journal de statut s'appliquent à l'identique.
+   */
+  async duplicate(
+    id: string,
+    userId: string,
+    options: { asPrivate: boolean; organizationId?: string | null },
+  ): Promise<EventWithRefs> {
+    const source = await this.getForReader(id, userId);
+    const dto = EventsService.toCreateDto(source);
+    return options.asPrivate
+      ? this.createPrivateManual(dto, userId)
+      : this.createManual(dto, userId, options.organizationId ?? null);
+  }
+
+  /** Projette un événement existant en saisie de création (base d'une duplication). */
+  private static toCreateDto(source: EventWithRefs): CreateEventDto {
+    return {
+      activityId: source.activityId,
+      eventTypeId: source.eventTypeId ?? undefined,
+      organizerId: source.organizerId ?? undefined,
+      venueId: source.venueId ?? undefined,
+      municipalityId: source.municipalityId ?? undefined,
+      tagIds: source.tags.map((link) => link.tagId),
+      subjectIds: source.subjects.map((link) => link.subjectId),
+      modalityIds: source.modalities.map((link) => link.modalityId),
+      // Titre suffixé : la copie reste distinguable de l'original dans les listes.
+      title: `${source.title} (copie)`,
+      description: source.description ?? undefined,
+      startsAt: source.startsAt.toISOString(),
+      endsAt: source.endsAt ? source.endsAt.toISOString() : undefined,
+      price: source.price ?? undefined,
+      currency: source.currency ?? undefined,
+    };
+  }
+
+  /**
    * Archive un **événement privé** de l'utilisateur (action personnelle — FSPEC.22 §15). Garde de
    * propriété : seul le créateur d'un événement privé peut l'archiver ; sinon il est traité comme
    * inexistant (on n'en révèle pas l'existence). Aucun impact catalogue (un privé n'y figure jamais).

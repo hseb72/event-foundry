@@ -72,12 +72,17 @@ export class EventsApi {
   }
 
   /**
-   * Source de **duplication** : mêmes caractéristiques que la vue d'édition, pour préremplir un
-   * formulaire de **création**. Aucune écriture — l'enregistrement produit un nouvel événement (et
-   * donc un nouvel identifiant). Un événement privé n'est duplicable que par son créateur.
+   * **Duplique** un événement dans l'organisation active : crée immédiatement une copie (nouvel
+   * identifiant, brouillon) reprenant toutes ses caractéristiques. L'original n'est pas modifié ;
+   * l'appelant enchaîne sur l'édition de la copie.
    */
-  duplicateSource(id: string): Observable<EventEditValue> {
-    return this.http.get<EventEditValue>(`${API_BASE}/events/${id}/duplicate-source`);
+  duplicate(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/${id}/duplicate`, {});
+  }
+
+  /** Duplique un événement dans mon espace personnel : la copie est privée (brouillon). */
+  duplicateAsPrivate(id: string): Observable<EventDto> {
+    return this.http.post<EventDto>(`${API_BASE}/events/me/private/${id}/duplicate`, {});
   }
 
   /** Corrige un événement éditable (brouillon / soumis). */

@@ -146,6 +146,56 @@ describe('EventsService', () => {
     });
   });
 
+  describe('duplicate — création immédiate d’une copie', () => {
+    const source = {
+      id: 'src', visibility: 'PUBLIC', createdById: 'owner', status: 'PUBLISHED',
+      activityId: 'a1', eventTypeId: 't1', organizerId: null, venueId: null, municipalityId: null,
+      title: 'Tournoi', description: 'desc', startsAt: new Date('2026-06-08T14:00:00Z'), endsAt: null,
+      price: 15, currency: 'EUR',
+      tags: [{ tagId: 'tag1' }], subjects: [{ subjectId: 's1' }], modalities: [{ modalityId: 'm1' }],
+    };
+
+    beforeEach(() => {
+      activityRepo.findById.mockResolvedValue({ id: 'a1' });
+      eventTypeRepo.findById.mockResolvedValue({ id: 't1' });
+      tagRepo.findExistingIds.mockResolvedValue(['tag1']);
+      subjectRepo.findById.mockResolvedValue({ id: 's1', activityId: 'a1' });
+      modalityRepo.findById.mockResolvedValue({ id: 'm1' });
+      eventRepo.createWithRefs.mockResolvedValue({ id: 'copie' });
+    });
+
+    it('copie les caractéristiques de la source en brouillon, titre suffixé', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue(source);
+      const copy = await service.duplicate('src', 'owner', { asPrivate: false, organizationId: 'org-1' });
+
+      expect(copy.id).toBe('copie');
+      const data = eventRepo.createWithRefs.mock.calls[0][0];
+      expect(data.title).toBe('Tournoi (copie)');
+      expect(data.activityId).toBe('a1');
+      expect(data.price).toBe(15);
+      // La copie repart en brouillon, dans l'organisation active ; l'original n'est pas touché.
+      expect(data.status).toBe('DRAFT');
+      expect(data.organizationId).toBe('org-1');
+    });
+
+    it('produit une copie privée personnelle quand demandé', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue(source);
+      await service.duplicate('src', 'owner', { asPrivate: true });
+      const data = eventRepo.createWithRefs.mock.calls[0][0];
+      expect(data.visibility).toBe('PRIVATE');
+      expect(data.organizationId).toBeNull();
+      expect(data.createdById).toBe('owner');
+    });
+
+    it('refuse de dupliquer un événement privé d’autrui (garde de visibilité)', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ ...source, visibility: 'PRIVATE' });
+      await expect(
+        service.duplicate('src', 'intrus', { asPrivate: true }),
+      ).rejects.toBeInstanceOf(EventNotFoundException);
+      expect(eventRepo.createWithRefs).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getPrivateForEdit / updatePrivate — correction d’un événement privé (FSPEC.22 §15)', () => {
     it('expose la vue d’édition au créateur', async () => {
       eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });

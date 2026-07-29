@@ -133,6 +133,22 @@ export class EventsController {
     return EventMapper.toResponse(await this.service.updatePrivate(id, dto, user.userId));
   }
 
+  /**
+   * **Duplique** un événement dans mon espace personnel : crée immédiatement une copie **privée**
+   * (nouvel identifiant, brouillon) que je corrigerai ensuite. La source doit m'être lisible ; la
+   * copie reste personnelle et non publiée (ESUB-009). Self-service, comme la création privée.
+   */
+  @Post('me/private/:id/duplicate')
+  @ApiCreatedResponse({ type: EventResponseDto })
+  async duplicateAsPrivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(
+      await this.service.duplicate(id, user.userId, { asPrivate: true }),
+    );
+  }
+
   /** Archive un de mes événements privés (action personnelle — FSPEC.22 §15). */
   @Post('me/private/:id/archive')
   @HttpCode(HttpStatus.OK)
@@ -198,23 +214,23 @@ export class EventsController {
   }
 
   /**
-   * Source de **duplication** d'un Event : mêmes caractéristiques (référentiels par identifiant) que
-   * la vue d'édition, mais destinée à préremplir un formulaire de **création**. Aucune écriture ici —
-   * la duplication proprement dite est une création ordinaire, qui produit un nouvel identifiant.
-   *
-   * Distinct de `:id/edit`, qui exige `event.update` : dupliquer ne suppose aucun droit sur
-   * l'original. L'accès est gouverné par la seule **garde de visibilité** (`getForReader`) — un
-   * événement privé n'est duplicable que par son créateur (FSPEC.22 §15). Aucune permission
-   * supplémentaire n'est requise : la création d'un événement **privé** est self-service (cf.
-   * `POST me/private`), et cette route n'expose que ce que `GET :id` expose déjà, par identifiant.
+   * **Duplique** un Event au sein de l'organisation active : crée immédiatement une copie (nouvel
+   * identifiant) en brouillon, que l'utilisateur corrigera ensuite. L'original n'est pas modifié.
+   * La source doit être lisible par l'utilisateur (garde de visibilité) ; créer relève de
+   * `event.create`, comme toute création d'événement d'organisation.
    */
-  @Get(':id/duplicate-source')
-  @ApiOkResponse({ type: EventEditDto })
-  async duplicateSource(
+  @Post(':id/duplicate')
+  @RequirePermissions('event.create')
+  @ApiCreatedResponse({ type: EventResponseDto })
+  async duplicate(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<EventEditDto> {
-    return EventMapper.toEditDto(await this.service.getForReader(id, user.userId));
+  ): Promise<EventResponseDto> {
+    const copy = await this.service.duplicate(id, user.userId, {
+      asPrivate: false,
+      organizationId: user.activeOrganizationId ?? null,
+    });
+    return EventMapper.toResponse(copy);
   }
 
   /**
