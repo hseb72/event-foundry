@@ -17,6 +17,7 @@ import {
 import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
 import { formatDateTime } from '../../shared/date-format';
+import { IconComponent } from '../../shared/icon.component';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
 /** Colonnes triables côté serveur (le tri directionnel s'applique à la page courante paginée). */
@@ -36,7 +37,7 @@ type SortKey = 'startsAt' | 'title' | 'status';
 @Component({
   selector: 'app-our-events',
   standalone: true,
-  imports: [FormsModule, RouterLink, DatePipe, EventFormComponent, FileDropComponent],
+  imports: [FormsModule, RouterLink, DatePipe, EventFormComponent, FileDropComponent, IconComponent],
   styles: [
     `
       .intro { color: var(--muted); margin: 0 0 1rem; }
@@ -272,13 +273,25 @@ type SortKey = 'startsAt' | 'title' | 'status';
                     </label>
                     <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
                       @if (e.status !== 'ARCHIVED') {
-                        <button class="btn btn-sm" [disabled]="busyRow() === e.id" [title]="editTitle(e)" (click)="editEvent(e)">Modifier</button>
+                        <button class="btn btn-sm btn-icon" [disabled]="busyRow() === e.id"
+                          [title]="editTitle(e)" [attr.aria-label]="editTitle(e)" (click)="editEvent(e)">
+                          <app-icon name="edit" />
+                        </button>
                       }
-                      <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
+                      <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                        aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                        <app-icon name="duplicate" />
+                      </button>
                       @if (e.status === 'ARCHIVED') {
-                        <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                        <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                          (click)="rowAction(e, 'restore')">
+                          <app-icon name="restore" />
+                        </button>
                       } @else {
-                        <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                        <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                          (click)="rowAction(e, 'archive')">
+                          <app-icon name="archive" />
+                        </button>
                       }
                     </span>
                   </div>
@@ -315,13 +328,25 @@ type SortKey = 'startsAt' | 'title' | 'status';
                       <td>
                         <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
                           @if (e.status !== 'ARCHIVED') {
-                            <button class="btn btn-sm" [disabled]="busyRow() === e.id" [title]="editTitle(e)" (click)="editEvent(e)">Modifier</button>
+                            <button class="btn btn-sm btn-icon" [disabled]="busyRow() === e.id"
+                              [title]="editTitle(e)" [attr.aria-label]="editTitle(e)" (click)="editEvent(e)">
+                              <app-icon name="edit" />
+                            </button>
                           }
-                          <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
+                          <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                            aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                            <app-icon name="duplicate" />
+                          </button>
                           @if (e.status === 'ARCHIVED') {
-                            <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
+                            <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                              (click)="rowAction(e, 'restore')">
+                              <app-icon name="restore" />
+                            </button>
                           } @else {
-                            <button class="btn btn-sm" (click)="rowAction(e, 'archive')">Archiver</button>
+                            <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                              (click)="rowAction(e, 'archive')">
+                              <app-icon name="archive" />
+                            </button>
                           }
                         </span>
                       </td>

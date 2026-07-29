@@ -188,6 +188,24 @@ button {
   font-size: 0.82rem;
 }
 
+/* Bouton d'action réduit à son icône : carré, sans libellé visible. Le sens reste porté par le
+   `title` et l'`aria-label` du bouton — jamais par le dessin seul (lecteurs d'écran, survol). */
+.btn-icon {
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.btn-icon.btn-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.9rem;
+}
+
 .btn.active {
   background: var(--exp);
   border-color: var(--exp);

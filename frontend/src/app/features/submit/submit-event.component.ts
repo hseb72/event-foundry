@@ -19,6 +19,7 @@ import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
 import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
 import { formatDateTime } from '../../shared/date-format';
+import { IconComponent } from '../../shared/icon.component';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
 
@@ -34,7 +35,7 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, DatePipe, EventFormComponent, FileDropComponent, DataTableComponent],
+  imports: [FormsModule, DatePipe, EventFormComponent, FileDropComponent, DataTableComponent, IconComponent],
   styles: [
     `
       .intro { color: var(--muted); margin: 0 0 1rem; }
@@ -209,13 +210,25 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
           <ng-template #rowActions let-e>
             <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
               @if (e.status !== 'ARCHIVED') {
-                <button class="btn btn-sm" title="Corriger cet événement" (click)="editPrivate($any(e))">Modifier</button>
+                <button class="btn btn-sm btn-icon" title="Modifier — corriger cet événement"
+                  aria-label="Modifier — corriger cet événement" (click)="editPrivate($any(e))">
+                  <app-icon name="edit" />
+                </button>
               }
-              <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate($any(e))">Dupliquer</button>
+              <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                aria-label="Dupliquer — créer un événement identique" (click)="duplicate($any(e))">
+                <app-icon name="duplicate" />
+              </button>
               @if (e.status === 'ARCHIVED') {
-                <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">Restaurer</button>
+                <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                  [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">
+                  <app-icon name="restore" />
+                </button>
               } @else {
-                <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">Archiver</button>
+                <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                  [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">
+                  <app-icon name="archive" />
+                </button>
               }
             </span>
           </ng-template>
