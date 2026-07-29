@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EventStatus, type EventStatusEvent } from '@prisma/client';
+import { EventStatus, EventVisibility, type EventStatusEvent } from '@prisma/client';
 import { NotificationsService } from '../../notifications/services/notifications.service';
 import { DOMAIN_EVENTS, type EventPublishedPayload } from '../../platform/event-bus/domain-event';
 import { EVENT_BUS, makeDomainEvent, type EventBus } from '../../platform/event-bus/event-bus';
@@ -139,6 +139,14 @@ export class PublishingService {
 
   /** Règles déterministes de publication (TSPEC.05) : champs obligatoires + cohérence des dates. */
   private validatePublishable(event: EventWithRefs): void {
+    // ESUB-009 : un événement **privé** est personnel et n'est jamais diffusé au catalogue. La
+    // publication n'a donc aucun sens pour lui — et le laisser publié le rendrait non modifiable
+    // (correction réservée aux brouillons) sans offrir de dépublication côté Explorer.
+    if (event.visibility === EventVisibility.PRIVATE) {
+      throw new EventNotPublishableException(
+        "un événement privé est personnel et n'est jamais publié",
+      );
+    }
     if (!event.title?.trim()) {
       throw new EventNotPublishableException('titre manquant');
     }

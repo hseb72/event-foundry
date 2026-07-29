@@ -228,7 +228,9 @@ async function seedEvent(
   const id = demoId('0', demo.key);
   const startsAt = startOf(demo);
   const endsAt = new Date(startsAt.getTime() + demo.durationH * 3600_000);
-  const status = (demo.status ?? 'PUBLISHED') as EventStatus;
+  // ESUB-009 : un événement privé n'est jamais publié — il reste un brouillon personnel, ce qui le
+  // laisse modifiable et utilisable dans le planning de son auteur.
+  const status = (demo.status ?? (demo.private ? 'DRAFT' : 'PUBLISHED')) as EventStatus;
   const venue = demo.venue ? (venues.get(demo.venue) ?? null) : null;
   const municipalityId = await municipalityIdFor(venue?.city ?? null);
 

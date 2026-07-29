@@ -393,7 +393,7 @@ Les éléments suivants sont historisés :
 | ESUB-006 | Chaque Draft peut ouvrir une Case indépendamment. |
 | ESUB-007 | Les Operators interviennent uniquement via une Case. |
 | ESUB-008 | Un Event est créé uniquement après validation du Draft. |
-| ESUB-009 | Les événements privés d'un Explorer ne sont pas publiés. |
+| ESUB-009 | Les événements privés d'un Explorer ne sont pas publiés. La publication d'un événement privé est **refusée** (invariant, pas seulement une absence de bouton) : un privé reste un brouillon personnel, ce qui le laisse **modifiable** et utilisable dans le planning de son auteur — le planning dérive des participations, jamais du statut de publication. |
 | ESUB-010 | Les événements publiés par un Organizer deviennent accessibles au catalogue public. |
 | ESUB-011 | Une notification à un Organizer ne transfère jamais la propriété d'un événement privé. |
 | ESUB-012 | Toutes les étapes du workflow sont historisées. |
