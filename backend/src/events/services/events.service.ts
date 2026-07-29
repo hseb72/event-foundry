@@ -226,7 +226,30 @@ export class EventsService {
    * provenance et le statut ne changent jamais ; les tags sont intégralement remplacés.
    */
   async update(id: string, dto: UpdateEventDto): Promise<EventWithRefs> {
-    const event = await this.getOrThrow(id);
+    return this.applyUpdate(await this.getOrThrow(id), dto);
+  }
+
+  /**
+   * Vue d'édition d'un **événement privé** dont l'utilisateur est l'auteur (FSPEC.22 §15). Permet à
+   * un Explorer de corriger son propre événement personnel sans disposer de `event.update`, qui
+   * relève de l'espace Organizer.
+   */
+  getPrivateForEdit(id: string, userId: string): Promise<EventWithRefs> {
+    return this.assertOwnPrivate(id, userId);
+  }
+
+  /**
+   * Correction d'un **événement privé** par son auteur (FSPEC.22 §15). Mêmes règles de fond que la
+   * correction d'un événement d'organisation (statuts éditables, remplacement complet), mais gardée
+   * par la **propriété** plutôt que par la permission `event.update`.
+   */
+  async updatePrivate(id: string, dto: UpdateEventDto, userId: string): Promise<EventWithRefs> {
+    return this.applyUpdate(await this.assertOwnPrivate(id, userId), dto);
+  }
+
+  /** Corps commun des corrections : contrôle du statut éditable puis remplacement des champs. */
+  private async applyUpdate(event: EventWithRefs, dto: UpdateEventDto): Promise<EventWithRefs> {
+    const id = event.id;
     if (!EDITABLE_STATUSES.includes(event.status)) {
       throw new EventNotEditableException(event.status);
     }

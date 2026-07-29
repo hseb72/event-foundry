@@ -34,6 +34,16 @@ export class EventsApi {
     return this.http.post<EventDto>(`${API_BASE}/events/me/private`, body);
   }
 
+  /** Vue d'édition d'un de mes événements privés (préremplissage du formulaire de correction). */
+  getPrivateForEdit(id: string): Observable<EventEditValue> {
+    return this.http.get<EventEditValue>(`${API_BASE}/events/me/private/${id}/edit`);
+  }
+
+  /** Corrige un de mes événements privés (gardé par la propriété, pas par `event.update`). */
+  updatePrivate(id: string, body: CreateEventInput): Observable<EventDto> {
+    return this.http.patch<EventDto>(`${API_BASE}/events/me/private/${id}`, body);
+  }
+
   /** Archive un de mes événements privés (action personnelle). */
   archivePrivate(id: string): Observable<EventDto> {
     return this.http.post<EventDto>(`${API_BASE}/events/me/private/${id}/archive`, {});

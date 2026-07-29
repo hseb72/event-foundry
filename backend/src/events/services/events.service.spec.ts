@@ -9,6 +9,7 @@ import { TagRepository } from '../../reference-data/tags/tag.repository';
 import { VenueRepository } from '../../reference-data/venues/venue.repository';
 import { CreateEventDto } from '../dto/create-event.dto';
 import {
+  EventNotEditableException,
   EventNotFoundException,
   InvalidEventTypeException,
   InvalidTagsException,
@@ -29,6 +30,7 @@ describe('EventsService', () => {
     searchPaginated: jest.Mock;
     recordStatusEvent: jest.Mock;
     applyTransition: jest.Mock;
+    updateWithRefs: jest.Mock;
   };
   let service: EventsService;
 
@@ -45,6 +47,7 @@ describe('EventsService', () => {
       searchPaginated: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       recordStatusEvent: jest.fn(),
       applyTransition: jest.fn(),
+      updateWithRefs: jest.fn(),
     };
     const noop = { findById: jest.fn() };
     service = new EventsService(
@@ -140,6 +143,52 @@ describe('EventsService', () => {
     it('refuse d’archiver un événement public via ce chemin privé', async () => {
       eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PUBLIC', createdById: 'owner', status: 'DRAFT' });
       await expect(service.archivePrivate('e1', 'owner')).rejects.toBeInstanceOf(EventNotFoundException);
+    });
+  });
+
+  describe('getPrivateForEdit / updatePrivate — correction d’un événement privé (FSPEC.22 §15)', () => {
+    it('expose la vue d’édition au créateur', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });
+      await expect(service.getPrivateForEdit('e1', 'owner')).resolves.toEqual(
+        expect.objectContaining({ id: 'e1' }),
+      );
+    });
+
+    it('refuse la vue d’édition à un tiers (traité comme inexistant)', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({ id: 'e1', visibility: 'PRIVATE', createdById: 'owner' });
+      await expect(service.getPrivateForEdit('e1', 'intrus')).rejects.toBeInstanceOf(
+        EventNotFoundException,
+      );
+    });
+
+    it('corrige un événement privé brouillon de son créateur', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({
+        id: 'e1', visibility: 'PRIVATE', createdById: 'owner', status: 'DRAFT', source: EventSource.MANUAL,
+      });
+      activityRepo.findById.mockResolvedValue({ id: 'a1' });
+      eventRepo.updateWithRefs.mockResolvedValue({ id: 'e1' });
+      await service.updatePrivate('e1', baseDto, 'owner');
+      expect(eventRepo.updateWithRefs).toHaveBeenCalledWith('e1', expect.anything(), expect.anything());
+    });
+
+    it('refuse la correction par un tiers', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({
+        id: 'e1', visibility: 'PRIVATE', createdById: 'owner', status: 'DRAFT',
+      });
+      await expect(service.updatePrivate('e1', baseDto, 'intrus')).rejects.toBeInstanceOf(
+        EventNotFoundException,
+      );
+      expect(eventRepo.updateWithRefs).not.toHaveBeenCalled();
+    });
+
+    it('refuse la correction d’un événement privé archivé (statut non éditable)', async () => {
+      eventRepo.findByIdWithRefs.mockResolvedValue({
+        id: 'e1', visibility: 'PRIVATE', createdById: 'owner', status: 'ARCHIVED',
+      });
+      await expect(service.updatePrivate('e1', baseDto, 'owner')).rejects.toBeInstanceOf(
+        EventNotEditableException,
+      );
+      expect(eventRepo.updateWithRefs).not.toHaveBeenCalled();
     });
   });
 

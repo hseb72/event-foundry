@@ -108,6 +108,31 @@ export class EventsController {
     return EventMapper.toResponse(await this.service.createPrivateManual(dto, user.userId));
   }
 
+  /**
+   * Vue d'édition d'un de mes événements privés (référentiels par identifiant), pour préremplir le
+   * formulaire de correction. Gardé par la **propriété** : aucun droit `event.update` requis, la
+   * correction de ses propres données personnelles étant self-service (FSPEC.22 §15).
+   */
+  @Get('me/private/:id/edit')
+  @ApiOkResponse({ type: EventEditDto })
+  async myPrivateForEdit(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EventEditDto> {
+    return EventMapper.toEditDto(await this.service.getPrivateForEdit(id, user.userId));
+  }
+
+  /** Corrige un de mes événements privés (mêmes règles de fond que la correction Organizer). */
+  @Patch('me/private/:id')
+  @ApiOkResponse({ type: EventResponseDto })
+  async updateMyPrivate(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEventDto,
+  ): Promise<EventResponseDto> {
+    return EventMapper.toResponse(await this.service.updatePrivate(id, dto, user.userId));
+  }
+
   /** Archive un de mes événements privés (action personnelle — FSPEC.22 §15). */
   @Post('me/private/:id/archive')
   @HttpCode(HttpStatus.OK)

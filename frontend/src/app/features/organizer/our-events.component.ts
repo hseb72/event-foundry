@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -284,7 +284,10 @@ type SortKey = 'startsAt' | 'title' | 'status';
                       </span>
                       {{ isPublished(e) ? 'Publié' : (e.status === 'ARCHIVED' ? 'Archivé' : 'Non publié') }}
                     </label>
-                    <span style="display:flex;gap:0.4rem">
+                    <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                      @if (e.status !== 'ARCHIVED') {
+                        <button class="btn btn-sm" [disabled]="busyRow() === e.id" [title]="editTitle(e)" (click)="editEvent(e)">Modifier</button>
+                      }
                       <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
                       @if (e.status === 'ARCHIVED') {
                         <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
@@ -324,7 +327,10 @@ type SortKey = 'startsAt' | 'title' | 'status';
                         </label>
                       </td>
                       <td>
-                        <span style="display:flex;gap:0.4rem">
+                        <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                          @if (e.status !== 'ARCHIVED') {
+                            <button class="btn btn-sm" [disabled]="busyRow() === e.id" [title]="editTitle(e)" (click)="editEvent(e)">Modifier</button>
+                          }
                           <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate(e)">Dupliquer</button>
                           @if (e.status === 'ARCHIVED') {
                             <button class="btn btn-sm" (click)="rowAction(e, 'restore')">Restaurer</button>
@@ -355,6 +361,7 @@ export class OurEventsComponent implements OnInit {
   private readonly candidates = inject(EventCandidatesApi);
   private readonly eventsApi = inject(EventsApi);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -444,6 +451,49 @@ export class OurEventsComponent implements OnInit {
   /** Ouvre le formulaire de création prérempli avec les caractéristiques de l'événement choisi. */
   duplicate(event: EventDto): void {
     this.loadDuplicate(event.id);
+  }
+
+  /** Un événement se corrige directement tant qu'il est brouillon ou soumis (règle de publication). */
+  private isDirectlyEditable(event: EventDto): boolean {
+    return event.status === 'DRAFT' || event.status === 'SUBMITTED';
+  }
+
+  /** Infobulle du bouton « Modifier » : annonce la dépublication quand elle est nécessaire. */
+  editTitle(event: EventDto): string {
+    return this.isDirectlyEditable(event)
+      ? "Corriger l'événement"
+      : "Un événement publié doit être dépublié pour être modifié, puis republié";
+  }
+
+  /**
+   * Ouvre la correction d'un événement (ORG-002 « modifier »). Un événement **publié** n'est pas
+   * modifiable en l'état : sur confirmation explicite, il est d'abord **dépublié** (→ brouillon,
+   * transition journalisée) avant d'ouvrir le formulaire ; il pourra être republié ensuite.
+   */
+  editEvent(event: EventDto): void {
+    if (this.isDirectlyEditable(event)) {
+      void this.router.navigate(['/events', event.id, 'edit']);
+      return;
+    }
+    const confirmed = confirm(
+      `« ${event.title} » est publié : il sera dépublié pour permettre la modification, ` +
+        'puis vous pourrez le republier. Continuer ?',
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.busyRow.set(event.id);
+    this.error.set('');
+    this.eventsApi.unpublish(event.id).subscribe({
+      next: () => {
+        this.busyRow.set(null);
+        void this.router.navigate(['/events', event.id, 'edit']);
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.busyRow.set(null);
+        this.error.set(err?.error?.message ?? 'La dépublication a échoué.');
+      },
+    });
   }
 
   /** Repart d'un formulaire vierge (abandon de la duplication en cours). */

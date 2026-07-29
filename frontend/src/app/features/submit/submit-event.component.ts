@@ -131,18 +131,23 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
               <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
             </div>
           } @else {
-            @if (duplicatePending()) {
-              <p class="muted">Chargement de l'événement à dupliquer…</p>
+            @if (formPending()) {
+              <p class="muted">Chargement de l'événement…</p>
             } @else {
-              @if (duplicateSource(); as src) {
+              @if (formSource(); as src) {
                 <div class="dup-note">
-                  📄 Duplication de « {{ src.title }} » — tous les champs sont modifiables ;
-                  l'enregistrement crée un <strong>nouvel</strong> événement privé.
-                  <button class="btn btn-sm" (click)="cancelDuplicate()">Repartir d'un formulaire vide</button>
+                  @if (editingId()) {
+                    ✏️ Modification de « {{ src.title }} » — l'enregistrement met à jour cet événement.
+                  } @else {
+                    📄 Duplication de « {{ src.title }} » — tous les champs sont modifiables ;
+                    l'enregistrement crée un <strong>nouvel</strong> événement privé.
+                  }
+                  <button class="btn btn-sm" (click)="cancelForm()">Repartir d'un formulaire vide</button>
                 </div>
               }
-              <app-event-form submitLabel="Créer mon événement privé" [busy]="createBusy()"
-                [initial]="duplicateInitial()" (save)="onCreate($event)" />
+              <app-event-form
+                [submitLabel]="editingId() ? 'Enregistrer les modifications' : 'Créer mon événement privé'"
+                [busy]="createBusy()" [initial]="formInitial()" (save)="onSaveEvent($event)" />
             }
             @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
           }
@@ -207,7 +212,10 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
             searchPlaceholder="Rechercher un événement…"
           />
           <ng-template #rowActions let-e>
-            <span style="display:flex;gap:0.4rem">
+            <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              @if (e.status !== 'ARCHIVED') {
+                <button class="btn btn-sm" title="Corriger cet événement" (click)="editPrivate($any(e))">Modifier</button>
+              }
               <button class="btn btn-sm" title="Créer un événement identique" (click)="duplicate($any(e))">Dupliquer</button>
               @if (e.status === 'ARCHIVED') {
                 <button class="btn btn-sm" [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">Restaurer</button>
@@ -246,17 +254,24 @@ export class SubmitEventComponent implements OnInit {
   readonly createMsg = signal('');
 
   /**
-   * Duplication (FSPEC.13) : l'événement source sert à **préremplir** le formulaire de création.
-   * Rien n'est écrit tant que l'utilisateur n'enregistre pas ; la copie est un **nouvel** événement
-   * privé (nouvel identifiant), librement modifiable au préalable.
+   * Formulaire prérempli à partir d'un événement existant, dans deux intentions :
+   * - **duplication** : la copie est un **nouvel** événement privé (nouvel identifiant) ;
+   * - **modification** (`editingId` renseigné) : l'enregistrement met à jour l'événement d'origine.
+   *
+   * Dans les deux cas rien n'est écrit tant que l'utilisateur n'enregistre pas, et tous les champs
+   * restent librement modifiables comme lors d'une saisie normale.
    */
-  readonly duplicateSource = signal<EventEditValue | null>(null);
-  readonly duplicatePending = signal(false);
+  readonly formSource = signal<EventEditValue | null>(null);
+  readonly formPending = signal(false);
+  readonly editingId = signal<string | null>(null);
 
-  /** Valeurs injectées dans le formulaire : la source, titre suffixé pour distinguer la copie. */
-  readonly duplicateInitial = computed<EventEditValue | null>(() => {
-    const source = this.duplicateSource();
-    return source ? { ...source, title: `${source.title} (copie)` } : null;
+  /** Valeurs injectées : telles quelles en modification ; titre suffixé pour distinguer une copie. */
+  readonly formInitial = computed<EventEditValue | null>(() => {
+    const source = this.formSource();
+    if (!source) {
+      return null;
+    }
+    return this.editingId() ? source : { ...source, title: `${source.title} (copie)` };
   });
 
   file: File | null = null;
@@ -289,37 +304,51 @@ export class SubmitEventComponent implements OnInit {
     // Duplication demandée depuis une autre vue (fiche d'événement) : `?duplicate=<id>`.
     const sourceId = this.route.snapshot.queryParamMap.get('duplicate');
     if (sourceId) {
-      this.loadDuplicate(sourceId);
+      this.loadIntoForm(sourceId, 'duplicate');
     }
   }
 
   /** Ouvre le formulaire de création prérempli avec les caractéristiques de l'événement choisi. */
   duplicate(event: EventDto): void {
-    this.loadDuplicate(event.id);
+    this.loadIntoForm(event.id, 'duplicate');
   }
 
-  /** Repart d'un formulaire vierge (abandon de la duplication en cours). */
-  cancelDuplicate(): void {
-    this.duplicateSource.set(null);
+  /** Ouvre la correction d'un de mes événements privés (formulaire prérempli, mise à jour à l'envoi). */
+  editPrivate(event: EventDto): void {
+    this.loadIntoForm(event.id, 'edit');
+  }
+
+  /** Repart d'un formulaire vierge (abandon de la duplication ou de la modification en cours). */
+  cancelForm(): void {
+    this.formSource.set(null);
+    this.editingId.set(null);
     this.createMsg.set('');
   }
 
-  private loadDuplicate(id: string): void {
+  /**
+   * Charge un événement dans le formulaire, en duplication ou en modification. Le formulaire n'est
+   * rendu qu'une fois la source chargée : son préremplissage a lieu à l'initialisation du composant
+   * et ne peut pas être appliqué après coup.
+   */
+  private loadIntoForm(id: string, intent: 'duplicate' | 'edit'): void {
     this.submitOpen.set(true);
     this.tab.set('create');
     this.createMsg.set('');
-    // Le formulaire n'est rendu qu'une fois la source chargée : son préremplissage a lieu à
-    // l'initialisation du composant, il ne peut pas être appliqué après coup.
-    this.duplicateSource.set(null);
-    this.duplicatePending.set(true);
-    this.eventsApi.duplicateSource(id).subscribe({
+    this.error.set('');
+    this.formSource.set(null);
+    this.editingId.set(intent === 'edit' ? id : null);
+    this.formPending.set(true);
+    const request =
+      intent === 'edit' ? this.eventsApi.getPrivateForEdit(id) : this.eventsApi.duplicateSource(id);
+    request.subscribe({
       next: (source) => {
-        this.duplicateSource.set(source);
-        this.duplicatePending.set(false);
+        this.formSource.set(source);
+        this.formPending.set(false);
       },
       error: (err: { error?: { message?: string } }) => {
-        this.duplicatePending.set(false);
-        this.error.set(err?.error?.message ?? "L'événement à dupliquer est introuvable.");
+        this.formPending.set(false);
+        this.editingId.set(null);
+        this.error.set(err?.error?.message ?? "L'événement est introuvable.");
       },
     });
   }
@@ -384,21 +413,35 @@ export class SubmitEventComponent implements OnInit {
     });
   }
 
-  onCreate(input: CreateEventInput): void {
+  /**
+   * Enregistre le formulaire : **mise à jour** de l'événement en cours de modification, sinon
+   * **création** d'un nouvel événement privé (saisie directe ou duplication).
+   */
+  onSaveEvent(input: CreateEventInput): void {
+    const editingId = this.editingId();
+    const duplicating = !editingId && this.formSource() !== null;
     this.createBusy.set(true);
     this.createMsg.set('');
-    this.eventsApi.createPrivate(input).subscribe({
+    const request = editingId
+      ? this.eventsApi.updatePrivate(editingId, input)
+      : this.eventsApi.createPrivate(input);
+    request.subscribe({
       next: () => {
         this.createBusy.set(false);
-        this.createMsg.set(this.duplicateSource() ? '✅ Copie créée.' : '✅ Événement privé créé.');
-        this.message.set('Événement privé créé.');
-        // La duplication est consommée : le formulaire repart vierge pour la création suivante.
-        this.duplicateSource.set(null);
+        this.createMsg.set(
+          editingId ? '✅ Modifications enregistrées.' : duplicating ? '✅ Copie créée.' : '✅ Événement privé créé.',
+        );
+        this.message.set(editingId ? 'Événement privé mis à jour.' : 'Événement privé créé.');
+        // L'intention est consommée : le formulaire repart vierge pour la saisie suivante.
+        this.formSource.set(null);
+        this.editingId.set(null);
         this.refresh();
       },
       error: (err: { error?: { message?: string } }) => {
         this.createBusy.set(false);
-        this.createMsg.set(err?.error?.message ?? 'La création a échoué.');
+        this.createMsg.set(
+          err?.error?.message ?? (editingId ? "L'enregistrement a échoué." : 'La création a échoué.'),
+        );
       },
     });
   }
