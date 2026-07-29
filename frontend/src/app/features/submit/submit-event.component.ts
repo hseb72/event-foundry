@@ -22,13 +22,16 @@ import { formatDateTime } from '../../shared/date-format';
 import { IconComponent } from '../../shared/icon.component';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
+/** Colonnes de tri proposées en vue cartes (la vue tableau trie par en-tête). */
+type PrivateSortKey = 'startsAt' | 'title' | 'status';
 
 /**
  * Entonnoir de soumission Explorer (FSPEC.22 §5-6, §15) — homogénéisé avec l'expérience Organizer.
  * Une **seule** entrée « Mes événements privés » regroupe la soumission (box « Nouvelle soumission »
  * repliable, mêmes onglets : Documents, Texte, URL, Fichiers structurés, Création), le suivi des
- * soumissions en cours d'analyse, la validation des brouillons, et la liste des événements privés
- * sous forme de tableau (tri, pagination). Après validation, chaque brouillon devient un **événement
+ * soumissions en cours d'analyse, la validation des brouillons, et la liste des événements privés —
+ * en **cartes ou en tableau**, au choix de l'utilisateur (préférence mémorisée localement), comme
+ * dans « Nos événements ». Après validation, chaque brouillon devient un **événement
  * privé** (visible du seul créateur, jamais publié — ESUB-009) qui apparaît **ici**, jamais dans
  * l'expérience Organizer. Le scoping par créateur est appliqué côté API.
  */
@@ -63,6 +66,33 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
       h2 { font-size: 1rem; margin: 0 0 0.6rem; }
       .note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgba(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
       .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
+
+      /* En-tête de la liste : titre + sélecteur de vue (cartes / tableau). */
+      .events-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+      .events-head h2 { margin: 0; }
+      .view-toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 0.2rem; gap: 0.15rem; }
+      .view-toggle button { border: 0; background: transparent; color: var(--muted); border-radius: 8px; padding: 0.3rem 0.6rem; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+      .view-toggle button.on { background: var(--exp); color: var(--exp-contrast, #fff); }
+      .sort-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; color: var(--muted); font-size: 0.85rem; }
+      .sort-bar select { border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.55rem; font: inherit; background: var(--surface); color: var(--text); }
+      .sort-bar .dir { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 0.3rem 0.55rem; cursor: pointer; color: var(--text); }
+
+      /* Vue « cartes de gestion » : couverture illustrée + mêmes actions qu'en tableau. */
+      .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.1rem; }
+      .mcard { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+      .mcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .mcard.archived { opacity: 0.72; }
+      .mcard .cover { position: relative; height: 130px; background-size: cover; background-position: center; }
+      .mcard .cover .chip { position: absolute; top: 0.55rem; left: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0.12rem 0.55rem; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
+      .mcard .cover .status { position: absolute; top: 0.55rem; right: 0.55rem; font-size: 0.66rem; font-weight: 800; padding: 0.12rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+      .status.draft { background: rgba(255, 255, 255, 0.9); color: #1f2333; }
+      .status.arch { background: rgba(220, 38, 38, 0.9); color: #fff; }
+      .mcard .mbody { padding: 0.7rem 0.85rem; display: grid; gap: 0.22rem; flex: 1; }
+      .mcard .mtitle { font-weight: 700; cursor: pointer; }
+      .mcard .mtitle:hover { color: var(--exp); }
+      .mcard .mmeta { font-size: 0.8rem; color: var(--muted); }
+      .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
+      .private-tag { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
     `,
   ],
   template: `
@@ -187,7 +217,13 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
 
       <!-- Mes événements : tableau trié / paginé -->
       <section class="card">
-        <h2>Mes événements</h2>
+        <div class="events-head">
+          <h2>Mes événements</h2>
+          <div class="view-toggle" role="tablist" aria-label="Affichage de la liste">
+            <button type="button" [class.on]="view() === 'cards'" (click)="setView('cards')" aria-label="Vue cartes">▦ Cartes</button>
+            <button type="button" [class.on]="view() === 'table'" (click)="setView('table')" aria-label="Vue tableau">▤ Tableau</button>
+          </div>
+        </div>
         <div class="note">
           🔒 Une fois qualifiés, vos événements privés apparaissent <strong>ici</strong> — jamais dans
           l'expérience Organizer. Un événement privé n'est jamais publié au catalogue.
@@ -196,6 +232,63 @@ type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
           <p class="muted">Chargement…</p>
         } @else if (!events().length) {
           <p class="muted">Aucun événement privé pour l'instant. Validez un brouillon ou créez-en un ci-dessus.</p>
+        } @else if (view() === 'cards') {
+          <!-- Tri explicite : les en-têtes cliquables du tableau n'existent pas en vue cartes. -->
+          <div class="sort-bar">
+            <span>Trier</span>
+            <select [ngModel]="sortKey()" (ngModelChange)="sortKey.set($event)">
+              <option value="startsAt">Date de début</option>
+              <option value="title">Titre</option>
+              <option value="status">Statut</option>
+            </select>
+            <button class="dir" type="button" (click)="toggleDir()"
+              [title]="sortDir() === 'asc' ? 'Croissant' : 'Décroissant'">
+              {{ sortDir() === 'asc' ? '▲' : '▼' }}
+            </button>
+          </div>
+          <div class="mgrid">
+            @for (e of sortedEvents(); track e.id) {
+              <article class="mcard" [class.archived]="e.status === 'ARCHIVED'">
+                <div class="cover" [style.background]="coverBg(e)">
+                  <span class="chip">{{ e.activity }}</span>
+                  <span class="status" [class.arch]="e.status === 'ARCHIVED'"
+                    [class.draft]="e.status !== 'ARCHIVED'">{{ pubStatus(e) }}</span>
+                </div>
+                <div class="mbody">
+                  <span class="mtitle" (click)="openEventById(e.id)">{{ e.title }}</span>
+                  <span class="mmeta">{{ date(e) }}</span>
+                  <span class="mmeta">{{ categoryOf(e) }}</span>
+                </div>
+                <div class="mfoot">
+                  <!-- Pas de bascule de publication : un événement privé n'est jamais publié (ESUB-009). -->
+                  <span class="private-tag">🔒 Privé</span>
+                  <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                    @if (e.status !== 'ARCHIVED') {
+                      <button class="btn btn-sm btn-icon" title="Modifier — corriger cet événement"
+                        aria-label="Modifier — corriger cet événement" (click)="editPrivate(e)">
+                        <app-icon name="edit" />
+                      </button>
+                    }
+                    <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                      aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                      <app-icon name="duplicate" />
+                    </button>
+                    @if (e.status === 'ARCHIVED') {
+                      <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                        [disabled]="busyRow() === e.id" (click)="rowAction(e, 'restore')">
+                        <app-icon name="restore" />
+                      </button>
+                    } @else {
+                      <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                        [disabled]="busyRow() === e.id" (click)="rowAction(e, 'archive')">
+                        <app-icon name="archive" />
+                      </button>
+                    }
+                  </span>
+                </div>
+              </article>
+            }
+          </div>
         } @else {
           <app-data-table
             [columns]="privateColumns"
@@ -284,6 +377,75 @@ export class SubmitEventComponent implements OnInit {
   readonly inAnalysis = computed(() =>
     this.submissions().filter((s) => !['COMPLETED', 'FAILED', 'READY_FOR_VALIDATION'].includes(s.status)),
   );
+
+  // --- Affichage de la liste : cartes ou tableau, au choix de l'utilisateur ---
+
+  private static readonly VIEW_KEY = 'ef-private-events-view';
+  readonly view = signal<'cards' | 'table'>(SubmitEventComponent.readView());
+  readonly sortKey = signal<PrivateSortKey>('startsAt');
+  readonly sortDir = signal<'asc' | 'desc'>('asc');
+
+  /** Dégradés festifs (déclinés de la marque) pour la couverture d'un événement sans image. */
+  private static readonly PLACEHOLDERS = [
+    'linear-gradient(135deg, #f97316, #ec4899)',
+    'linear-gradient(135deg, #8b5cf6, #6366f1)',
+    'linear-gradient(135deg, #ec4899, #8b5cf6)',
+    'linear-gradient(135deg, #6366f1, #06b6d4)',
+    'linear-gradient(135deg, #f59e0b, #ef4444)',
+  ];
+
+  private static readView(): 'cards' | 'table' {
+    try {
+      return localStorage.getItem(SubmitEventComponent.VIEW_KEY) === 'cards' ? 'cards' : 'table';
+    } catch {
+      return 'table';
+    }
+  }
+
+  setView(view: 'cards' | 'table'): void {
+    this.view.set(view);
+    try {
+      localStorage.setItem(SubmitEventComponent.VIEW_KEY, view);
+    } catch {
+      /* stockage indisponible : la préférence reste en mémoire pour la session. */
+    }
+  }
+
+  toggleDir(): void {
+    this.sortDir.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+  }
+
+  /**
+   * Tri de la vue cartes. La liste des événements privés est chargée en entier côté client (elle
+   * est propre à un seul utilisateur) : le tri se fait donc en mémoire, comme celui d'`app-data-table`
+   * en vue tableau.
+   */
+  readonly sortedEvents = computed(() => {
+    const key = this.sortKey();
+    const factor = this.sortDir() === 'asc' ? 1 : -1;
+    return [...this.events()].sort((a, b) => {
+      const left = key === 'startsAt' ? a.startsAt : key === 'title' ? a.title : a.status;
+      const right = key === 'startsAt' ? b.startsAt : key === 'title' ? b.title : b.status;
+      return String(left ?? '').localeCompare(String(right ?? ''), 'fr') * factor;
+    });
+  });
+
+  /** Libellé de statut affiché sur la couverture. Un événement privé n'est jamais « publié ». */
+  pubStatus(e: EventDto): string {
+    return e.status === 'ARCHIVED' ? 'Archivé' : 'Brouillon';
+  }
+
+  /** Fond de la couverture : 1ʳᵉ image de l'événement, sinon dégradé festif déterministe. */
+  coverBg(e: EventDto): string {
+    const image = e.media?.find((m) => m.contentType?.startsWith('image/')) ?? e.media?.[0];
+    if (image) {
+      return `center / cover no-repeat url("${image.url}")`;
+    }
+    let hash = 0;
+    for (const ch of e.id) hash = (hash + ch.charCodeAt(0)) | 0;
+    const list = SubmitEventComponent.PLACEHOLDERS;
+    return list[Math.abs(hash) % list.length];
+  }
 
   // Colonnes du tableau « Mes événements » (tri/recherche/pagination via app-data-table).
   readonly privateColumns: DataColumn[] = [
@@ -546,7 +708,11 @@ export class SubmitEventComponent implements OnInit {
   }
 
   openEvent(row: Record<string, unknown>): void {
-    void this.router.navigate(['/events', String(row['id'])]);
+    this.openEventById(String(row['id']));
+  }
+
+  openEventById(id: string): void {
+    void this.router.navigate(['/events', id]);
   }
 
   rowAction(e: EventDto, action: 'archive' | 'restore'): void {
