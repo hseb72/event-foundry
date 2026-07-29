@@ -27,9 +27,16 @@ import { ActivityDto } from '../../core/models';
       .grid { display: grid; gap: 1rem; }
       .row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
       .members { width: 100%; border-collapse: collapse; margin-top: 0.6rem; }
-      .members th, .members td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.88rem; }
-      .fn { font-size: 0.75rem; padding: 0.05rem 0.45rem; border-radius: 999px; background: rgba(255,255,255,0.1); }
-      .muted { opacity: 0.75; font-size: 0.85rem; }
+      /* Tokens neutres uniquement (UISPEC.13) : les valeurs en dur supposaient un fond sombre et
+         s'effaçaient en thème clair (séparateurs invisibles, pastilles blanches sur blanc). */
+      .members th, .members td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+      .members th { color: var(--muted); font-weight: 600; }
+      .fn { font-size: 0.75rem; padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+      /* Bouton d'activité couverte : l'état sélectionné suit l'expérience active. */
+      .activity { font-size: 0.75rem; padding: 0.1rem 0.55rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
+      .activity.on { background: var(--exp); border-color: var(--exp); color: var(--exp-contrast, #fff); }
+      .activity:disabled { cursor: not-allowed; opacity: 0.55; }
+      .muted { color: var(--muted); font-size: 0.85rem; }
       select, input { }
       .danger { border-color: var(--red); color: var(--red); }
     `,
@@ -71,7 +78,7 @@ import { ActivityDto } from '../../core/models';
           </div>
 
           @if (configOrg() === org.id && info(); as gi) {
-            <div class="grid" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:0.8rem">
+            <div class="grid" style="border-top:1px solid var(--border);padding-top:0.8rem">
               <h3 style="font-size:0.85rem;margin:0">Informations générales</h3>
               <div class="row"><label class="muted" style="width:120px">Nom</label>
                 <input class="input" [(ngModel)]="gi.name" [disabled]="!canManage(org)" /></div>
@@ -91,8 +98,7 @@ import { ActivityDto } from '../../core/models';
               <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Activités couvertes</h3>
               <div class="row">
                 @for (a of activities(); track a.id) {
-                  <button class="fn" [style.opacity]="selected().has(a.id) ? '1' : '0.5'"
-                    [style.background]="selected().has(a.id) ? 'rgba(219,39,119,0.35)' : 'rgba(255,255,255,0.1)'"
+                  <button type="button" class="activity" [class.on]="selected().has(a.id)"
                     [disabled]="!canManage(org)" (click)="toggleActivity(a.id)">{{ a.name }}</button>
                 }
               </div>

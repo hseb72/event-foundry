@@ -375,7 +375,7 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
             </ul>
           }
 
-          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:1rem 0" />
+          <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0" />
           <h3 style="font-size:0.9rem;margin:0 0 0.4rem;color:var(--red)">Supprimer mon compte</h3>
           <p class="muted" style="margin:0 0 0.6rem;font-size:0.82rem">
             Action irréversible : vos données personnelles sont effacées (anonymisation). Les

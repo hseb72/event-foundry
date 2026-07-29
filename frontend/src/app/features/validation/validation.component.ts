@@ -38,7 +38,7 @@ import { EventFormComponent } from '../../shared/event-form.component';
         padding: 0.7rem 0.8rem;
         border: 1px solid var(--border);
         border-radius: 10px;
-        background: var(--card, #fff);
+        background: var(--surface);
         cursor: pointer;
       }
       .item.selected {

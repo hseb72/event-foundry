@@ -21,7 +21,7 @@ import { GeoImportApi, GeoImportStatus } from '../../core/api/geo-import.service
         padding: 0.5rem 0.9rem;
         border: 1px solid var(--border);
         border-radius: 999px;
-        background: var(--card, #fff);
+        background: var(--surface);
         cursor: pointer;
         font-weight: 500;
       }

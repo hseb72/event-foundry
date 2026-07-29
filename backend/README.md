@@ -71,6 +71,35 @@ Découverte, la recherche, le planning, la vue Organizer et la page de garde pub
 - Aucune image n'est attachée (les médias vivent dans MinIO) : les cartes affichent le **dégradé
   festif de repli**, conforme à la charte UISPEC.13.
 
+## Règles de routage des Cases (jeu de départ)
+
+```bash
+npm run cases:rules              # installe le jeu de départ (idempotent)
+npm run cases:rules -- --reset   # retire ce jeu (les règles créées à la main sont conservées)
+```
+
+Huit règles couvrant les nuances que le **catalogue déterministe** (`case-catalog.ts`) ne peut pas
+exprimer : croisements de critères (origine, rattachement à un événement, confiance IA) et priorités
+contextuelles. Les règles qui ne feraient que répéter le routage par défaut sont volontairement
+absentes.
+
+| Ordre | Règle | Destination |
+|-------|-------|-------------|
+| 10 | Abus visant un événement publié | MODERATION · CRITICAL |
+| 20 | Demande RGPD (délais légaux) | COMPLIANCE · CRITICAL |
+| 30 | Incident technique constaté en interne | BACKEND_SUPPORT · CRITICAL |
+| 40 | IA — confiance très faible (< 0,35) | AI_OPERATIONS · CRITICAL |
+| 50 | IA — confiance faible (< 0,6) | AI_OPERATIONS · HIGH |
+| 60 | Correction de données sur un événement | MODERATION · MEDIUM |
+| 70 | Support d'un organisateur | FRONTEND_SUPPORT · HIGH |
+| 80 | Facturation d'un organisateur | FINANCE · HIGH |
+
+Évaluation par `orderIndex` croissant, **première règle applicable gagnante**, index espacés de 10
+pour insérer sans renuméroter. Le **préjudice et le légal passent avant la qualité d'extraction IA** :
+un signalement d'abus assorti d'une confiance faible reste en modération. Sans aucune règle, le
+routage par défaut reste garanti (CASE-012). Tout est modifiable à chaud depuis la console Operator
+(Dossiers → Règles de routage).
+
 ## Authentification (EPIC 2)
 
 RBAC par JWT. Guards globaux : `JwtAuthGuard` (authentifie, sauf routes `@Public()`) puis
