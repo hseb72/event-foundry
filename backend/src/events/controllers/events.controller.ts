@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -9,14 +10,25 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../auth/types/authenticated-user';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { UpdateEventDto } from '../dto/update-event.dto';
 import { EventEditDto } from '../dto/event-edit.dto';
+import { EventMediaDto, MAX_MEDIA_BYTES } from '../dto/event-media.dto';
 import { EventResponseDto } from '../dto/event-response.dto';
 import { EventStatusEventDto } from '../dto/event-status-event.dto';
 import { PaginatedEventsResponseDto } from '../dto/paginated-events-response.dto';
@@ -165,6 +177,35 @@ export class EventsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<EventResponseDto> {
     return EventMapper.toResponse(await this.service.restorePrivate(id, user.userId));
+  }
+
+  /**
+   * Ajoute une image à un de mes événements privés (FSPEC.22 §15). Aucune permission `event.update`
+   * requise : illustrer sa propre donnée personnelle est une action self-service, garde de propriété
+   * à l'appui — comme la création, la correction et l'archivage d'un événement privé.
+   */
+  @Post('me/private/:id/media')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_MEDIA_BYTES } }))
+  @ApiCreatedResponse({ type: EventMediaDto })
+  uploadPrivateMedia(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<EventMediaDto> {
+    return this.mediaService.uploadToOwnPrivate(id, user.userId, file);
+  }
+
+  /** Retire une image d'un de mes événements privés. Même garde de propriété que l'ajout. */
+  @Delete('me/private/:id/media/:mediaId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiNoContentResponse({ description: 'Image retirée.' })
+  removePrivateMedia(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('mediaId', ParseUUIDPipe) mediaId: string,
+  ): Promise<void> {
+    return this.mediaService.removeFromOwnPrivate(id, mediaId, user.userId);
   }
 
   /** Fiche d'un Event. Un événement privé n'est lisible que par son créateur (FSPEC.22 §15). */

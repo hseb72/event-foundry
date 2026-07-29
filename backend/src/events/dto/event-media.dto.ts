@@ -14,3 +14,6 @@ export class EventMediaDto {
   @ApiProperty()
   position!: number;
 }
+
+/** Taille maximale d'une image de galerie (10 Mo) — commune à toutes les routes d'upload. */
+export const MAX_MEDIA_BYTES = 10 * 1024 * 1024;

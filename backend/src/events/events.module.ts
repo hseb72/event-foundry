@@ -29,6 +29,8 @@ import { EventCoversModule } from '../event-covers/event-covers.module';
     PublishingService,
     OrganizerNotifyService,
   ],
-  exports: [EventsService],
+  // EventMediaService est exporté pour la validation d'un candidat : l'affiche importée devient
+  // la couverture de l'événement créé (FSPEC.22).
+  exports: [EventsService, EventMediaService],
 })
 export class EventsModule {}

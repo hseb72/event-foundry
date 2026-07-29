@@ -126,6 +126,7 @@ export class EventsApi {
     );
   }
 
+  /** Ajoute une image à un événement du catalogue (droit `event.update`). */
   uploadMedia(id: string, file: File): Observable<EventMediaDto> {
     const form = new FormData();
     form.append('file', file);
@@ -134,5 +135,19 @@ export class EventsApi {
 
   deleteMedia(id: string, mediaId: string): Observable<void> {
     return this.http.delete<void>(`${API_BASE}/events/${id}/media/${mediaId}`);
+  }
+
+  /**
+   * Ajoute une image à **son propre** événement privé : route self-service, autorisée par la
+   * propriété et non par `event.update` (FSPEC.22 §15).
+   */
+  uploadPrivateMedia(id: string, file: File): Observable<EventMediaDto> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<EventMediaDto>(`${API_BASE}/events/me/private/${id}/media`, form);
+  }
+
+  deletePrivateMedia(id: string, mediaId: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE}/events/me/private/${id}/media/${mediaId}`);
   }
 }

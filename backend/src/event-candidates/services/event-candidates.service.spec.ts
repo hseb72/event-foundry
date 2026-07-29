@@ -2,6 +2,7 @@ import { ForbiddenException } from '@nestjs/common';
 import type { CreateEventDto } from '../../events/dto/create-event.dto';
 import { CasesService } from '../../cases/cases.service';
 import { ModerationTermsService } from '../../moderation/moderation-terms.service';
+import { EventMediaService } from '../../events/services/event-media.service';
 import { EventsService } from '../../events/services/events.service';
 import {
   InvalidCandidateTransitionException,
@@ -16,8 +17,10 @@ describe('EventCandidatesService', () => {
     reject: jest.Mock;
     createEventAndValidate: jest.Mock;
     provenance: jest.Mock;
+    importSource: jest.Mock;
   };
   let eventsService: { buildValidatedEventData: jest.Mock; hasPublicDuplicate: jest.Mock };
+  let eventMedia: { attachImportSource: jest.Mock };
   let cases: { open: jest.Mock };
   let moderationTerms: { firstMatch: jest.Mock };
   let service: EventCandidatesService;
@@ -29,16 +32,19 @@ describe('EventCandidatesService', () => {
       reject: jest.fn(),
       createEventAndValidate: jest.fn(),
       provenance: jest.fn().mockResolvedValue({ createdById: 'user-1', organizationId: null }),
+      importSource: jest.fn().mockResolvedValue(null),
     };
     eventsService = {
       buildValidatedEventData: jest.fn(),
       hasPublicDuplicate: jest.fn().mockResolvedValue(false),
     };
+    eventMedia = { attachImportSource: jest.fn().mockResolvedValue(undefined) };
     cases = { open: jest.fn().mockResolvedValue({ id: 'case-1', reference: 'C-ABCD1234' }) };
     moderationTerms = { firstMatch: jest.fn().mockResolvedValue(null) };
     service = new EventCandidatesService(
       repo as unknown as EventCandidateRepository,
       eventsService as unknown as EventsService,
+      eventMedia as unknown as EventMediaService,
       cases as unknown as CasesService,
       moderationTerms as unknown as ModerationTermsService,
     );

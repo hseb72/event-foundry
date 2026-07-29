@@ -12,15 +12,14 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiCreatedResponse, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
-import { EventMediaDto } from '../dto/event-media.dto';
+import { EventMediaDto, MAX_MEDIA_BYTES } from '../dto/event-media.dto';
 import { EventMediaService } from '../services/event-media.service';
 
-/** Taille maximale d'une image de galerie (10 Mo). */
-const MAX_MEDIA_BYTES = 10 * 1024 * 1024;
-
 /**
- * Médias (images) d'un Event. Écritures réservées à `event.update` (Organizer). Le fichier est
- * stocké dans MinIO ; l'API ne renvoie que des URL présignées temporaires.
+ * Médias (images) d'un Event du **catalogue**. Écritures réservées à `event.update` (Organizer) :
+ * il s'agit de curation d'une donnée partagée. Un événement **privé** s'illustre par les routes
+ * `events/me/private/:id/media`, où la propriété tient lieu d'autorisation (FSPEC.22 §15).
+ * Le fichier est stocké dans MinIO ; l'API ne renvoie que des URL présignées temporaires.
  */
 @ApiTags('events')
 @ApiBearerAuth()

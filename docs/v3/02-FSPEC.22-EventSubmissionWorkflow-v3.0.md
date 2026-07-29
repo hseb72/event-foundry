@@ -295,7 +295,26 @@ Spécificités « privé » du tableau Explorer (la doc prime — ESUB-009) :
 - **aucune colonne « Publication »** : un événement privé n'est jamais publié au catalogue (ESUB-009),
   l'interrupteur n'aurait aucun sens à cet endroit ;
 - l'**Archivage** (et sa restauration) est une **action personnelle** sur ses propres événements privés
-  (garde de propriété : créateur + `PRIVATE`) ; sans impact catalogue, puisqu'un privé n'y figure jamais.
+  (garde de propriété : créateur + `PRIVATE`) ; sans impact catalogue, puisqu'un privé n'y figure jamais ;
+- l'**illustration** (ajout et retrait d'images) d'un événement privé est également **self-service** :
+  elle est autorisée par la **propriété**, pas par le droit `event.update` — celui-ci reste réservé à la
+  curation du catalogue partagé, qu'un Explorer ne détient pas. Sans cela, un Explorer ne pourrait pas
+  illustrer son propre événement (ESUB-017, routes `events/me/private/{id}/media`).
+
+### Reprise de l'affiche importée (ESUB-016)
+
+Un événement issu d'un import **image** reçoit ce document comme **première image** de sa galerie.
+Une affiche décrivant **plusieurs** événements les illustre tous : chaque événement validé depuis ce
+document en reçoit **sa propre copie**. Conséquences voulues :
+
+- retirer l'image d'un événement n'atteint ni le document d'origine, ni les autres événements issus du
+  même document ;
+- le document source de l'import reste **conservé tel quel** (traçabilité) : la copie est indépendante
+  de son cycle de vie.
+
+La reprise est *best-effort* : un stockage indisponible ne remet jamais en cause une validation déjà
+acquise, l'événement existe simplement sans image. Un import **texte, URL ou fichier structuré** ne
+produit aucune image — il n'y a pas de document illustrable.
 
 Symétriquement (expérience Organizer) : une **seule** entrée « Nos événements » regroupe la soumission
 (onglets Documents, Texte, URL, Fichiers structurés, Création), les soumissions en cours d'analyse, la
@@ -400,6 +419,8 @@ Les éléments suivants sont historisés :
 | ESUB-013 | L'origine d'une soumission est figée à la création : Organizer → organisation active ; Explorer → personnelle (`null`). |
 | ESUB-014 | Tout agent d'une organisation peut agir sur les soumissions, brouillons et événements issus de cette organisation ; un brouillon personnel reste réservé à son auteur. |
 | ESUB-015 | Dans l'expérience Organizer, chaque inventaire affiche le pseudo de l'auteur ; cette information n'est jamais exposée en Explorer ni en découverte publique. |
+| ESUB-016 | Un événement issu d'un import **image** reprend ce document comme **première image** de sa galerie. Si le document décrit plusieurs événements, **chacun** en reçoit sa propre copie ; l'original de l'import et les autres événements ne sont jamais affectés par le retrait de l'une d'elles. |
+| ESUB-017 | L'illustration d'un événement **privé** (ajout / retrait d'images) est autorisée par la **propriété**, non par le droit `event.update` réservé à la curation du catalogue. |
 
 ---
 

@@ -58,6 +58,15 @@ export class MinioService implements OnModuleInit {
     await this.client.removeObject(this.bucket, key);
   }
 
+  /**
+   * Duplique un objet **côté serveur** (aucun transfert par l'application). Permet de reprendre un
+   * document déjà stocké sous une nouvelle clé sans jamais toucher à l'original — le document source
+   * d'un import reste conservé tel quel (règle de traçabilité).
+   */
+  async copyObject(sourceKey: string, destinationKey: string): Promise<void> {
+    await this.client.copyObject(this.bucket, destinationKey, `/${this.bucket}/${sourceKey}`);
+  }
+
   /** URL temporaire de lecture directe (pour affichage `<img>` sans en-tête d'auth). */
   presignedGetUrl(key: string, expirySeconds = 3600): Promise<string> {
     return this.client.presignedGetObject(this.bucket, key, expirySeconds);

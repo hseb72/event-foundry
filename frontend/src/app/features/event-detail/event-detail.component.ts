@@ -401,17 +401,17 @@ import { eventCoverBackground } from '../../shared/event-cover';
           }
         }
 
-        @if (event.media.length || canUpdate()) {
+        @if (event.media.length || canManageMedia()) {
           <div class="gallery">
             @for (m of event.media; track m.id) {
               <figure class="shot">
                 <img [src]="m.url" [alt]="event.title" />
-                @if (canUpdate()) {
+                @if (canManageMedia()) {
                   <button class="rm" title="Supprimer" (click)="removeMedia(m.id)">×</button>
                 }
               </figure>
             }
-            @if (canUpdate()) {
+            @if (canManageMedia()) {
               <label class="upload">
                 <input type="file" accept="image/*" hidden (change)="onFile($event)" />
                 <span>+ Ajouter une image</span>
@@ -596,6 +596,15 @@ export class EventDetailComponent implements OnInit {
     return this.auth.hasPermission('event.update');
   }
 
+  /**
+   * Vrai si la galerie est modifiable depuis cette fiche. Un événement **privé** appartient à celui
+   * qui le consulte — la fiche ne lui est servie que dans ce cas (garde serveur) : l'illustrer est
+   * self-service, sans le droit `event.update` réservé à la curation du catalogue.
+   */
+  canManageMedia(): boolean {
+    return this.event?.visibility === 'PRIVATE' ? true : this.canUpdate();
+  }
+
   /** Vrai si l'événement peut être corrigé depuis cette fiche (droit + statut éditable). */
   canEditHere(): boolean {
     const event = this.event;
@@ -652,24 +661,35 @@ export class EventDetailComponent implements OnInit {
   onFile(evt: Event): void {
     const input = evt.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file || !this.event) {
+    const event = this.event;
+    if (!file || !event) {
       return;
     }
-    this.eventsApi.uploadMedia(this.event.id, file).subscribe((media) => {
-      this.event?.media.push(media);
+    // Un événement privé passe par la route self-service (propriété), les autres par la curation.
+    const request =
+      event.visibility === 'PRIVATE'
+        ? this.eventsApi.uploadPrivateMedia(event.id, file)
+        : this.eventsApi.uploadMedia(event.id, file);
+    request.subscribe((media) => {
+      event.media.push(media);
+      // Première image ajoutée : elle devient la couverture, sans recharger la fiche.
+      event.coverUrl ??= media.url;
       input.value = '';
     });
   }
 
   removeMedia(mediaId: string): void {
-    if (!this.event) {
+    const event = this.event;
+    if (!event) {
       return;
     }
-    const eventId = this.event.id;
-    this.eventsApi.deleteMedia(eventId, mediaId).subscribe(() => {
-      if (this.event) {
-        this.event.media = this.event.media.filter((m) => m.id !== mediaId);
-      }
+    const request =
+      event.visibility === 'PRIVATE'
+        ? this.eventsApi.deletePrivateMedia(event.id, mediaId)
+        : this.eventsApi.deleteMedia(event.id, mediaId);
+    request.subscribe(() => {
+      event.media = event.media.filter((m) => m.id !== mediaId);
+      event.coverUrl = event.media.find((m) => m.contentType?.startsWith('image/'))?.url ?? null;
     });
   }
 

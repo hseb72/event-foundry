@@ -58,6 +58,35 @@ export class EventCandidateRepository extends BaseRepository<EventCandidate> {
   }
 
   /**
+   * Document source d'un candidat : l'affiche (ou le fichier) importée dont il est issu. Sert à
+   * reprendre cette image comme couverture de l'événement validé.
+   */
+  importSource(
+    candidateId: string,
+  ): Promise<{ objectKey: string; contentType: string; sizeBytes: number } | null> {
+    return this.prisma.eventCandidate
+      .findUnique({
+        where: { id: candidateId },
+        select: {
+          importJob: {
+            select: {
+              attachment: { select: { storageKey: true, contentType: true, sizeBytes: true } },
+            },
+          },
+        },
+      })
+      .then((row) =>
+        row
+          ? {
+              objectKey: row.importJob.attachment.storageKey,
+              contentType: row.importJob.attachment.contentType,
+              sizeBytes: row.importJob.attachment.sizeBytes,
+            }
+          : null,
+      );
+  }
+
+  /**
    * Provenance d'un candidat (auteur + organisation d'origine) — garde de propriété élargie à
    * l'équipe (FSPEC.22 : tout agent de l'organisation d'origine peut agir sur le brouillon).
    */

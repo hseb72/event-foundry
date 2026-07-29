@@ -4,6 +4,7 @@ import { CasesService } from '../../cases/cases.service';
 import { ModerationTermsService } from '../../moderation/moderation-terms.service';
 import { CreateEventDto } from '../../events/dto/create-event.dto';
 import type { EventWithRefs } from '../../events/entities/event.entity';
+import { EventMediaService } from '../../events/services/event-media.service';
 import { EventsService } from '../../events/services/events.service';
 import { UpdateEventCandidateDto } from '../dto/update-event-candidate.dto';
 import type {
@@ -41,6 +42,7 @@ export class EventCandidatesService {
   constructor(
     private readonly repository: EventCandidateRepository,
     private readonly eventsService: EventsService,
+    private readonly eventMedia: EventMediaService,
     private readonly cases: CasesService,
     private readonly moderationTerms: ModerationTermsService,
   ) {}
@@ -125,7 +127,15 @@ export class EventCandidatesService {
       // l'acteur ; un événement privé personnel (Explorer) reste sans organisation.
       organizationId: canPublish ? actor.activeOrganizationId : null,
     };
-    return this.repository.createEventAndValidate(id, eventData, actor.userId);
+    const event = await this.repository.createEventAndValidate(id, eventData, actor.userId);
+
+    // L'affiche importée illustre l'événement qu'elle décrit. Un même document décrivant plusieurs
+    // événements les illustre donc tous : chacun en reçoit sa propre copie, en première position.
+    const source = await this.repository.importSource(id);
+    if (source) {
+      await this.eventMedia.attachImportSource(event.id, source);
+    }
+    return event;
   }
 
   /**
