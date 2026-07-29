@@ -71,6 +71,26 @@ import {
         border-color: var(--exp);
         color: #fff;
       }
+      /* En-tête d'une section repliable (mêmes codes que la box « Nouvelle soumission »). */
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+      }
+      .section-head label {
+        margin-bottom: 0;
+      }
+      .count {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0.05rem 0.45rem;
+        border-radius: 999px;
+        background: var(--exp);
+        color: var(--exp-contrast, #fff);
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
       .propose {
         margin-top: 0.4rem;
         padding: 0.5rem 0.6rem;
@@ -225,23 +245,40 @@ import {
         </div>
       }
 
+      <!-- Modalités : facultatives et volumineuses (plusieurs dimensions) → section repliable,
+           repliée par défaut. Le compteur reste visible pour ne pas masquer une sélection. -->
       @if (modalityDimensions.length) {
         <div>
-          <label>Modalités <span class="muted">(par dimension)</span></label>
-          @for (dim of modalityDimensions; track dim.id) {
-            @if (dim.modalities.length) {
-              <div style="margin-bottom:0.4rem">
-                <span class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
-                <div class="tags">
-                  @for (m of dim.modalities; track m.id) {
-                    <button type="button" class="tag-chip" [class.on]="model.modalityIds.includes(m.id)"
-                            (click)="toggleModality(m.id)">
-                      {{ m.name }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
+          <div class="section-head">
+            <label>
+              Modalités <span class="muted">(par dimension, facultatif)</span>
+              @if (model.modalityIds.length) {
+                <span class="count">{{ model.modalityIds.length }}</span>
+              }
+            </label>
+            <button type="button" class="btn btn-sm" (click)="modalitiesOpen = !modalitiesOpen"
+                    [attr.aria-expanded]="modalitiesOpen">
+              {{ modalitiesOpen ? '▲ Réduire' : '▼ Étendre' }}
+            </button>
+          </div>
+          @if (modalitiesOpen) {
+            <div style="margin-top:0.5rem">
+              @for (dim of modalityDimensions; track dim.id) {
+                @if (dim.modalities.length) {
+                  <div style="margin-bottom:0.4rem">
+                    <span class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
+                    <div class="tags">
+                      @for (m of dim.modalities; track m.id) {
+                        <button type="button" class="tag-chip" [class.on]="model.modalityIds.includes(m.id)"
+                                (click)="toggleModality(m.id)">
+                          {{ m.name }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
           }
         </div>
       }
@@ -368,6 +405,8 @@ export class EventFormComponent implements OnInit {
   // DATA.01 v2.0 — Axe A (sujets, dépendent de l'activité) + Axe C (modalités groupées par dimension).
   subjects: ReferentialItem[] = [];
   modalityDimensions: ModalityDimensionDto[] = [];
+  /** Section « Modalités » dépliée ? Repliée par défaut : facultative et volumineuse. */
+  modalitiesOpen = false;
   countries: ReferentialItem[] = [];
   // Localisation V3 (chantier §8.1) : sélection par pays + code postal, région dérivée.
   postalCode = '';
