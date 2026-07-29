@@ -22,20 +22,23 @@ import { ModerationApi } from '../../core/api/moderation.service';
   imports: [FormsModule, DatePipe],
   styles: [
     `
+      /* Tokens neutres uniquement (UISPEC.13) : surfaces, bordures et textes suivent le thème —
+         les valeurs en dur restaient sombres en thème clair, d'où un rendu illisible. */
       .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
-      .muted { opacity: 0.75; font-size: 0.85rem; }
+      .muted { color: var(--muted); font-size: 0.85rem; }
       .kpis { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-      .kpi { background: var(--card, #211a2e); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.6rem 1rem; }
-      .kpi b { font-size: 1.4rem; display: block; }
+      .kpi { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 1rem; box-shadow: var(--shadow-sm); }
+      .kpi b { font-size: 1.4rem; display: block; color: var(--text); }
       table { width: 100%; border-collapse: collapse; }
       th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-      th .arr { color: var(--op, var(--exp)); font-size: 0.8em; }
+      th .arr { color: var(--exp); font-size: 0.8em; }
       .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
-      th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 0.85rem; }
-      tr.sel { background: rgba(219,39,119,0.12); }
-      .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255,255,255,0.12); }
-      .crit { background: rgba(239,68,68,0.3); }
-      .entry { font-size: 0.85rem; border-left: 2px solid rgba(255,255,255,0.15); padding-left: 0.6rem; margin-bottom: 0.4rem; }
+      th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+      th { color: var(--muted); font-weight: 600; }
+      tr.sel { background: var(--exp-weak); }
+      .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+      .crit { background: rgba(239, 68, 68, 0.16); color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
+      .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; margin-bottom: 0.4rem; }
       textarea.input { min-height: 60px; }
     `,
   ],
@@ -162,7 +165,7 @@ import { ModerationApi } from '../../core/api/moderation.service';
           @if (actionMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ actionMsg() }}</p> }
 
           <!-- Changement d'état : seulement les transitions possibles + commentaire obligatoire (§11) -->
-          <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+          <div style="margin-top:0.6rem;border-top:1px solid var(--border);padding-top:0.6rem">
             <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Changer l'état</h3>
             @if (d.allowedTransitions?.length) {
               <div class="row">
@@ -183,7 +186,7 @@ import { ModerationApi } from '../../core/api/moderation.service';
           </div>
 
           <!-- Re-router (destinataire / routage incorrect) : motif obligatoire -->
-          <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+          <div style="margin-top:0.6rem;border-top:1px solid var(--border);padding-top:0.6rem">
             <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Re-router (destinataire incorrect)</h3>
             <div class="row">
               <select [(ngModel)]="rerouteDomain">
@@ -200,7 +203,7 @@ import { ModerationApi } from '../../core/api/moderation.service';
           </div>
 
           @if (isModeration(d)) {
-            <div style="margin-top:0.6rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:0.6rem">
+            <div style="margin-top:0.6rem;border-top:1px solid var(--border);padding-top:0.6rem">
               <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Décision de modération</h3>
               <div class="row">
                 <select [(ngModel)]="modDecision">

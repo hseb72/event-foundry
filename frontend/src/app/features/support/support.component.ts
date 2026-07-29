@@ -24,14 +24,17 @@ const USER_TYPES: { value: string; label: string }[] = [
   imports: [FormsModule, DatePipe],
   styles: [
     `
+      /* Tokens neutres uniquement (UISPEC.13) : les valeurs en dur restaient sombres en thème
+         clair (fond de carte quasi noir sous un texte foncé), d'où un rendu illisible. */
       .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
-      .muted { opacity: 0.75; font-size: 0.85rem; }
-      .case { padding: 0.6rem 0.8rem; border-radius: 10px; background: var(--card, #211a2e); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; }
-      .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(255,255,255,0.12); }
+      .muted { color: var(--muted); font-size: 0.85rem; }
+      .case { padding: 0.6rem 0.8rem; border-radius: 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color 0.15s ease; }
+      .case:hover { border-color: var(--exp); }
+      .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
       .field { display: grid; gap: 0.3rem; }
       textarea.input { min-height: 90px; }
       .log { display: grid; gap: 0.4rem; margin-top: 0.6rem; }
-      .entry { font-size: 0.85rem; border-left: 2px solid rgba(255,255,255,0.15); padding-left: 0.6rem; }
+      .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; }
     `,
   ],
   template: `
