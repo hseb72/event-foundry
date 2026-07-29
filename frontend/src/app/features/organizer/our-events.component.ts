@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
 import { EventsApi } from '../../core/api/events.service';
+import { ToastService } from '../../core/toast.service';
 import {
   CreateEventInput,
   EventCandidateDetailDto,
@@ -374,6 +375,7 @@ export class OurEventsComponent implements OnInit {
   private readonly eventsApi = inject(EventsApi);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -453,9 +455,10 @@ export class OurEventsComponent implements OnInit {
         this.busyRow.set(null);
         void this.router.navigate(['/events', copy.id, 'edit']);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busyRow.set(null);
-        this.error.set(err?.error?.message ?? 'La duplication a échoué.');
+        this.error.set('La duplication a échoué.');
+        this.toast.fromHttp('Duplication impossible', err);
       },
     });
   }
@@ -496,9 +499,10 @@ export class OurEventsComponent implements OnInit {
         this.busyRow.set(null);
         void this.router.navigate(['/events', event.id, 'edit']);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busyRow.set(null);
-        this.error.set(err?.error?.message ?? 'La dépublication a échoué.');
+        this.error.set('La dépublication a échoué.');
+        this.toast.fromHttp('Dépublication impossible', err);
       },
     });
   }
@@ -570,11 +574,13 @@ export class OurEventsComponent implements OnInit {
         this.busy.set(false);
         onDone();
         this.message.set("Soumission envoyée : l'analyse est en cours.");
+        this.toast.success('Soumission envoyée', "L'analyse est en cours ; le brouillon apparaîtra ici.");
         this.refresh();
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busy.set(false);
-        this.error.set(err?.error?.message ?? 'La soumission a échoué.');
+        this.error.set('La soumission a échoué.');
+        this.toast.fromHttp('Soumission refusée', err);
       },
     });
   }
@@ -586,11 +592,14 @@ export class OurEventsComponent implements OnInit {
       next: () => {
         this.createBusy.set(false);
         this.createMsg.set('✅ Événement créé (brouillon).');
+        this.toast.success('Événement créé', 'Il est en brouillon : publiez-le quand il est prêt.');
         this.refresh();
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.createBusy.set(false);
-        this.createMsg.set(err?.error?.message ?? 'La création a échoué.');
+        this.createMsg.set((err as { error?: { message?: string } })?.error?.message ?? 'La création a échoué.');
+        // Le formulaire est long : le message posé au-dessus est hors écran au moment du clic.
+        this.toast.fromHttp('Création refusée', err);
       },
     });
   }
@@ -617,14 +626,19 @@ export class OurEventsComponent implements OnInit {
         this.busy.set(false);
         this.selected.set(null);
         this.message.set('Événement validé.');
+        this.toast.success('Brouillon validé', "L'événement rejoint « Nos événements ».");
         this.refresh();
       },
       error: (err: { error?: { code?: string; message?: string } }) => {
         this.busy.set(false);
         if (err?.error?.code === 'SUBMISSION_HELD_FOR_REVIEW') {
-          this.holdNotice.set(err.error.message ?? 'Validation retenue pour vérification.');
+          // Retenue pour revue : l'encadré explicatif reste, le toast signale que rien n'a été créé.
+          const reason = err.error.message ?? 'Validation retenue pour vérification.';
+          this.holdNotice.set(reason);
+          this.toast.info('Validation retenue pour vérification', reason);
         } else {
-          this.error.set(err?.error?.message ?? 'La validation a échoué.');
+          this.error.set('La validation a échoué.');
+          this.toast.fromHttp('Validation refusée', err);
         }
       },
     });
@@ -734,9 +748,10 @@ export class OurEventsComponent implements OnInit {
         this.applyRowUpdate(updated);
         this.busyRow.set(null);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busyRow.set(null);
-        this.error.set(err?.error?.message ?? "L'action a échoué.");
+        this.error.set("L'action a échoué.");
+        this.toast.fromHttp('Publication impossible', err);
       },
     });
   }
@@ -746,7 +761,10 @@ export class OurEventsComponent implements OnInit {
     const call = action === 'archive' ? this.eventsApi.archive(e.id) : this.eventsApi.restore(e.id);
     call.subscribe({
       next: (updated) => this.applyRowUpdate(updated),
-      error: (err: { error?: { message?: string } }) => this.error.set(err?.error?.message ?? "L'action a échoué."),
+      error: (err: unknown) => {
+        this.error.set("L'action a échoué.");
+        this.toast.fromHttp("L'action a échoué", err);
+      },
     });
   }
 

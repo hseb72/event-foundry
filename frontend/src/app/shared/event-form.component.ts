@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReferenceDataApi } from '../core/api/reference-data.service';
 import { IdentityService } from '../core/api/identity.service';
@@ -12,6 +12,7 @@ import {
   OrganizationAddress,
   ReferentialItem,
 } from '../core/models';
+import { ToastService } from '../core/toast.service';
 
 /**
  * Formulaire d'Event réutilisé par la création manuelle et la validation d'un candidat.
@@ -415,6 +416,7 @@ export class EventFormComponent implements OnInit {
   selectedRegionName = '';
 
   error = '';
+  private readonly toast = inject(ToastService);
 
   // Levier 1 : libellés extraits mais absents des référentiels (présents-mais-non-résolus).
   unresolved: {
@@ -643,6 +645,9 @@ export class EventFormComponent implements OnInit {
     this.error = '';
     if (!this.model.title.trim() || !this.model.activityId || !this.model.startsAt) {
       this.error = 'Titre, activité et date de début sont obligatoires.';
+      // Sans ce signal, un clic sur « Enregistrer » ne produirait rien de visible depuis le bas
+      // d'un formulaire long : le champ manquant est peut-être plusieurs écrans plus haut.
+      this.toast.error('Formulaire incomplet', this.error);
       return;
     }
 

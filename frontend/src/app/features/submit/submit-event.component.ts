@@ -15,6 +15,7 @@ import {
   ImportResponse,
 } from '../../core/models';
 import { EventsApi } from '../../core/api/events.service';
+import { ToastService } from '../../core/toast.service';
 import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
 import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
@@ -338,6 +339,7 @@ export class SubmitEventComponent implements OnInit {
   private readonly eventsApi = inject(EventsApi);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
 
   readonly submitOpen = signal(false);
   readonly tab = signal<SubmitTab>('document');
@@ -474,12 +476,14 @@ export class SubmitEventComponent implements OnInit {
       next: (copy) => {
         this.busyRow.set(null);
         this.message.set('Copie créée : ajustez-la puis enregistrez.');
+        this.toast.success('Copie créée', 'Ajustez-la puis enregistrez.');
         this.refresh();
         this.loadForEdit(copy.id);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busyRow.set(null);
-        this.error.set(err?.error?.message ?? 'La duplication a échoué.');
+        this.error.set('La duplication a échoué.');
+        this.toast.fromHttp('Duplication impossible', err);
       },
     });
   }
@@ -513,10 +517,11 @@ export class SubmitEventComponent implements OnInit {
         this.formSource.set(source);
         this.formPending.set(false);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.formPending.set(false);
         this.editingId.set(null);
-        this.error.set(err?.error?.message ?? "L'événement est introuvable.");
+        this.error.set("L'événement est introuvable.");
+        this.toast.fromHttp('Ouverture impossible', err, "L'événement est introuvable.");
       },
     });
   }
@@ -572,11 +577,13 @@ export class SubmitEventComponent implements OnInit {
         this.busy.set(false);
         onDone();
         this.message.set("Soumission envoyée : l'analyse est en cours.");
+        this.toast.success('Soumission envoyée', "L'analyse est en cours ; le brouillon apparaîtra ici.");
         this.refresh();
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busy.set(false);
-        this.error.set(err?.error?.message ?? 'La soumission a échoué.');
+        this.error.set('La soumission a échoué.');
+        this.toast.fromHttp('Soumission refusée', err);
       },
     });
   }
@@ -599,16 +606,23 @@ export class SubmitEventComponent implements OnInit {
           editingId ? '✅ Modifications enregistrées.' : '✅ Événement privé créé.',
         );
         this.message.set(editingId ? 'Événement privé mis à jour.' : 'Événement privé créé.');
+        this.toast.success(
+          editingId ? 'Modifications enregistrées' : 'Événement privé créé',
+          editingId ? undefined : 'Il apparaît dans « Mes événements ».',
+        );
         // L'intention est consommée : le formulaire repart vierge pour la saisie suivante.
         this.formSource.set(null);
         this.editingId.set(null);
         this.refresh();
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.createBusy.set(false);
+        const message = (err as { error?: { message?: string } })?.error?.message;
         this.createMsg.set(
-          err?.error?.message ?? (editingId ? "L'enregistrement a échoué." : 'La création a échoué.'),
+          message ?? (editingId ? "L'enregistrement a échoué." : 'La création a échoué.'),
         );
+        // Le formulaire est long : le message posé au-dessus est hors écran au moment du clic.
+        this.toast.fromHttp(editingId ? 'Enregistrement refusé' : 'Création refusée', err);
       },
     });
   }
@@ -635,14 +649,19 @@ export class SubmitEventComponent implements OnInit {
         this.busy.set(false);
         this.selected.set(null);
         this.message.set('Événement privé créé.');
+        this.toast.success('Brouillon validé', 'Il devient un événement privé.');
         this.refresh();
       },
       error: (err: { error?: { code?: string; message?: string } }) => {
         this.busy.set(false);
         if (err?.error?.code === 'SUBMISSION_HELD_FOR_REVIEW') {
-          this.holdNotice.set(err.error.message ?? 'Validation retenue pour vérification.');
+          // Retenue pour revue : l'encadré explicatif reste, le toast signale que rien n'a été créé.
+          const reason = err.error.message ?? 'Validation retenue pour vérification.';
+          this.holdNotice.set(reason);
+          this.toast.info('Validation retenue pour vérification', reason);
         } else {
-          this.error.set(err?.error?.message ?? 'La validation a échoué.');
+          this.error.set('La validation a échoué.');
+          this.toast.fromHttp('Validation refusée', err);
         }
       },
     });
@@ -656,7 +675,10 @@ export class SubmitEventComponent implements OnInit {
         this.selected.set(null);
         this.refresh();
       },
-      error: () => this.busy.set(false),
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.toast.fromHttp('Rejet impossible', err);
+      },
     });
   }
 
@@ -709,9 +731,10 @@ export class SubmitEventComponent implements OnInit {
         this.events.update((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
         this.busyRow.set(null);
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: unknown) => {
         this.busyRow.set(null);
-        this.error.set(err?.error?.message ?? "L'action a échoué.");
+        this.error.set("L'action a échoué.");
+        this.toast.fromHttp("L'action a échoué", err);
       },
     });
   }

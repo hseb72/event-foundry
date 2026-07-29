@@ -1,7 +1,8 @@
 import { SlicePipe } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
+import { ToastService } from '../../core/toast.service';
 import {
   CreateEventInput,
   EventCandidateDetailDto,
@@ -246,6 +247,8 @@ export class ValidationComponent implements OnInit {
     });
   }
 
+  private readonly toast = inject(ToastService);
+
   onValidate(input: CreateEventInput): void {
     if (!this.selected) return;
     this.busy = true;
@@ -254,6 +257,7 @@ export class ValidationComponent implements OnInit {
     this.api.validate(this.selected.id, input).subscribe({
       next: () => {
         this.busy = false;
+        this.toast.success('Brouillon validé', "L'événement a été créé.");
         this.reload();
       },
       error: (err) => {
@@ -262,8 +266,10 @@ export class ValidationComponent implements OnInit {
         // candidat reste modifiable. On l'affiche comme une mise en attente plutôt qu'une erreur.
         if (err?.error?.code === 'SUBMISSION_HELD_FOR_REVIEW') {
           this.holdNotice = err.error.message;
+          this.toast.info('Validation retenue pour vérification', err.error.message);
         } else {
-          this.actionError = err?.error?.message ?? 'La validation a échoué.';
+          this.actionError = 'La validation a échoué.';
+          this.toast.fromHttp('Validation refusée', err);
         }
       },
     });
@@ -276,11 +282,13 @@ export class ValidationComponent implements OnInit {
     this.api.reject(this.selected.id).subscribe({
       next: () => {
         this.busy = false;
+        this.toast.success('Brouillon rejeté');
         this.reload();
       },
       error: (err) => {
         this.busy = false;
-        this.actionError = err?.error?.message ?? 'Le rejet a échoué.';
+        this.actionError = 'Le rejet a échoué.';
+        this.toast.fromHttp('Rejet impossible', err);
       },
     });
   }
