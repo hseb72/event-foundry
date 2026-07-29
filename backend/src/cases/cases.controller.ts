@@ -16,7 +16,14 @@ import { CasePriority, CaseStatus, type Case } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user';
-import { CASE_DOMAINS, CASE_TYPES, workQueueFor, type CaseDomain, type CaseOrigin } from './case-catalog';
+import {
+  CASE_DOMAINS,
+  CASE_ORIGINS,
+  CASE_TYPES,
+  workQueueFor,
+  type CaseDomain,
+  type CaseOrigin,
+} from './case-catalog';
 import { CASE_SORT_FIELDS, type CaseSortField } from './cases.repository';
 import { CasesService } from './cases.service';
 import type { CaseRoutingRule } from '@prisma/client';
@@ -65,6 +72,7 @@ export class CasesController {
   catalog(): {
     types: string[];
     domains: string[];
+    origins: string[];
     workQueues: string[];
     statuses: string[];
     priorities: string[];
@@ -72,6 +80,9 @@ export class CasesController {
     return {
       types: [...CASE_TYPES],
       domains: [...CASE_DOMAINS],
+      // Origines exposées pour l'édition des règles de routage (§14) : le critère `origins`
+      // s'appuie sur ces valeurs, qui doivent être proposées plutôt que saisies à la main.
+      origins: [...CASE_ORIGINS],
       workQueues: CASE_DOMAINS.map((d: CaseDomain) => workQueueFor(d)),
       statuses: Object.values(CaseStatus),
       priorities: Object.values(CasePriority),

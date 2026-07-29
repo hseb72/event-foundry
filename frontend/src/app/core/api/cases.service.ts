@@ -44,6 +44,8 @@ export interface PaginatedCases {
 export interface CaseCatalog {
   types: string[];
   domains: string[];
+  /** Origines possibles d'une Case (critère `origins` des règles de routage). */
+  origins: string[];
   workQueues: string[];
   statuses: string[];
   priorities: string[];

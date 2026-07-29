@@ -40,6 +40,12 @@ import { ModerationApi } from '../../core/api/moderation.service';
       .crit { background: rgba(239, 68, 68, 0.16); color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
       .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; margin-bottom: 0.4rem; }
       textarea.input { min-height: 60px; }
+      /* Édition d'une règle de routage : un bloc par critère, valeurs proposées (jamais saisies). */
+      .rule-crit { display: grid; gap: 0.35rem; margin-bottom: 0.6rem; }
+      .rule-crit-label { font-size: 0.8rem; font-weight: 600; }
+      .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+      .chip { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.8rem; cursor: pointer; }
+      .chip.on { background: var(--exp); border-color: var(--exp); color: var(--exp-contrast, #fff); }
     `,
   ],
   template: `
@@ -114,13 +120,13 @@ import { ModerationApi } from '../../core/api/moderation.service';
         @if (showRules()) {
           <p class="muted">Évaluées par ordre croissant ; la première applicable l'emporte. Sinon, repli sur le routage par défaut.</p>
           <table>
-            <thead><tr><th>Ordre</th><th>Nom</th><th>Si (type)</th><th>→ Domaine / priorité</th><th>Active</th><th></th></tr></thead>
+            <thead><tr><th>Ordre</th><th>Nom</th><th>Si…</th><th>→ Domaine / priorité</th><th>Active</th><th></th></tr></thead>
             <tbody>
               @for (r of rules(); track r.id) {
                 <tr>
                   <td>{{ r.orderIndex }}</td>
                   <td>{{ r.name }}</td>
-                  <td class="muted">{{ ruleTypes(r) }}</td>
+                  <td class="muted">{{ ruleCriteria(r) }}</td>
                   <td>{{ label(ruleDomain(r)) }}{{ rulePriority(r) ? ' · ' + label(rulePriority(r)) : '' }}</td>
                   <td><input type="checkbox" [checked]="r.isActive !== false" (change)="toggleRuleActive(r, $event)" /></td>
                   <td><button class="btn btn-sm danger" (click)="deleteRule(r)">Suppr.</button></td>
@@ -130,19 +136,69 @@ import { ModerationApi } from '../../core/api/moderation.service';
           </table>
 
           <h3 style="font-size:0.85rem;margin:0.8rem 0 0.4rem">Nouvelle règle</h3>
+          <p class="muted" style="margin:0 0 0.5rem">
+            <strong>Critères</strong> — un critère laissé vide n'est pas testé. Les critères renseignés
+            doivent <strong>tous</strong> être vrais (ET) ; à l'intérieur d'un critère, <strong>l'une</strong>
+            des valeurs cochées suffit (OU).
+          </p>
           <div class="row">
-            <input class="input" [(ngModel)]="nr.name" placeholder="Nom" style="width:160px" />
-            <input class="input" type="number" [(ngModel)]="nr.orderIndex" placeholder="Ordre" style="width:80px" />
-            <input class="input" [(ngModel)]="nr.types" placeholder="Types (séparés par ,)" style="width:220px" />
-            <select [(ngModel)]="nr.domain">
-              @for (dm of catalog()?.domains ?? []; track dm) { <option [value]="dm">{{ label(dm) }}</option> }
-            </select>
-            <select [(ngModel)]="nr.priority">
-              <option value="">Priorité (auto)</option>
-              @for (p of catalog()?.priorities ?? []; track p) { <option [value]="p">{{ label(p) }}</option> }
-            </select>
-            <button class="btn btn-sm" (click)="addRule()" [disabled]="!nr.name.trim() || !nr.domain">Ajouter</button>
+            <input class="input" [(ngModel)]="nr.name" placeholder="Nom de la règle" style="width:200px" />
+            <label class="muted">Ordre
+              <input class="input" type="number" [(ngModel)]="nr.orderIndex" style="width:80px;margin-left:0.3rem" />
+            </label>
           </div>
+
+          <div class="rule-crit">
+            <span class="rule-crit-label">Types <span class="muted">(l'un de ces types)</span></span>
+            <div class="chips">
+              @for (t of catalog()?.types ?? []; track t) {
+                <button type="button" class="chip" [class.on]="nr.types.includes(t)" (click)="toggleIn(nr.types, t)">
+                  {{ label(t) }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="rule-crit">
+            <span class="rule-crit-label">Origines <span class="muted">(qui a ouvert la demande)</span></span>
+            <div class="chips">
+              @for (o of catalog()?.origins ?? []; track o) {
+                <button type="button" class="chip" [class.on]="nr.origins.includes(o)" (click)="toggleIn(nr.origins, o)">
+                  {{ label(o) }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="rule-crit">
+            <span class="rule-crit-label">Autres conditions</span>
+            <div class="row">
+              <label class="muted">
+                <input type="checkbox" [(ngModel)]="nr.requiresEvent" /> rattachée à un événement
+              </label>
+              <label class="muted">
+                confiance IA &lt;
+                <input class="input" type="number" step="0.05" min="0" max="1" [(ngModel)]="nr.aiConfidenceBelow"
+                       placeholder="—" style="width:90px;margin-left:0.3rem" />
+              </label>
+            </div>
+          </div>
+
+          <div class="rule-crit">
+            <span class="rule-crit-label">Résultat <span class="muted">(destination appliquée si la règle gagne)</span></span>
+            <div class="row">
+              <select [(ngModel)]="nr.domain">
+                <option value="">Domaine…</option>
+                @for (dm of catalog()?.domains ?? []; track dm) { <option [value]="dm">{{ label(dm) }}</option> }
+              </select>
+              <select [(ngModel)]="nr.priority">
+                <option value="">Priorité (par défaut du type)</option>
+                @for (p of catalog()?.priorities ?? []; track p) { <option [value]="p">{{ label(p) }}</option> }
+              </select>
+              <button class="btn btn-sm" (click)="addRule()" [disabled]="!nr.name.trim() || !nr.domain">Ajouter</button>
+            </div>
+          </div>
+          @if (ruleMsg()) { <p class="muted">{{ ruleMsg() }}</p> }
         }
       </section>
 
@@ -271,7 +327,10 @@ export class CasesConsoleComponent implements OnInit {
   // Routing Rules (§14)
   readonly showRules = signal(false);
   readonly rules = signal<RoutingRule[]>([]);
-  nr = { name: '', orderIndex: 10, types: '', domain: '', priority: '' };
+  /** Brouillon de règle en cours de saisie (critères à choix multiple, sémantique « ou »). */
+  nr = this.emptyRule();
+  /** Avertissement non bloquant à la création (ex. règle sans aucun critère). */
+  readonly ruleMsg = signal('');
 
   // Modération (FSPEC.20)
   private readonly moderation = inject(ModerationApi);
@@ -441,9 +500,32 @@ export class CasesConsoleComponent implements OnInit {
     this.api.routingRules().subscribe((list) => this.rules.set(list));
   }
 
-  ruleTypes(r: RoutingRule): string {
-    const t = (r.criteria as { types?: string[] }).types;
-    return t?.length ? t.join(', ') : 'tous';
+  /**
+   * Résumé lisible des critères d'une règle. Les valeurs d'un même critère sont séparées par « ou »
+   * (l'une suffit) ; les critères entre eux par « et » (tous doivent être vrais) — exactement la
+   * sémantique du moteur.
+   */
+  ruleCriteria(r: RoutingRule): string {
+    const c = r.criteria as {
+      types?: string[];
+      origins?: string[];
+      requiresEvent?: boolean;
+      aiConfidenceBelow?: number;
+    };
+    const parts: string[] = [];
+    if (c.types?.length) {
+      parts.push(`type = ${c.types.map((t) => this.label(t)).join(' ou ')}`);
+    }
+    if (c.origins?.length) {
+      parts.push(`origine = ${c.origins.map((o) => this.label(o)).join(' ou ')}`);
+    }
+    if (c.requiresEvent) {
+      parts.push('rattachée à un événement');
+    }
+    if (c.aiConfidenceBelow != null) {
+      parts.push(`confiance IA < ${c.aiConfidenceBelow}`);
+    }
+    return parts.length ? parts.join(' et ') : 'toutes les demandes';
   }
 
   ruleDomain(r: RoutingRule): string {
@@ -468,18 +550,71 @@ export class CasesConsoleComponent implements OnInit {
     this.api.deleteRule(r.id).subscribe(() => this.loadRules());
   }
 
+  /** Coche / décoche une valeur dans un critère à choix multiple (sémantique « ou »). */
+  toggleIn(list: string[], value: string): void {
+    const index = list.indexOf(value);
+    if (index >= 0) {
+      list.splice(index, 1);
+    } else {
+      list.push(value);
+    }
+  }
+
+  /**
+   * Crée une règle à partir des critères cochés. Un critère vide n'est pas transmis : il n'est donc
+   * pas testé par le moteur (une règle sans aucun critère s'applique à toutes les demandes).
+   */
   addRule(): void {
-    const types = this.nr.types.split(',').map((s) => s.trim()).filter(Boolean);
-    const criteria: Record<string, unknown> = types.length ? { types } : {};
+    const criteria: Record<string, unknown> = {};
+    if (this.nr.types.length) {
+      criteria['types'] = [...this.nr.types];
+    }
+    if (this.nr.origins.length) {
+      criteria['origins'] = [...this.nr.origins];
+    }
+    if (this.nr.requiresEvent) {
+      criteria['requiresEvent'] = true;
+    }
+    const confidence = Number(this.nr.aiConfidenceBelow);
+    if (this.nr.aiConfidenceBelow !== '' && !Number.isNaN(confidence)) {
+      criteria['aiConfidenceBelow'] = confidence;
+    }
     const result: Record<string, unknown> = { domain: this.nr.domain };
     if (this.nr.priority) {
       result['priority'] = this.nr.priority;
     }
+    this.ruleMsg.set(
+      Object.keys(criteria).length === 0
+        ? '⚠️ Règle sans critère : elle s’appliquera à toutes les demandes non captées avant elle.'
+        : '',
+    );
     this.api
       .createRule({ name: this.nr.name.trim(), orderIndex: Number(this.nr.orderIndex), criteria, result })
       .subscribe(() => {
-        this.nr = { name: '', orderIndex: 10, types: '', domain: '', priority: '' };
+        this.nr = this.emptyRule();
         this.loadRules();
       });
+  }
+
+  private emptyRule(): {
+    name: string;
+    orderIndex: number;
+    types: string[];
+    origins: string[];
+    requiresEvent: boolean;
+    aiConfidenceBelow: string;
+    domain: string;
+    priority: string;
+  } {
+    return {
+      name: '',
+      orderIndex: 10,
+      types: [],
+      origins: [],
+      requiresEvent: false,
+      aiConfidenceBelow: '',
+      domain: '',
+      priority: '',
+    };
   }
 }
