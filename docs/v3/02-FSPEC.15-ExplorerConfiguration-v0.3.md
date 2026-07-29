@@ -38,17 +38,50 @@ L'espace Explorer permet à chaque utilisateur de :
 
 Depuis le menu utilisateur situé en bas à gauche de l'application.
 
-Des sections disponibles dans la page permettent de configurer :
+La page est organisée en **onglets**, dans cet ordre :
 
 ```text
-    ├── Mon profil
-    ├── Sécurité
-    ├── Apparence
-    ├── Notifications
-    ├── Mes outils
-    ├── Souscription
-    └── Mes profils
+    ├── Personnel
+    │     ├── Données personnelles      (pseudo, date de naissance, adresse principale)
+    │     ├── Adresses supplémentaires  (CRUD — cibler les recherches autour d'un lieu)
+    │     ├── Sécurité                  (mot de passe, adresse e-mail, 2FA)
+    │     ├── Données RGPD              (exporter, journal de sécurité, supprimer le compte)
+    │     └── Session                   (se déconnecter)
+    ├── Notifications                   (par type · fréquence · méthode)
+    ├── Préférences UI
+    │     ├── Styles                    (thème parmi des ensembles de couleurs prédéfinis)
+    │     └── Lumière                   (Clair / Sombre / Système)
+    ├── Utilisation IA
+    │     ├── Configuration des IA      (CRUD : nom, fournisseur, modèle, clé API chiffrée)
+    │     └── Autorisation d'usage      (cas d'usage → IA choisie, ou « Aucune »)
+    ├── Rôles et permissions            (lecture seule + bascule « devenir organisateur »)
+    └── Organisations                   (une carte par organisation, rôle et état actif/inactif)
 ```
+
+## Frontière avec la configuration d'organisation
+
+Les réglages **rattachés à une organisation** — notamment l'**adresse de l'organisation** et l'**IA
+de l'organisation** — n'apparaissent **jamais** dans la configuration de l'utilisateur : ils
+appartiennent à l'organisation, pas à la personne, et se configurent dans
+**Mes organisations → Configuration** (FSPEC.19 / FSPEC.16).
+
+L'onglet *Organisations* de la configuration personnelle est donc **informatif** : il liste les
+organisations de l'utilisateur (cerclées en vert si actives, en orange sinon) avec son rôle et
+l'état actif/inactif, et permet d'activer une organisation — sans exposer aucun réglage
+d'organisation.
+
+## Écarts connus entre la spécification et l'implémentation
+
+Ces points sont spécifiés ici mais **pas encore couverts par le modèle serveur** ; l'interface les
+signale honnêtement (« À venir ») plutôt que d'afficher un contrôle sans effet :
+
+| Point | Manque côté serveur |
+|-------|---------------------|
+| Date de naissance | Aucun champ sur `User` |
+| Adresses supplémentaires de l'utilisateur | Aucun modèle d'adresse utilisateur (seules les adresses d'organisation existent) |
+| 2FA par code e-mail / push | Seul l'Authenticator (TOTP) est implémenté |
+| Notifications *par type* | Les préférences portent sur la piste de fréquence, pas sur le type |
+| Plusieurs comptes IA nommés | `AiConfig` est unique par portée (`@@unique(scope, scopeKey)`) |
 
 ---
 

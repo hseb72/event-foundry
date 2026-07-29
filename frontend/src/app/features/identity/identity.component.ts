@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { AccountApi, SecurityEventDto } from '../../core/api/account.service';
 import { IdentityService } from '../../core/api/identity.service';
 import { AiConfigApi } from '../../core/api/ai-config.service';
-import { ReferenceDataApi } from '../../core/api/reference-data.service';
+import { NotificationsApi } from '../../core/api/notifications.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme.service';
 import {
@@ -13,9 +13,7 @@ import {
   AiProviderInfo,
   AiUseCase,
   Experience,
-  MunicipalityGeo,
-  OrganizationAddress,
-  ReferentialItem,
+  NotificationPreferences,
   ThemePreference,
 } from '../../core/models';
 import { toInitials } from '../../shared/initials';
@@ -225,6 +223,27 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         color: var(--organizer);
         font-weight: 700;
       }
+
+      /* Onglets de configuration (mêmes codes que les autres barres d'onglets de l'app). */
+      .tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; background: var(--surface-2); border-radius: 12px; padding: 0.25rem; width: fit-content; margin-bottom: 1rem; }
+      .tabs button { border: 0; background: transparent; color: var(--muted); border-radius: 9px; padding: 0.4rem 0.9rem; font-weight: 600; }
+      .tabs button.on { background: var(--exp); color: var(--exp-contrast, #fff); }
+      /* Fiche descriptive (libellé / valeur) des données personnelles. */
+      .facts { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem; margin: 0 0 0.8rem; font-size: 0.88rem; }
+      .facts dt { color: var(--muted); }
+      .facts dd { margin: 0; }
+      .facts-inline { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+      /* Fonctionnalité annoncée mais non encore disponible : signalée, jamais simulée. */
+      .todo { font-size: 0.72rem; font-weight: 700; color: var(--orange, #b45309); }
+      .todo-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.8rem; font-size: 0.8rem; margin: 0.8rem 0 0; color: var(--muted); }
+      .prefs { width: 100%; border-collapse: collapse; }
+      .prefs th, .prefs td { text-align: left; padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); font-size: 0.86rem; }
+      .prefs th { color: var(--muted); font-weight: 600; }
+      .dt-wrap { overflow-x: auto; }
+      /* Carte d'organisation : cerclée de vert si active, d'orange sinon. */
+      .org-card { border: 2px solid var(--orange, #f97316); border-radius: 12px; padding: 0.8rem 0.9rem; background: var(--surface); }
+      .org-card.active { border-color: var(--green, #16a34a); }
+      .inactive-tag { color: var(--orange, #b45309); font-size: 0.82rem; font-weight: 600; }
     `,
   ],
   template: `
@@ -240,306 +259,274 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
         }
       </div>
 
-      <div class="grid">
-        <app-expandable-card cardTitle="Données personnelles">
-          @if (editing()) {
-            <div style="display:grid;gap:0.5rem;max-width:280px">
-              <label class="muted" style="font-size:0.78rem">Nom affiché (nickname)</label>
-              <input class="input" [(ngModel)]="draftName" placeholder="Nom affiché" />
-              <div style="display:flex;gap:0.5rem">
-                <button class="btn btn-primary" (click)="saveProfile()">Enregistrer</button>
-                <button class="btn" (click)="editing.set(false)">Annuler</button>
-              </div>
-            </div>
-          } @else {
-            <p style="margin:0 0 0.3rem"><strong>{{ m.displayName }}</strong></p>
-            <p class="muted" style="margin:0 0 0.6rem;font-size:0.85rem">
-              {{ m.email }} <span class="muted">· e-mail de connexion</span>
-            </p>
-            <button class="btn" (click)="startEdit(m.displayName)">Modifier le nom affiché</button>
-          }
-        </app-expandable-card>
+      <!-- Onglets de configuration : un thème par onglet, dans un ordre stable. -->
+      <div class="tabs" role="tablist" aria-label="Configuration">
+        @for (t of tabs; track t.key) {
+          <button type="button" role="tab" [class.on]="tab() === t.key"
+                  [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">
+            {{ t.label }}
+          </button>
+        }
+      </div>
 
-        <app-expandable-card cardTitle="Sécurité">
-          <div style="display:grid;gap:1rem;max-width:320px">
-            <div style="display:grid;gap:0.4rem">
-              <h3 style="font-size:0.85rem;margin:0">Changer le mot de passe</h3>
-              <input class="input" type="password" [(ngModel)]="pwdCurrent"
-                placeholder="Mot de passe actuel" autocomplete="current-password" />
-              <input class="input" type="password" [(ngModel)]="pwdNew"
-                placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password" />
-              <button class="btn" (click)="changePassword()" [disabled]="!pwdCurrent || pwdNew.length < 8">
-                Changer le mot de passe
-              </button>
-            </div>
-            <div style="display:grid;gap:0.4rem">
-              <h3 style="font-size:0.85rem;margin:0">Changer l'adresse e-mail</h3>
-              <input class="input" type="password" [(ngModel)]="emailPwd"
-                placeholder="Mot de passe actuel" autocomplete="current-password" />
-              <input class="input" type="email" [(ngModel)]="emailNew" placeholder="Nouvelle adresse" />
-              <button class="btn" (click)="requestEmailChange()" [disabled]="!emailPwd || !emailNew">
-                Envoyer le lien de confirmation
-              </button>
-              <p class="muted" style="margin:0;font-size:0.78rem">
-                Un lien de confirmation sera envoyé à la nouvelle adresse ; l'ancienne reste valide
-                jusqu'à confirmation.
-              </p>
-            </div>
-            <div style="display:grid;gap:0.4rem">
-              <h3 style="font-size:0.85rem;margin:0">Authentification à deux facteurs (2FA)</h3>
-              @if (mfaEnabled()) {
-                <p class="muted" style="margin:0;font-size:0.82rem">✅ 2FA activée.</p>
-                <input class="input" type="password" [(ngModel)]="mfaDisablePwd" placeholder="Mot de passe actuel" autocomplete="current-password" />
-                <button class="btn" (click)="disableMfa()" [disabled]="!mfaDisablePwd">Désactiver la 2FA</button>
-              } @else if (mfaSecret()) {
-                <p class="muted" style="margin:0;font-size:0.82rem">
-                  Ajoutez ce compte à votre application d'authentification, puis saisissez le code généré.
+      <!-- ================= PERSONNEL ================= -->
+      @if (tab() === 'personal') {
+        <div class="grid">
+          <app-expandable-card cardTitle="Données personnelles">
+            @if (editing()) {
+              <div style="display:grid;gap:0.5rem;max-width:280px">
+                <label class="muted" style="font-size:0.78rem">Pseudo (nom affiché)</label>
+                <input class="input" [(ngModel)]="draftName" placeholder="Pseudo" />
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-primary" (click)="saveProfile()">Enregistrer</button>
+                  <button class="btn" (click)="editing.set(false)">Annuler</button>
+                </div>
+              </div>
+            } @else {
+              <dl class="facts">
+                <dt>Pseudo</dt>
+                <dd><strong>{{ m.displayName }}</strong></dd>
+                <dt>E-mail de connexion</dt>
+                <dd class="muted">{{ m.email }}</dd>
+                <dt>Date de naissance</dt>
+                <dd class="muted">— <span class="todo">à venir</span></dd>
+                <dt>Adresse principale</dt>
+                <dd class="muted">— <span class="todo">à venir</span></dd>
+              </dl>
+              <button class="btn" (click)="startEdit(m.displayName)">Modifier le pseudo</button>
+            }
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Adresses supplémentaires">
+            <p class="muted" style="font-size:0.82rem;margin:0">
+              Enregistrez des adresses de référence pour cibler vos recherches autour d'un lieu
+              précis (domicile, travail, résidence secondaire…).
+            </p>
+            <p class="todo-box">
+              <strong>À venir</strong> — les adresses personnelles ne sont pas encore stockées :
+              seul le modèle d'adresse d'organisation existe aujourd'hui. Nécessite un référentiel
+              d'adresses utilisateur côté serveur (voir note de livraison).
+            </p>
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Sécurité">
+            <div style="display:grid;gap:1rem;max-width:340px">
+              <div style="display:grid;gap:0.4rem">
+                <h3 style="font-size:0.85rem;margin:0">Changer le mot de passe</h3>
+                <input class="input" type="password" [(ngModel)]="pwdCurrent"
+                  placeholder="Mot de passe actuel" autocomplete="current-password" />
+                <input class="input" type="password" [(ngModel)]="pwdNew"
+                  placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password" />
+                <button class="btn" (click)="changePassword()" [disabled]="!pwdCurrent || pwdNew.length < 8">
+                  Changer le mot de passe
+                </button>
+              </div>
+              <div style="display:grid;gap:0.4rem">
+                <h3 style="font-size:0.85rem;margin:0">Changer l'adresse e-mail</h3>
+                <input class="input" type="password" [(ngModel)]="emailPwd"
+                  placeholder="Mot de passe actuel" autocomplete="current-password" />
+                <input class="input" type="email" [(ngModel)]="emailNew" placeholder="Nouvelle adresse" />
+                <button class="btn" (click)="requestEmailChange()" [disabled]="!emailPwd || !emailNew">
+                  Envoyer le lien de confirmation
+                </button>
+                <p class="muted" style="margin:0;font-size:0.78rem">
+                  Un lien de confirmation sera envoyé à la nouvelle adresse ; l'ancienne reste valide
+                  jusqu'à confirmation.
                 </p>
-                <code style="font-size:0.8rem;word-break:break-all">{{ mfaSecret() }}</code>
-                <input class="input" [(ngModel)]="mfaCode" placeholder="Code à 6 chiffres" />
-                <button class="btn btn-primary" (click)="enableMfa()" [disabled]="mfaCode.length < 6">Activer</button>
-              } @else if (mfaRecovery().length) {
-                <p style="margin:0;font-size:0.82rem">✅ 2FA activée. Conservez vos codes de récupération :</p>
-                <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
-                  @for (c of mfaRecovery(); track c) { <code style="font-size:0.8rem">{{ c }}</code> }
-                </div>
-              } @else {
-                <button class="btn" (click)="setupMfa()">Activer la 2FA</button>
-              }
-            </div>
-            @if (securityMsg()) {
-              <p style="margin:0;font-size:0.85rem">{{ securityMsg() }}</p>
-            }
-          </div>
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Expériences disponibles">
-          <div class="chips">
-            @for (exp of allExperiences; track exp) {
-              @if (m.experiences.includes(exp)) {
-                <span
-                  class="chip exp"
-                  [class.off]="m.activeExperience !== exp"
-                  [style.background]="m.activeExperience === exp ? color(exp) : ''"
-                >
-                  {{ label(exp) }}
-                </span>
-              }
-            }
-          </div>
-          <p class="muted" style="margin:0.75rem 0 0;font-size:0.8rem">
-            Le changement d'expérience se fait dans la barre latérale. Il ne modifie jamais les
-            permissions.
-          </p>
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Devenir organisateur">
-          <p class="muted" style="margin:0 0 0.75rem;font-size:0.85rem">
-            Activez le mode organisateur pour créer et publier vos propres événements, en toute
-            autonomie (sans organisation). L'expérience Organizer devient alors accessible depuis la
-            barre latérale.
-          </p>
-          <label class="switch">
-            <input
-              type="checkbox"
-              [checked]="isOrganizer()"
-              [disabled]="organizerBusy()"
-              (change)="toggleOrganizer($event)"
-            />
-            {{ isOrganizer() ? 'Mode organisateur activé' : 'Je suis organisateur' }}
-          </label>
-          @if (organizerMsg()) {
-            <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ organizerMsg() }}</p>
-          }
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Mes données (RGPD)">
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="btn" (click)="exportData()" [disabled]="rgpdBusy()">
-              Exporter mes données (JSON)
-            </button>
-            <button class="btn" (click)="loadSecurityEvents()" [disabled]="rgpdBusy()">
-              Journal de sécurité
-            </button>
-          </div>
-          @if (securityEvents(); as events) {
-            <ul style="margin:0.9rem 0 0;padding-left:1rem;font-size:0.82rem;max-height:200px;overflow:auto">
-              @for (ev of events; track ev.id) {
-                <li>
-                  <strong>{{ securityLabel(ev.type) }}</strong>
-                  <span class="muted"> · {{ ev.occurredAt | date: 'dd/MM/yyyy HH:mm' }}</span>
-                </li>
-              } @empty {
-                <li class="muted">Aucun événement de sécurité.</li>
-              }
-            </ul>
-          }
-
-          <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0" />
-          <h3 style="font-size:0.9rem;margin:0 0 0.4rem;color:var(--red)">Supprimer mon compte</h3>
-          <p class="muted" style="margin:0 0 0.6rem;font-size:0.82rem">
-            Action irréversible : vos données personnelles sont effacées (anonymisation). Les
-            historiques nécessaires à l'intégrité de la plateforme sont conservés de façon anonyme.
-          </p>
-          <div style="display:grid;gap:0.4rem;max-width:320px">
-            <input class="input" type="password" [(ngModel)]="deletePwd"
-              placeholder="Mot de passe actuel" autocomplete="current-password" />
-            <button class="btn" style="border-color:var(--red);color:var(--red)"
-              (click)="deleteAccount()" [disabled]="!deletePwd || rgpdBusy()">
-              Supprimer définitivement mon compte
-            </button>
-          </div>
-          @if (rgpdMsg()) {
-            <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ rgpdMsg() }}</p>
-          }
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Rôles">
-          <div class="chips">
-            @for (role of m.roles; track role) {
-              <span class="chip">{{ role }}</span>
-            }
-          </div>
-        </app-expandable-card>
-
-        <app-expandable-card [cardTitle]="'Permissions effectives (' + m.permissions.length + ')'">
-          @for (grp of permissionGroups(); track grp.group) {
-            <div class="perm-group">
-              <div class="g">{{ grp.group }}</div>
-              <div class="chips">
-                @for (key of grp.keys; track key) {
-                  <span class="perm">{{ key }}</span>
-                }
               </div>
-            </div>
-          }
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Organisations">
-          @if (!m.organizations.length) {
-            <p class="muted" style="font-size:0.85rem">Aucune organisation.</p>
-          }
-          @for (org of m.organizations; track org.id) {
-            <div class="org" [class.active]="org.id === m.activeOrganizationId">
-              <div class="org-head">
-                <span class="org-name">{{ org.name }}</span>
-                @if (org.subscription) {
-                  <span class="sub">{{ org.subscription }}</span>
-                }
-              </div>
-              <div class="chips">
-                @for (role of org.roles; track role) {
-                  <span class="chip">{{ role }}</span>
-                }
-              </div>
-              <div style="margin-top:0.5rem">
-                @if (org.id === m.activeOrganizationId) {
-                  <span class="active-tag">● Organisation active</span>
-                } @else {
-                  <button class="btn" (click)="activate(org.id)">Activer ce contexte</button>
-                }
-              </div>
-            </div>
-          }
-        </app-expandable-card>
-
-        @if (canManageOrg() && m.activeOrganizationId) {
-          <app-expandable-card cardTitle="Adresses de l'organisation">
-            <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
-              Adresses de « {{ activeOrgName(m) }} ». Proposées comme localisation à la création d'un
-              événement. La région est dérivée de la commune.
-            </p>
-
-            @for (a of addresses(); track a.id) {
-              <div class="org">
-                <div class="org-head">
-                  <span class="org-name">
-                    {{ a.label }}
-                    @if (a.isPrimary) { <span class="active-tag">● principale</span> }
-                  </span>
-                </div>
-                <div class="muted" style="font-size:0.84rem">
-                  {{ a.streetLines }} · {{ a.postalCode }}
-                  @if (a.municipalityName) { {{ a.municipalityName }} }
-                  @if (a.regionName) { <span class="muted">({{ a.regionName }})</span> }
-                  · {{ a.countryName }}
-                </div>
-                <div style="margin-top:0.5rem;display:flex;gap:0.5rem">
-                  @if (!a.isPrimary) {
-                    <button class="btn" (click)="setPrimary(m.activeOrganizationId!, a.id)">Définir principale</button>
-                  }
-                  <button class="btn" (click)="deleteAddress(m.activeOrganizationId!, a.id)">Supprimer</button>
-                </div>
-              </div>
-            }
-            @if (!addresses().length) {
-              <p class="muted" style="font-size:0.85rem">Aucune adresse enregistrée.</p>
-            }
-
-            <div style="border-top:1px solid var(--border);margin-top:0.6rem;padding-top:0.7rem">
-              <h3 style="font-size:0.85rem;margin:0 0 0.5rem">Ajouter une adresse</h3>
-              <div style="display:grid;gap:0.5rem">
-                <input class="input" [(ngModel)]="addr.label" placeholder="Libellé (ex. Boutique centre-ville)" />
-                <input class="input" [(ngModel)]="addr.streetLines" placeholder="Rue" />
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-                  <select class="select" [(ngModel)]="addr.countryId" (ngModelChange)="onAddrCountryChange()">
-                    <option value="">Pays…</option>
-                    @for (c of countries; track c.id) {
-                      <option [value]="c.id">{{ c.name }}</option>
-                    }
-                  </select>
-                  <div style="display:flex;gap:0.4rem">
-                    <input class="input" [(ngModel)]="addr.postalCode" placeholder="Code postal"
-                           [disabled]="!addr.countryId" (keyup.enter)="resolveAddr()" />
-                    <button type="button" class="btn" [disabled]="!addr.countryId || !addr.postalCode.trim()"
-                            (click)="resolveAddr()">Résoudre</button>
+              <div style="display:grid;gap:0.4rem">
+                <h3 style="font-size:0.85rem;margin:0">Authentification à deux facteurs (2FA)</h3>
+                @if (mfaEnabled()) {
+                  <p class="muted" style="margin:0;font-size:0.82rem">✅ 2FA activée (application d'authentification).</p>
+                  <input class="input" type="password" [(ngModel)]="mfaDisablePwd" placeholder="Mot de passe actuel" autocomplete="current-password" />
+                  <button class="btn" (click)="disableMfa()" [disabled]="!mfaDisablePwd">Désactiver la 2FA</button>
+                } @else if (mfaSecret()) {
+                  <p class="muted" style="margin:0;font-size:0.82rem">
+                    <strong>Confirmer l'activation</strong> — ajoutez ce compte à votre application
+                    d'authentification, puis saisissez le code généré.
+                  </p>
+                  <code style="font-size:0.8rem;word-break:break-all">{{ mfaSecret() }}</code>
+                  <input class="input" [(ngModel)]="mfaCode" placeholder="Code à 6 chiffres" />
+                  <button class="btn btn-primary" (click)="enableMfa()" [disabled]="mfaCode.length < 6">Confirmer</button>
+                } @else if (mfaRecovery().length) {
+                  <p style="margin:0;font-size:0.82rem">✅ 2FA activée. Conservez vos codes de récupération :</p>
+                  <div style="display:flex;flex-wrap:wrap;gap:0.4rem">
+                    @for (c of mfaRecovery(); track c) { <code style="font-size:0.8rem">{{ c }}</code> }
                   </div>
-                </div>
-                @if (addrResolved.length) {
-                  <select class="select" [(ngModel)]="addr.municipalityId">
-                    <option value="">Commune…</option>
-                    @for (mun of addrResolved; track mun.id) {
-                      <option [value]="mun.id">{{ mun.name }} ({{ mun.regionName }})</option>
+                } @else {
+                  <label class="muted" style="font-size:0.78rem">Méthode</label>
+                  <div class="chips">
+                    @for (opt of mfaMethods; track opt.value) {
+                      <button type="button" class="theme-opt" [class.on]="mfaMethod === opt.value"
+                              [disabled]="!opt.available" [title]="opt.available ? '' : 'À venir'"
+                              (click)="mfaMethod = opt.value">
+                        {{ opt.label }}{{ opt.available ? '' : ' (à venir)' }}
+                      </button>
                     }
-                  </select>
-                } @else if (addrPostalSearched) {
-                  <p class="muted" style="font-size:0.8rem;margin:0">Aucune commune trouvée pour ce code postal.</p>
+                  </div>
+                  <button class="btn" (click)="setupMfa()">Activer la 2FA</button>
                 }
-                <label style="font-size:0.85rem;display:flex;gap:0.4rem;align-items:center">
-                  <input type="checkbox" [(ngModel)]="addr.isPrimary" /> Adresse principale
-                </label>
-                <div>
-                  <button class="btn btn-primary" [disabled]="!canSubmitAddr()"
-                          (click)="addAddress(m.activeOrganizationId!)">Ajouter l'adresse</button>
-                </div>
               </div>
+              @if (securityMsg()) {
+                <p style="margin:0;font-size:0.85rem">{{ securityMsg() }}</p>
+              }
             </div>
           </app-expandable-card>
 
-          <app-expandable-card cardTitle="IA de l'organisation">
+          <app-expandable-card cardTitle="Données RGPD">
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+              <button class="btn" (click)="exportData()" [disabled]="rgpdBusy()">
+                Exporter mes données (JSON)
+              </button>
+              <button class="btn" (click)="loadSecurityEvents()" [disabled]="rgpdBusy()">
+                Journal de sécurité
+              </button>
+            </div>
+            @if (securityEvents(); as events) {
+              <ul style="margin:0.9rem 0 0;padding-left:1rem;font-size:0.82rem;max-height:200px;overflow:auto">
+                @for (ev of events; track ev.id) {
+                  <li>
+                    <strong>{{ securityLabel(ev.type) }}</strong>
+                    <span class="muted"> · {{ ev.occurredAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+                  </li>
+                } @empty {
+                  <li class="muted">Aucun événement de sécurité.</li>
+                }
+              </ul>
+            }
+
+            <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0" />
+            <h3 style="font-size:0.9rem;margin:0 0 0.4rem;color:var(--red)">Supprimer mon compte</h3>
+            <p class="muted" style="margin:0 0 0.6rem;font-size:0.82rem">
+              Action irréversible : vos données personnelles sont effacées (anonymisation). Les
+              historiques nécessaires à l'intégrité de la plateforme sont conservés de façon anonyme.
+            </p>
+            <div style="display:grid;gap:0.4rem;max-width:320px">
+              <input class="input" type="password" [(ngModel)]="deletePwd"
+                placeholder="Mot de passe actuel" autocomplete="current-password" />
+              <button class="btn" style="border-color:var(--red);color:var(--red)"
+                (click)="deleteAccount()" [disabled]="!deletePwd || rgpdBusy()">
+                Supprimer définitivement mon compte
+              </button>
+            </div>
+            @if (rgpdMsg()) {
+              <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ rgpdMsg() }}</p>
+            }
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Session">
+            @if (m.subscription) {
+              <p style="margin:0 0 0.6rem">
+                Souscription : <span class="sub">{{ m.subscription }}</span>
+              </p>
+            }
+            <button class="btn" (click)="logout()">Se déconnecter</button>
+          </app-expandable-card>
+        </div>
+      }
+
+      <!-- ================= NOTIFICATIONS ================= -->
+      @if (tab() === 'notifications') {
+        <div class="grid">
+          <app-expandable-card cardTitle="Préférences de notifications">
+            <p class="muted" style="font-size:0.82rem;margin:0 0 0.7rem">
+              Pour chaque piste, choisissez le vecteur de diffusion. L'in-app reste toujours actif :
+              il conserve l'historique consultable.
+            </p>
+            <div class="dt-wrap">
+              <table class="prefs">
+                <thead>
+                  <tr><th>Piste</th><th>Fréquence</th><th>Méthode</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Historique</td>
+                    <td class="muted">Temps réel</td>
+                    <td><span class="pill on locked">In-app (toujours actif)</span></td>
+                  </tr>
+                  @for (ft of frequencyTracks; track ft.value) {
+                    <tr>
+                      <td>{{ ft.label }}</td>
+                      <td class="muted">{{ ft.frequency }}</td>
+                      <td>
+                        <select class="select" [ngModel]="vectorFor(ft.value)"
+                                (ngModelChange)="setVector(ft.value, $event)" style="max-width:180px">
+                          @for (v of vectorOptions; track v.value) {
+                            <option [value]="v.value">{{ v.label }}</option>
+                          }
+                        </select>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="todo-box">
+              <strong>À venir</strong> — le réglage <em>par type de notification</em> (une ligne par
+              type) suppose des préférences typées côté serveur ; aujourd'hui le réglage porte sur la
+              piste de fréquence, qui s'applique à tous les types.
+            </p>
+          </app-expandable-card>
+        </div>
+      }
+
+      <!-- ================= PRÉFÉRENCES UI ================= -->
+      @if (tab() === 'ui') {
+        <div class="grid">
+          <app-expandable-card cardTitle="Styles">
+            <p class="muted" style="font-size:0.82rem;margin:0">
+              Personnalisation du thème de l'interface parmi un choix d'ensembles de couleurs
+              prédéfinis.
+            </p>
+            <p class="todo-box"><strong>Prochaine version.</strong></p>
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Lumière">
+            <div class="theme-opts">
+              @for (opt of themeOptions; track opt.value) {
+                <button type="button" class="theme-opt" [class.on]="themePreference() === opt.value"
+                        (click)="setTheme(opt.value)">
+                  {{ opt.label }}
+                </button>
+              }
+            </div>
+            <p class="muted" style="font-size:0.78rem;margin:0.6rem 0 0">
+              « Système » suit le réglage clair/sombre de votre appareil.
+            </p>
+          </app-expandable-card>
+        </div>
+      }
+
+      <!-- ================= UTILISATION IA ================= -->
+      @if (tab() === 'ai') {
+        <div class="grid">
+          <app-expandable-card cardTitle="Configuration des IA">
             <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
-              IA appliquée aux imports réalisés au nom de « {{ activeOrgName(m) }} ». Prioritaire sur
-              votre IA personnelle. La clé est stockée comme un secret.
+              Branchez votre propre IA pour assister vos imports (OCR, traduction…). La clé est
+              stockée chiffrée comme un secret : jamais réaffichée. L'IA reste une assistance — la
+              décision métier demeure déterministe.
             </p>
             <div style="display:grid;gap:0.5rem">
-              <label class="switch"><input type="checkbox" [(ngModel)]="orgAi.enabled" /> Activer l'IA de l'organisation</label>
+              <label class="switch">
+                <input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA
+              </label>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-                <select class="select" [(ngModel)]="orgAi.provider">
+                <select class="select" [(ngModel)]="ai.provider">
                   <option value="">Fournisseur…</option>
                   @for (p of aiProviders; track p.id) {
                     <option [value]="p.id">{{ p.label }}</option>
                   }
                 </select>
-                <input class="input" [(ngModel)]="orgAi.model" list="ai-models-org" placeholder="Modèle (vision)" />
-                <datalist id="ai-models-org">
-                  @for (m of modelsFor(orgAi.provider); track m) {
-                    <option [value]="m"></option>
+                <select class="select" [(ngModel)]="ai.model">
+                  <option value="">Modèle…</option>
+                  @for (mo of modelsFor(ai.provider); track mo) {
+                    <option [value]="mo">{{ mo }}</option>
                   }
-                </datalist>
+                </select>
               </div>
-              <input class="input" type="password" [(ngModel)]="orgAi.apiKey"
-                     [placeholder]="orgAiSecretMasked() ? 'Clé enregistrée (' + orgAiSecretMasked() + ') — vide = inchangée' : 'Clé API'" />
-              @if (providerInfo(orgAi.provider); as pi) {
+              <input class="input" type="password" [(ngModel)]="ai.apiKey"
+                     [placeholder]="aiSecretMasked() ? 'Clé enregistrée (' + aiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
+              @if (providerInfo(ai.provider); as pi) {
                 <p class="muted" style="font-size:0.76rem;margin:0">
                   @if (pi.requiresKey) {
                     Clé {{ pi.keyHint }} —
@@ -551,166 +538,194 @@ const EXPERIENCE_COLORS: Record<Experience, string> = {
                   }
                 </p>
               }
-              <div class="chips">
-                @for (uc of aiUseCases; track uc) {
-                  <button type="button" class="theme-opt" [class.on]="orgAi.useCases[uc]" (click)="toggleOrgUseCase(uc)">{{ uc }}</button>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <button class="btn btn-primary" (click)="saveAi()">Enregistrer</button>
+                <button class="btn" (click)="testAi()" [disabled]="!aiSecretMasked()">Tester</button>
+                @if (aiStatus()) {
+                  <span class="sub">{{ aiStatusLabel() }}</span>
                 }
               </div>
-              <div style="display:flex;gap:0.5rem;align-items:center">
-                <button class="btn btn-primary" (click)="saveOrgAi(m.activeOrganizationId!)">Enregistrer</button>
-                <button class="btn" (click)="testOrgAi(m.activeOrganizationId!)" [disabled]="!orgAiSecretMasked()">Tester</button>
-                @if (orgAiStatus()) { <span class="sub">{{ aiStatusLabelOf(orgAiStatus()) }}</span> }
-              </div>
+            </div>
+            <p class="todo-box">
+              <strong>À venir</strong> — plusieurs comptes IA nommés (CRUD). Le modèle actuel ne
+              stocke <em>qu'une</em> configuration par utilisateur.
+            </p>
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Autorisation d'usage">
+            <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
+              Cas d'usage pour lesquels votre IA est autorisée. Un cas non coché n'appelle jamais
+              l'IA.
+            </p>
+            <div class="dt-wrap">
+              <table class="prefs">
+                <thead><tr><th>Cas d'usage</th><th>IA utilisée</th></tr></thead>
+                <tbody>
+                  @for (uc of aiUseCases; track uc) {
+                    <tr>
+                      <td>{{ uc }}</td>
+                      <td>
+                        <select class="select" [ngModel]="ai.useCases[uc] ? 'mine' : 'none'"
+                                (ngModelChange)="setUseCase(uc, $event)" style="max-width:200px">
+                          <option value="none">Aucune</option>
+                          <option value="mine">Mon IA{{ ai.provider ? ' (' + ai.provider + ')' : '' }}</option>
+                        </select>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div style="margin-top:0.6rem">
+              <button class="btn btn-primary" (click)="saveAi()">Enregistrer les autorisations</button>
             </div>
           </app-expandable-card>
-        }
+        </div>
+      }
 
-        <app-expandable-card cardTitle="Configuration IA">
-          <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
-            Branchez votre propre IA pour assister vos imports (OCR, traduction…). La clé est stockée
-            comme un secret : jamais réaffichée. L'IA reste une assistance — la décision reste
-            déterministe.
-          </p>
-          <div style="display:grid;gap:0.5rem">
+      <!-- ================= RÔLES & PERMISSIONS ================= -->
+      @if (tab() === 'roles') {
+        <div class="grid">
+          <app-expandable-card cardTitle="Devenir organisateur">
+            <p class="muted" style="margin:0 0 0.75rem;font-size:0.85rem">
+              Activez le mode organisateur pour créer et publier vos propres événements, en toute
+              autonomie (sans organisation). L'expérience Organizer devient alors accessible depuis
+              la barre latérale.
+            </p>
             <label class="switch">
-              <input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA
+              <input type="checkbox" [checked]="isOrganizer()" [disabled]="organizerBusy()"
+                     (change)="toggleOrganizer($event)" />
+              {{ isOrganizer() ? 'Mode organisateur activé' : 'Je suis organisateur' }}
             </label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
-              <select class="select" [(ngModel)]="ai.provider">
-                <option value="">Fournisseur…</option>
-                @for (p of aiProviders; track p.id) {
-                  <option [value]="p.id">{{ p.label }}</option>
-                }
-              </select>
-              <input class="input" [(ngModel)]="ai.model" list="ai-models-perso" placeholder="Modèle (vision)" />
-              <datalist id="ai-models-perso">
-                @for (m of modelsFor(ai.provider); track m) {
-                  <option [value]="m"></option>
-                }
-              </datalist>
-            </div>
-            <input class="input" type="password" [(ngModel)]="ai.apiKey"
-                   [placeholder]="aiSecretMasked() ? 'Clé enregistrée (' + aiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
-            @if (providerInfo(ai.provider); as pi) {
-              <p class="muted" style="font-size:0.76rem;margin:0">
-                @if (pi.requiresKey) {
-                  Clé {{ pi.keyHint }} —
-                  @if (pi.keyUrl) {
-                    <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a>
-                  }
-                } @else {
-                  {{ pi.keyHint }}
-                }
-              </p>
+            @if (organizerMsg()) {
+              <p style="margin:0.6rem 0 0;font-size:0.85rem">{{ organizerMsg() }}</p>
             }
-            <div>
-              <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Cas d'usage autorisés</div>
-              <div class="chips">
-                @for (uc of aiUseCases; track uc) {
-                  <button type="button" class="theme-opt" [class.on]="ai.useCases[uc]" (click)="toggleUseCase(uc)">
-                    {{ uc }}
-                  </button>
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Expériences disponibles">
+            <div class="chips">
+              @for (exp of allExperiences; track exp) {
+                @if (m.experiences.includes(exp)) {
+                  <span class="chip exp" [class.off]="m.activeExperience !== exp"
+                        [style.background]="m.activeExperience === exp ? color(exp) : ''">
+                    {{ label(exp) }}
+                  </span>
                 }
-              </div>
-            </div>
-            <div style="display:flex;gap:0.5rem;align-items:center">
-              <button class="btn btn-primary" (click)="saveAi()">Enregistrer</button>
-              <button class="btn" (click)="testAi()" [disabled]="!aiSecretMasked()">Tester</button>
-              @if (aiStatus()) {
-                <span class="sub">{{ aiStatusLabel() }}</span>
               }
             </div>
-          </div>
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Autres préférences">
-          <label class="muted" style="font-size:0.78rem;display:block;margin-bottom:0.4rem">Thème</label>
-          <div class="theme-opts">
-            @for (opt of themeOptions; track opt.value) {
-              <button
-                type="button"
-                class="theme-opt"
-                [class.on]="themePreference() === opt.value"
-                (click)="setTheme(opt.value)"
-              >
-                {{ opt.label }}
-              </button>
-            }
-          </div>
-          <p class="muted" style="font-size:0.78rem;margin:0.6rem 0 0">
-            « Système » suit le réglage clair/sombre de votre appareil.
-          </p>
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Préférences de notification">
-          <p class="muted" style="font-size:0.78rem;margin:0 0 0.7rem">
-            Choisissez les vecteurs de diffusion. L'application (in-app) reste toujours active :
-            elle conserve l'historique consultable.
-          </p>
-          <div class="vecteurs">
-            <div class="vec">
-              <div>
-                <div class="vec-name">In-app</div>
-                <div class="muted" style="font-size:0.76rem">Historique — toujours actif</div>
-              </div>
-              <span class="pill on locked">Actif</span>
-            </div>
-            <div class="vec">
-              <div>
-                <div class="vec-name">E-mail</div>
-                <div class="muted" style="font-size:0.76rem">Recevoir un e-mail</div>
-              </div>
-              <button
-                type="button"
-                class="pill"
-                [class.on]="notifPref('email')"
-                (click)="toggleNotif('email')"
-              >
-                {{ notifPref('email') ? 'Activé' : 'Désactivé' }}
-              </button>
-            </div>
-            <div class="vec">
-              <div>
-                <div class="vec-name">Push</div>
-                <div class="muted" style="font-size:0.76rem">Notification poussée</div>
-              </div>
-              <button
-                type="button"
-                class="pill"
-                [class.on]="notifPref('push')"
-                (click)="toggleNotif('push')"
-              >
-                {{ notifPref('push') ? 'Activé' : 'Désactivé' }}
-              </button>
-            </div>
-          </div>
-          <p class="muted" style="font-size:0.76rem;margin:0.7rem 0 0">
-            Les fréquences (immédiat / récap quotidien / hebdomadaire) arriveront avec le moteur de
-            notifications de la V3.
-          </p>
-        </app-expandable-card>
-
-        <app-expandable-card cardTitle="Session">
-          @if (m.subscription) {
-            <p style="margin:0 0 0.6rem">
-              Souscription : <span class="sub">{{ m.subscription }}</span>
+            <p class="muted" style="margin:0.75rem 0 0;font-size:0.8rem">
+              Le changement d'expérience se fait dans la barre latérale. Il ne modifie jamais les
+              permissions.
             </p>
+          </app-expandable-card>
+
+          <app-expandable-card cardTitle="Rôles">
+            <div class="chips">
+              @for (role of m.roles; track role) {
+                <span class="chip">{{ role }}</span>
+              }
+            </div>
+          </app-expandable-card>
+
+          <app-expandable-card [cardTitle]="'Permissions effectives (' + m.permissions.length + ')'">
+            @for (grp of permissionGroups(); track grp.group) {
+              <div class="perm-group">
+                <div class="g">{{ grp.group }}</div>
+                <div class="chips">
+                  @for (key of grp.keys; track key) {
+                    <span class="perm">{{ key }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </app-expandable-card>
+        </div>
+      }
+
+      <!-- ================= ORGANISATIONS ================= -->
+      @if (tab() === 'orgs') {
+        <p class="muted" style="font-size:0.82rem;margin:0 0 0.8rem">
+          Les réglages propres à une organisation (adresses, IA, informations générales) se
+          configurent depuis <strong>Mes organisations</strong>, dans l'expérience Organizer.
+        </p>
+        @if (!m.organizations.length) {
+          <p class="muted">Aucune organisation.</p>
+        }
+        <div class="grid">
+          @for (org of m.organizations; track org.id) {
+            <div class="org-card" [class.active]="org.id === m.activeOrganizationId">
+              <div class="org-head">
+                <span class="org-name">{{ org.name }}</span>
+                @if (org.subscription) {
+                  <span class="sub">{{ org.subscription }}</span>
+                }
+              </div>
+              <div class="facts-inline">
+                <span class="muted">Rôle :</span>
+                <span class="chips">
+                  @for (role of org.roles; track role) {
+                    <span class="chip">{{ role }}</span>
+                  } @empty {
+                    <span class="muted">—</span>
+                  }
+                </span>
+              </div>
+              <div style="margin-top:0.5rem">
+                @if (org.id === m.activeOrganizationId) {
+                  <span class="active-tag">● Organisation active</span>
+                } @else {
+                  <span class="inactive-tag">○ Inactive</span>
+                  <button class="btn btn-sm" style="margin-left:0.5rem" (click)="activate(org.id)">Activer</button>
+                }
+              </div>
+            </div>
           }
-          <button class="btn" (click)="logout()">Se déconnecter</button>
-        </app-expandable-card>
-      </div>
+        </div>
+      }
     } @else {
       <p class="muted">Chargement de l'identité…</p>
     }
   `,
 })
 export class IdentityComponent implements OnInit {
+  /** Onglets de la configuration, dans l'ordre d'affichage. */
+  readonly tabs = [
+    { key: 'personal', label: 'Personnel' },
+    { key: 'notifications', label: 'Notifications' },
+    { key: 'ui', label: 'Préférences UI' },
+    { key: 'ai', label: 'Utilisation IA' },
+    { key: 'roles', label: 'Rôles & permissions' },
+    { key: 'orgs', label: 'Organisations' },
+  ] as const;
+  readonly tab = signal<'personal' | 'notifications' | 'ui' | 'ai' | 'roles' | 'orgs'>('personal');
+
+  /** Méthodes de second facteur. Seule l'application d'authentification est disponible à ce jour. */
+  readonly mfaMethods = [
+    { value: 'totp', label: 'Application d’authentification', available: true },
+    { value: 'email', label: 'Code par e-mail', available: false },
+    { value: 'push', label: 'Code en push', available: false },
+  ];
+  mfaMethod = 'totp';
+
+  /** Pistes de fréquence réglables (le vecteur in-app est toujours actif, non réglable). */
+  readonly frequencyTracks = [
+    { value: 'immediate' as const, label: 'Alertes immédiates', frequency: 'Immédiate' },
+    { value: 'daily' as const, label: 'Récapitulatif quotidien', frequency: 'Quotidienne' },
+    { value: 'weekly' as const, label: 'Récapitulatif hebdomadaire', frequency: 'Hebdomadaire' },
+  ];
+  readonly vectorOptions = [
+    { value: 'none', label: 'Aucune' },
+    { value: 'email', label: 'E-mail' },
+    { value: 'push', label: 'Push' },
+  ];
+  /** Préférences de notification servies par l'API (jamais dérivées du blob de préférences UI). */
+  readonly notifPrefs = signal<NotificationPreferences | null>(null);
   private readonly identity = inject(IdentityService);
   private readonly aiConfigApi = inject(AiConfigApi);
-  private readonly referenceData = inject(ReferenceDataApi);
   private readonly theme = inject(ThemeService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly notificationsApi = inject(NotificationsApi);
 
   // Configuration IA personnelle (ADR.16 / TSPEC.07).
   readonly aiUseCases = AI_USE_CASES;
@@ -725,23 +740,8 @@ export class IdentityComponent implements OnInit {
     apiKey: '',
   };
 
-  // Configuration IA de l'organisation active (portée ORGANIZATION).
-  private readonly orgAiSecret = signal<{ masked: string } | null>(null);
-  private readonly orgAiTestStatus = signal<string>('');
-  orgAi = {
-    provider: '',
-    model: '',
-    enabled: false,
-    useCases: {} as Record<string, boolean>,
-    apiKey: '',
-  };
-
-  // Adresses de l'organisation active (chantier §8.2), si l'utilisateur peut la gérer.
-  readonly addresses = signal<OrganizationAddress[]>([]);
-  countries: ReferentialItem[] = [];
-  addrResolved: MunicipalityGeo[] = [];
-  addrPostalSearched = false;
-  addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
+  // Adresses et IA **de l'organisation** ne vivent pas ici : ce sont des réglages rattachés à une
+  // organisation, gérés dans « Mes organisations » → Configuration (FSPEC.19 / ADR.16).
 
   readonly allExperiences: Experience[] = ['EXPLORER', 'ORGANIZER', 'OPERATOR'];
   readonly me = this.identity.me;
@@ -772,12 +772,11 @@ export class IdentityComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.me()) {
-      this.identity.loadMe().subscribe(() => this.loadAddresses());
-    } else {
-      this.loadAddresses();
+      this.identity.loadMe().subscribe();
     }
     this.loadAiConfig();
     this.loadMfa();
+    this.notificationsApi.getPreferences().subscribe((prefs) => this.notifPrefs.set(prefs));
   }
 
   // --- Configuration IA personnelle (ADR.16 / TSPEC.07) ---
@@ -827,53 +826,6 @@ export class IdentityComponent implements OnInit {
     return map[status] ?? status;
   }
 
-  // --- IA de l'organisation active ---
-
-  private loadOrgAi(organizationId: string): void {
-    this.aiConfigApi.getOrg(organizationId).subscribe((config) => {
-      if (config) {
-        this.orgAi.provider = config.provider;
-        this.orgAi.model = config.model;
-        this.orgAi.enabled = config.enabled;
-        this.orgAi.useCases = { ...config.useCases };
-        this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
-        this.orgAiTestStatus.set(config.status);
-      }
-    });
-  }
-
-  orgAiSecretMasked(): string {
-    return this.orgAiSecret()?.masked ?? '';
-  }
-
-  orgAiStatus(): string {
-    return this.orgAiTestStatus();
-  }
-
-  toggleOrgUseCase(useCase: AiUseCase): void {
-    this.orgAi.useCases = { ...this.orgAi.useCases, [useCase]: !this.orgAi.useCases[useCase] };
-  }
-
-  saveOrgAi(organizationId: string): void {
-    this.aiConfigApi
-      .updateOrg(organizationId, {
-        provider: this.orgAi.provider.trim(),
-        model: this.orgAi.model.trim(),
-        enabled: this.orgAi.enabled,
-        useCases: this.orgAi.useCases,
-        apiKey: this.orgAi.apiKey.trim() || undefined,
-      })
-      .subscribe((config) => {
-        this.orgAi.apiKey = '';
-        this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
-        this.orgAiTestStatus.set(config.status);
-      });
-  }
-
-  testOrgAi(organizationId: string): void {
-    this.aiConfigApi.testOrg(organizationId).subscribe((result) => this.orgAiTestStatus.set(result.status));
-  }
-
   toggleUseCase(useCase: AiUseCase): void {
     this.ai.useCases = { ...this.ai.useCases, [useCase]: !this.ai.useCases[useCase] };
   }
@@ -898,91 +850,6 @@ export class IdentityComponent implements OnInit {
     this.aiConfigApi.test().subscribe((result) => this.aiTestStatus.set(result.status));
   }
 
-  // --- Adresses de l'organisation active (chantier §8.2) ---
-
-  canManageOrg(): boolean {
-    return this.me()?.permissions.includes('organization.manage') ?? false;
-  }
-
-  activeOrgName(me: { organizations: { id: string; name: string }[]; activeOrganizationId: string | null }): string {
-    return me.organizations.find((o) => o.id === me.activeOrganizationId)?.name ?? '';
-  }
-
-  private loadAddresses(): void {
-    const me = this.me();
-    if (!me || !this.canManageOrg() || !me.activeOrganizationId) {
-      return;
-    }
-    if (!this.countries.length) {
-      this.referenceData.countries().subscribe((items) => (this.countries = items));
-    }
-    this.identity
-      .listOrganizationAddresses(me.activeOrganizationId)
-      .subscribe((addresses) => this.addresses.set(addresses));
-    this.loadOrgAi(me.activeOrganizationId);
-  }
-
-  onAddrCountryChange(): void {
-    this.addr.postalCode = '';
-    this.addr.municipalityId = '';
-    this.addrResolved = [];
-    this.addrPostalSearched = false;
-  }
-
-  resolveAddr(): void {
-    const postalCode = this.addr.postalCode.trim();
-    if (!this.addr.countryId || !postalCode) {
-      return;
-    }
-    this.referenceData.resolveMunicipalities(this.addr.countryId, postalCode).subscribe((communes) => {
-      this.addrResolved = communes;
-      this.addrPostalSearched = true;
-      this.addr.municipalityId = communes.length === 1 ? communes[0].id : '';
-    });
-  }
-
-  canSubmitAddr(): boolean {
-    return (
-      this.addr.label.trim().length > 0 &&
-      this.addr.streetLines.trim().length > 0 &&
-      this.addr.countryId.length > 0 &&
-      this.addr.postalCode.trim().length > 0
-    );
-  }
-
-  addAddress(organizationId: string): void {
-    if (!this.canSubmitAddr()) {
-      return;
-    }
-    this.identity
-      .createOrganizationAddress(organizationId, {
-        label: this.addr.label.trim(),
-        countryId: this.addr.countryId,
-        postalCode: this.addr.postalCode.trim(),
-        municipalityId: this.addr.municipalityId || undefined,
-        streetLines: this.addr.streetLines.trim(),
-        isPrimary: this.addr.isPrimary,
-      })
-      .subscribe(() => {
-        this.addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
-        this.addrResolved = [];
-        this.addrPostalSearched = false;
-        this.loadAddresses();
-      });
-  }
-
-  setPrimary(organizationId: string, addressId: string): void {
-    this.identity
-      .setPrimaryOrganizationAddress(organizationId, addressId)
-      .subscribe(() => this.loadAddresses());
-  }
-
-  deleteAddress(organizationId: string, addressId: string): void {
-    this.identity
-      .deleteOrganizationAddress(organizationId, addressId)
-      .subscribe(() => this.loadAddresses());
-  }
-
   label(experience: Experience): string {
     return EXPERIENCE_LABELS[experience];
   }
@@ -992,7 +859,7 @@ export class IdentityComponent implements OnInit {
   }
 
   activate(organizationId: string): void {
-    this.identity.switchOrganization(organizationId).subscribe(() => this.loadAddresses());
+    this.identity.switchOrganization(organizationId).subscribe();
   }
 
   startEdit(currentName: string): void {
@@ -1186,17 +1053,30 @@ export class IdentityComponent implements OnInit {
   }
 
   /** État courant d'un vecteur de notification (lu depuis les préférences renvoyées par /me). */
-  notifPref(channel: 'email' | 'push'): boolean {
-    const notifications = (this.me()?.preferences?.['notifications'] ?? {}) as Record<string, unknown>;
-    return notifications[channel] === true;
+  /** Vecteur courant d'une piste de fréquence (préférences servies par l'API notifications). */
+  vectorFor(track: 'immediate' | 'daily' | 'weekly'): string {
+    return this.notifPrefs()?.[track] ?? 'none';
   }
 
-  /** Active/désactive un vecteur ; honoré directement par le dispatcher de notifications. */
-  toggleNotif(channel: 'email' | 'push'): void {
-    const current = (this.me()?.preferences?.['notifications'] ?? {}) as Record<string, unknown>;
-    const notifications = { ...current, [channel]: !this.notifPref(channel) };
-    const preferences = { ...(this.me()?.preferences ?? {}), notifications };
-    this.identity.updateProfile({ preferences }).subscribe();
+  /**
+   * Change le vecteur d'une piste. Les préférences sont **persistées côté serveur** (FSPEC.04) :
+   * l'in-app reste toujours actif et n'est pas réglable ici.
+   */
+  setVector(track: 'immediate' | 'daily' | 'weekly', vector: string): void {
+    const current = this.notifPrefs() ?? { immediate: 'none', daily: 'none', weekly: 'none' };
+    const next = { ...current, [track]: vector } as NotificationPreferences;
+    this.notifPrefs.set(next);
+    this.notificationsApi.updatePreferences(next).subscribe({
+      next: (saved) => this.notifPrefs.set(saved),
+    });
+  }
+
+  /**
+   * Autorise (ou non) l'IA pour un cas d'usage. Une seule configuration IA existe aujourd'hui :
+   * le choix se limite donc à « Aucune » ou « Mon IA ».
+   */
+  setUseCase(useCase: AiUseCase, choice: string): void {
+    this.ai.useCases[useCase] = choice === 'mine';
   }
 
   setTheme(preference: ThemePreference): void {

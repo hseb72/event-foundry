@@ -10,13 +10,27 @@ import {
   OrganizationsApi,
 } from '../../core/api/organizations.service';
 import { IdentityService } from '../../core/api/identity.service';
+import { AiConfigApi } from '../../core/api/ai-config.service';
 import { ReferenceDataApi } from '../../core/api/reference-data.service';
-import { ActivityDto } from '../../core/models';
+import {
+  AI_USE_CASES,
+  ActivityDto,
+  AiProviderInfo,
+  AiUseCase,
+  MunicipalityGeo,
+  OrganizationAddress,
+  ReferentialItem,
+} from '../../core/models';
 
 /**
  * Gestion des organisations de l'utilisateur (FSPEC.19) : création, collaborateurs, fonctions,
  * départ et transfert de propriété. Les actions de gestion ne s'affichent que pour un Owner /
  * Administrator ; les garde-fous (dernier Owner) sont appliqués côté serveur.
+ *
+ * La section « Configuration » porte **toute** la configuration rattachée à une organisation —
+ * informations générales, activités couvertes, fiche organisateur, **adresses** et **IA de
+ * l'organisation**. Ces réglages appartiennent à l'organisation, pas à l'utilisateur : ils n'ont
+ * délibérément aucune place dans la configuration personnelle (page Identité).
  */
 @Component({
   selector: 'app-organizations',
@@ -39,6 +53,7 @@ import { ActivityDto } from '../../core/models';
       .muted { color: var(--muted); font-size: 0.85rem; }
       select, input { }
       .danger { border-color: var(--red); color: var(--red); }
+      .addr-item { border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.7rem; background: var(--surface-2); }
     `,
   ],
   template: `
@@ -118,6 +133,127 @@ import { ActivityDto } from '../../core/models';
                     <option [value]="o.id">{{ o.name }}</option>
                   }
                 </select>
+              </div>
+
+              <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Adresses de l'organisation</h3>
+              <p class="muted" style="margin:0">
+                Adresses de « {{ org.name }} ». Proposées comme localisation à la création d'un
+                événement. La région est dérivée de la commune.
+              </p>
+              @for (a of addresses(); track a.id) {
+                <div class="addr-item">
+                  <div class="row" style="justify-content:space-between">
+                    <strong>{{ a.label }}</strong>
+                    @if (a.isPrimary) { <span class="fn">● principale</span> }
+                  </div>
+                  <div class="muted">
+                    {{ a.streetLines }} · {{ a.postalCode }}
+                    @if (a.municipalityName) { {{ a.municipalityName }} }
+                    @if (a.regionName) { ({{ a.regionName }}) }
+                    · {{ a.countryName }}
+                  </div>
+                  @if (canManage(org)) {
+                    <div class="row" style="margin-top:0.4rem">
+                      @if (!a.isPrimary) {
+                        <button class="btn btn-sm" (click)="setPrimaryAddress(org.id, a.id)">Définir principale</button>
+                      }
+                      <button class="btn btn-sm danger" (click)="deleteAddress(org.id, a.id)">Supprimer</button>
+                    </div>
+                  }
+                </div>
+              } @empty {
+                <p class="muted" style="margin:0">Aucune adresse enregistrée.</p>
+              }
+              @if (canManage(org)) {
+                <div class="grid" style="gap:0.5rem">
+                  <input class="input" [(ngModel)]="addr.label" placeholder="Libellé (ex. Boutique centre-ville)" />
+                  <input class="input" [(ngModel)]="addr.streetLines" placeholder="Rue" />
+                  <div class="row">
+                    <select class="input" [(ngModel)]="addr.countryId" (ngModelChange)="onAddrCountryChange()">
+                      <option value="">Pays…</option>
+                      @for (c of countries; track c.id) {
+                        <option [value]="c.id">{{ c.name }}</option>
+                      }
+                    </select>
+                    <input class="input" [(ngModel)]="addr.postalCode" placeholder="Code postal"
+                           [disabled]="!addr.countryId" (keyup.enter)="resolveAddr()" />
+                    <button type="button" class="btn btn-sm" [disabled]="!addr.countryId || !addr.postalCode.trim()"
+                            (click)="resolveAddr()">Résoudre</button>
+                  </div>
+                  @if (addrResolved.length) {
+                    <select class="input" [(ngModel)]="addr.municipalityId">
+                      <option value="">Commune…</option>
+                      @for (mun of addrResolved; track mun.id) {
+                        <option [value]="mun.id">{{ mun.name }} ({{ mun.regionName }})</option>
+                      }
+                    </select>
+                  } @else if (addrPostalSearched) {
+                    <p class="muted" style="margin:0">Aucune commune trouvée pour ce code postal.</p>
+                  }
+                  <label class="row" style="font-size:0.85rem">
+                    <input type="checkbox" [(ngModel)]="addr.isPrimary" /> Adresse principale
+                  </label>
+                  <div>
+                    <button class="btn btn-sm" [disabled]="!canSubmitAddr()" (click)="addAddress(org.id)">
+                      Ajouter l'adresse
+                    </button>
+                  </div>
+                </div>
+              }
+
+              <h3 style="font-size:0.85rem;margin:0.6rem 0 0">IA de l'organisation</h3>
+              <p class="muted" style="margin:0">
+                IA appliquée aux imports réalisés au nom de « {{ org.name }} ». Prioritaire sur l'IA
+                personnelle de chaque collaborateur. La clé est stockée comme un secret, jamais réaffichée.
+              </p>
+              <div class="grid" style="gap:0.5rem">
+                <label class="row" style="font-size:0.85rem">
+                  <input type="checkbox" [(ngModel)]="orgAi.enabled" [disabled]="!canManage(org)" />
+                  Activer l'IA de l'organisation
+                </label>
+                <div class="row">
+                  <select class="input" [(ngModel)]="orgAi.provider" [disabled]="!canManage(org)">
+                    <option value="">Fournisseur…</option>
+                    @for (p of aiProviders; track p.id) {
+                      <option [value]="p.id">{{ p.label }}</option>
+                    }
+                  </select>
+                  <select class="input" [(ngModel)]="orgAi.model" [disabled]="!orgAi.provider || !canManage(org)">
+                    <option value="">Modèle…</option>
+                    @for (mo of modelsFor(orgAi.provider); track mo) {
+                      <option [value]="mo">{{ mo }}</option>
+                    }
+                  </select>
+                </div>
+                @if (canManage(org)) {
+                  <input class="input" type="password" [(ngModel)]="orgAi.apiKey"
+                         [placeholder]="orgAiSecretMasked() ? 'Clé enregistrée (' + orgAiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
+                  @if (providerInfo(orgAi.provider); as pi) {
+                    <p class="muted" style="margin:0">
+                      @if (pi.requiresKey) {
+                        Clé {{ pi.keyHint }}
+                        @if (pi.keyUrl) {
+                          — <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a>
+                        }
+                      } @else {
+                        {{ pi.keyHint }}
+                      }
+                    </p>
+                  }
+                }
+                <div class="row">
+                  @for (uc of aiUseCases; track uc) {
+                    <button type="button" class="activity" [class.on]="orgAi.useCases[uc]"
+                            [disabled]="!canManage(org)" (click)="toggleOrgUseCase(uc)">{{ uc }}</button>
+                  }
+                </div>
+                @if (canManage(org)) {
+                  <div class="row">
+                    <button class="btn btn-sm" (click)="saveOrgAi(org.id)">Enregistrer l'IA</button>
+                    <button class="btn btn-sm" (click)="testOrgAi(org.id)" [disabled]="!orgAiSecretMasked()">Tester</button>
+                    @if (orgAiStatus()) { <span class="muted">{{ aiStatusLabel(orgAiStatus()) }}</span> }
+                  </div>
+                }
               </div>
             </div>
           }
@@ -202,12 +338,34 @@ export class OrganizationsComponent implements OnInit {
   private readonly api = inject(OrganizationsApi);
   private readonly refData = inject(ReferenceDataApi);
   private readonly identity = inject(IdentityService);
+  private readonly aiConfigApi = inject(AiConfigApi);
 
   readonly configOrg = signal<string | null>(null);
   readonly info = signal<OrganizationGeneralInfo | null>(null);
   readonly activities = signal<ActivityDto[]>([]);
   readonly selected = signal<Set<string>>(new Set());
   readonly organizers = signal<{ id: string; name: string }[]>([]);
+
+  // Adresses de l'organisation ouverte en configuration (rattachées à l'organisation, jamais à
+  // l'utilisateur : elles n'ont pas leur place dans la configuration personnelle).
+  readonly addresses = signal<OrganizationAddress[]>([]);
+  countries: ReferentialItem[] = [];
+  addrResolved: MunicipalityGeo[] = [];
+  addrPostalSearched = false;
+  addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
+
+  // Configuration IA de portée ORGANIZATION (ADR.16) — distincte de l'IA personnelle.
+  readonly aiUseCases = AI_USE_CASES;
+  aiProviders: AiProviderInfo[] = [];
+  private readonly orgAiSecret = signal<{ masked: string } | null>(null);
+  private readonly orgAiTestStatus = signal<string>('');
+  orgAi = {
+    provider: '',
+    model: '',
+    enabled: false,
+    useCases: {} as Record<string, boolean>,
+    apiKey: '',
+  };
 
   readonly orgs = signal<MyOrganization[]>([]);
   readonly members = signal<OrganizationMember[] | null>(null);
@@ -391,6 +549,176 @@ export class OrganizationsComponent implements OnInit {
         this.selected.set(new Set(gi.coveredActivities.map((c) => c.activity.id)));
       },
       error: (err) => this.message.set(err?.error?.message ?? 'Accès refusé.'),
+    });
+    this.loadAddresses(org.id);
+    this.loadOrgAi(org.id);
+  }
+
+  // --- Adresses de l'organisation ---
+
+  private loadAddresses(organizationId: string): void {
+    this.addresses.set([]);
+    this.resetAddrForm();
+    if (!this.countries.length) {
+      this.refData.countries().subscribe((items) => (this.countries = items));
+    }
+    this.identity.listOrganizationAddresses(organizationId).subscribe({
+      next: (list) => this.addresses.set(list),
+      error: () => this.addresses.set([]),
+    });
+  }
+
+  private resetAddrForm(): void {
+    this.addr = { label: '', countryId: '', postalCode: '', municipalityId: '', streetLines: '', isPrimary: false };
+    this.addrResolved = [];
+    this.addrPostalSearched = false;
+  }
+
+  onAddrCountryChange(): void {
+    this.addr.postalCode = '';
+    this.addr.municipalityId = '';
+    this.addrResolved = [];
+    this.addrPostalSearched = false;
+  }
+
+  /** La commune (et donc la région) est résolue depuis le code postal — jamais saisie librement. */
+  resolveAddr(): void {
+    const postalCode = this.addr.postalCode.trim();
+    if (!this.addr.countryId || !postalCode) {
+      return;
+    }
+    this.refData.resolveMunicipalities(this.addr.countryId, postalCode).subscribe((communes) => {
+      this.addrResolved = communes;
+      this.addrPostalSearched = true;
+      this.addr.municipalityId = communes.length === 1 ? communes[0].id : '';
+    });
+  }
+
+  canSubmitAddr(): boolean {
+    return (
+      this.addr.label.trim().length > 0 &&
+      this.addr.streetLines.trim().length > 0 &&
+      this.addr.countryId.length > 0 &&
+      this.addr.postalCode.trim().length > 0
+    );
+  }
+
+  addAddress(organizationId: string): void {
+    if (!this.canSubmitAddr()) {
+      return;
+    }
+    this.identity
+      .createOrganizationAddress(organizationId, {
+        label: this.addr.label.trim(),
+        countryId: this.addr.countryId,
+        postalCode: this.addr.postalCode.trim(),
+        municipalityId: this.addr.municipalityId || undefined,
+        streetLines: this.addr.streetLines.trim(),
+        isPrimary: this.addr.isPrimary,
+      })
+      .subscribe({
+        next: () => {
+          this.message.set('✅ Adresse ajoutée.');
+          this.loadAddresses(organizationId);
+        },
+        error: (err) => this.message.set(err?.error?.message ?? 'Ajout impossible.'),
+      });
+  }
+
+  setPrimaryAddress(organizationId: string, addressId: string): void {
+    this.identity
+      .setPrimaryOrganizationAddress(organizationId, addressId)
+      .subscribe({
+        next: () => this.loadAddresses(organizationId),
+        error: (err) => this.message.set(err?.error?.message ?? 'Mise à jour impossible.'),
+      });
+  }
+
+  deleteAddress(organizationId: string, addressId: string): void {
+    this.identity.deleteOrganizationAddress(organizationId, addressId).subscribe({
+      next: () => this.loadAddresses(organizationId),
+      error: (err) => this.message.set(err?.error?.message ?? 'Suppression impossible.'),
+    });
+  }
+
+  // --- IA de l'organisation (portée ORGANIZATION) ---
+
+  private loadOrgAi(organizationId: string): void {
+    this.orgAi = { provider: '', model: '', enabled: false, useCases: {}, apiKey: '' };
+    this.orgAiSecret.set(null);
+    this.orgAiTestStatus.set('');
+    if (!this.aiProviders.length) {
+      this.aiConfigApi.providers().subscribe((providers) => (this.aiProviders = providers));
+    }
+    this.aiConfigApi.getOrg(organizationId).subscribe({
+      next: (config) => {
+        if (!config) {
+          return;
+        }
+        this.orgAi.provider = config.provider;
+        this.orgAi.model = config.model;
+        this.orgAi.enabled = config.enabled;
+        this.orgAi.useCases = { ...config.useCases };
+        this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+        this.orgAiTestStatus.set(config.status);
+      },
+      error: () => undefined,
+    });
+  }
+
+  providerInfo(id: string): AiProviderInfo | undefined {
+    return this.aiProviders.find((p) => p.id === id);
+  }
+
+  modelsFor(id: string): string[] {
+    return this.providerInfo(id)?.suggestedModels ?? [];
+  }
+
+  orgAiSecretMasked(): string {
+    return this.orgAiSecret()?.masked ?? '';
+  }
+
+  orgAiStatus(): string {
+    return this.orgAiTestStatus();
+  }
+
+  aiStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      CONFIGURED: 'Configuré (non testé)',
+      TESTED: '✓ Testé',
+      FAILED: '✗ Test échoué',
+    };
+    return map[status] ?? status;
+  }
+
+  toggleOrgUseCase(useCase: AiUseCase): void {
+    this.orgAi.useCases = { ...this.orgAi.useCases, [useCase]: !this.orgAi.useCases[useCase] };
+  }
+
+  saveOrgAi(organizationId: string): void {
+    this.aiConfigApi
+      .updateOrg(organizationId, {
+        provider: this.orgAi.provider.trim(),
+        model: this.orgAi.model.trim(),
+        enabled: this.orgAi.enabled,
+        useCases: this.orgAi.useCases,
+        apiKey: this.orgAi.apiKey.trim() || undefined,
+      })
+      .subscribe({
+        next: (config) => {
+          this.orgAi.apiKey = '';
+          this.orgAiSecret.set(config.secret ? { masked: config.secret.masked } : null);
+          this.orgAiTestStatus.set(config.status);
+          this.message.set("✅ Configuration IA de l'organisation enregistrée.");
+        },
+        error: (err) => this.message.set(err?.error?.message ?? 'Enregistrement impossible.'),
+      });
+  }
+
+  testOrgAi(organizationId: string): void {
+    this.aiConfigApi.testOrg(organizationId).subscribe({
+      next: (result) => this.orgAiTestStatus.set(result.status),
+      error: () => this.orgAiTestStatus.set('FAILED'),
     });
   }
 
