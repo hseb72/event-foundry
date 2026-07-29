@@ -4,6 +4,7 @@ import { EventMapper } from '../../events/mappers/event.mapper';
 import { SearchQueryDto } from '../dto/search-query.dto';
 import { SearchFacetsDto, SearchResultsDto } from '../dto/search-results.dto';
 import { SearchFilter, SearchRepository } from '../repositories/search.repository';
+import { EventCoverService } from '../../event-covers/services/event-cover.service';
 
 /**
  * Interrogation du domaine Search (TSPEC.09) : recherche plein texte, filtres, tri, pagination et
@@ -12,7 +13,10 @@ import { SearchFilter, SearchRepository } from '../repositories/search.repositor
  */
 @Injectable()
 export class SearchService {
-  constructor(private readonly repository: SearchRepository) {}
+  constructor(
+    private readonly repository: SearchRepository,
+    private readonly covers: EventCoverService,
+  ) {}
 
   async search(userId: string, query: SearchQueryDto): Promise<SearchResultsDto> {
     const skip = query.skip ?? 0;
@@ -28,6 +32,7 @@ export class SearchService {
       .map((id) => byId.get(id))
       .filter((event): event is NonNullable<typeof event> => Boolean(event))
       .map((event) => EventMapper.toResponse(event, event.participations[0] ?? null));
+    await this.covers.attach(items);
 
     return { items, total, skip, take };
   }

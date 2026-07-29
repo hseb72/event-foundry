@@ -3,6 +3,7 @@ import { SearchController } from './controllers/search.controller';
 import { SearchRepository } from './repositories/search.repository';
 import { SearchIndexService } from './services/search-index.service';
 import { SearchService } from './services/search.service';
+import { EventCoversModule } from '../event-covers/event-covers.module';
 
 /**
  * Domaine Search (TSPEC.09) : service technique de recherche. Maintient un index (`search_documents`)
@@ -11,6 +12,7 @@ import { SearchService } from './services/search.service';
  * données. `SearchIndexService` est exporté pour que le Publishing déclenche l'(dé)indexation.
  */
 @Module({
+  imports: [EventCoversModule],
   controllers: [SearchController],
   providers: [SearchService, SearchIndexService, SearchRepository],
   exports: [SearchIndexService],

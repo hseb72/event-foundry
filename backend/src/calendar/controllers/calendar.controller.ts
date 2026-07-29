@@ -6,12 +6,16 @@ import { CalendarQueryDto } from '../../events/dto/calendar-query.dto';
 import { EventResponseDto } from '../../events/dto/event-response.dto';
 import { EventMapper } from '../../events/mappers/event.mapper';
 import { EventsService } from '../../events/services/events.service';
+import { EventCoverService } from '../../event-covers/services/event-cover.service';
 
 @ApiTags('calendar')
 @ApiBearerAuth()
 @Controller('me')
 export class CalendarController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly covers: EventCoverService,
+  ) {}
 
   /** Mon calendrier (FSPEC.05) : événements ayant une participation, avec son état. */
   @Get('calendar')
@@ -21,8 +25,8 @@ export class CalendarController {
     @Query() query: CalendarQueryDto,
   ): Promise<EventResponseDto[]> {
     const events = await this.eventsService.getCalendar(user.userId, query);
-    return events.map((event) =>
-      EventMapper.toResponse(event, event.participations[0] ?? null),
-    );
+    const items = events.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null));
+    await this.covers.attach(items);
+    return items;
   }
 }

@@ -1,4 +1,5 @@
 import type { EventWithRefs } from '../events/entities/event.entity';
+import type { EventCoverService } from '../event-covers/services/event-cover.service';
 import type { PublicRepository } from './public.repository';
 import { PublicService } from './public.service';
 
@@ -23,11 +24,17 @@ const evt = (id: string, lat: number | null, lng: number | null): EventWithRefs 
 
 describe('PublicService — événements « à la Une » (page de garde)', () => {
   let repository: { upcoming: jest.Mock };
+  let covers: { attach: jest.Mock };
   let service: PublicService;
 
   beforeEach(() => {
     repository = { upcoming: jest.fn() };
-    service = new PublicService(repository as unknown as PublicRepository);
+    // Couvertures : dépendance d'affichage, neutre pour la sélection et le tri testés ici.
+    covers = { attach: jest.fn().mockResolvedValue(undefined) };
+    service = new PublicService(
+      repository as unknown as PublicRepository,
+      covers as unknown as EventCoverService,
+    );
   });
 
   it('sans localisation : renvoie les prochains publiés dans l’ordre du repository', async () => {

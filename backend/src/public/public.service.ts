@@ -3,6 +3,7 @@ import { EventResponseDto } from '../events/dto/event-response.dto';
 import type { EventWithRefs } from '../events/entities/event.entity';
 import { EventMapper } from '../events/mappers/event.mapper';
 import { PublicRepository } from './public.repository';
+import { EventCoverService } from '../event-covers/services/event-cover.service';
 
 /** Coordonnées facultatives transmises par le visiteur (géolocalisation opt-in du navigateur). */
 export interface VisitorLocation {
@@ -21,12 +22,17 @@ const PROXIMITY_POOL = 60;
  */
 @Injectable()
 export class PublicService {
-  constructor(private readonly repository: PublicRepository) {}
+  constructor(
+    private readonly repository: PublicRepository,
+    private readonly covers: EventCoverService,
+  ) {}
 
   async featured(take: number, location?: VisitorLocation): Promise<EventResponseDto[]> {
     const pool = await this.repository.upcoming(new Date(), location ? PROXIMITY_POOL : take);
     const selected = location ? this.byProximity(pool, location).slice(0, take) : pool;
-    return selected.map((event) => EventMapper.toResponse(event, null));
+    const items = selected.map((event) => EventMapper.toResponse(event, null));
+    await this.covers.attach(items);
+    return items;
   }
 
   /** Trie les événements par distance croissante au visiteur ; les lieux sans coordonnées passent après. */

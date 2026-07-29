@@ -11,6 +11,7 @@ import { EventMediaService } from './services/event-media.service';
 import { EventsService } from './services/events.service';
 import { OrganizerNotifyService } from './services/organizer-notify.service';
 import { PublishingService } from './services/publishing.service';
+import { EventCoversModule } from '../event-covers/event-covers.module';
 
 /**
  * Gestion des Events (FSPEC.03 / TSPEC.01). La création valide la hiérarchie référentielle ;
@@ -18,7 +19,7 @@ import { PublishingService } from './services/publishing.service';
  * via EventsService.
  */
 @Module({
-  imports: [ReferenceDataModule, SearchModule, NotificationsModule, OrganizationsModule],
+  imports: [ReferenceDataModule, SearchModule, NotificationsModule, OrganizationsModule, EventCoversModule],
   controllers: [EventsController, EventMediaController],
   providers: [
     EventsService,

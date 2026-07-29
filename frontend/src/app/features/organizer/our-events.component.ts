@@ -18,6 +18,7 @@ import { EventFormComponent } from '../../shared/event-form.component';
 import { FileDropComponent } from '../../shared/file-drop.component';
 import { formatDateTime } from '../../shared/date-format';
 import { IconComponent } from '../../shared/icon.component';
+import { eventCoverBackground } from '../../shared/event-cover';
 
 type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
 /** Colonnes triables côté serveur (le tri directionnel s'applique à la page courante paginée). */
@@ -410,15 +411,6 @@ export class OurEventsComponent implements OnInit {
   private static readonly VIEW_KEY = 'ef-org-events-view';
   readonly view = signal<'cards' | 'table'>(OurEventsComponent.readView());
 
-  /** Dégradés festifs (déclinés de la marque) pour la couverture d'un événement sans image. */
-  private static readonly PLACEHOLDERS = [
-    'linear-gradient(135deg, #f97316, #ec4899)',
-    'linear-gradient(135deg, #8b5cf6, #6366f1)',
-    'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    'linear-gradient(135deg, #6366f1, #06b6d4)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-  ];
-
   private static readView(): 'cards' | 'table' {
     try {
       return localStorage.getItem(OurEventsComponent.VIEW_KEY) === 'table' ? 'table' : 'cards';
@@ -692,16 +684,9 @@ export class OurEventsComponent implements OnInit {
     return this.isPublished(e) ? 'Publié' : 'Brouillon';
   }
 
-  /** Fond de la couverture (vue cartes) : 1ʳᵉ image de l'événement, sinon dégradé festif déterministe. */
+  /** Fond de la couverture — logique partagée (image de couverture, sinon dégradé festif). */
   coverBg(e: EventDto): string {
-    const image = e.media?.find((m) => m.contentType?.startsWith('image/')) ?? e.media?.[0];
-    if (image) {
-      return `center / cover no-repeat url("${image.url}")`;
-    }
-    let hash = 0;
-    for (const ch of e.id) hash = (hash + ch.charCodeAt(0)) | 0;
-    const list = OurEventsComponent.PLACEHOLDERS;
-    return list[Math.abs(hash) % list.length];
+    return eventCoverBackground(e);
   }
 
   /** Change la colonne / le sens de tri puis recharge la première page (tri côté serveur). */

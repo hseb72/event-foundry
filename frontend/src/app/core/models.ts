@@ -133,6 +133,8 @@ export interface EventDto {
   subjectIds: string[];
   modalities: string[];
   media: EventMediaDto[];
+  /** Image de couverture (URL présignée) : peuplée aussi dans les vues en liste. `null` sans image. */
+  coverUrl: string | null;
   city: string | null;
   startsAt: string;
   endsAt: string | null;

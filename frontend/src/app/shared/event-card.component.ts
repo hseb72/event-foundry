@@ -5,6 +5,7 @@ import { ParticipationApi } from '../core/api/participation.service';
 import { EventDto, ParticipationState, PaymentStatus, ReservationStatus } from '../core/models';
 import { formatDateTime } from './date-format';
 import { participationColor, participationLabel } from './participation-color';
+import { eventCoverBackground } from './event-cover';
 
 @Component({
   selector: 'app-event-card',
@@ -169,15 +170,6 @@ export class EventCardComponent {
 
   participation: ParticipationState = { interested: false, reservationStatus: 'NONE', paymentStatus: 'NONE' };
 
-  /** Dégradés festifs (déclinés du dégradé de marque) pour les événements sans image. */
-  private static readonly PLACEHOLDERS = [
-    'linear-gradient(135deg, #f97316, #ec4899)',
-    'linear-gradient(135deg, #8b5cf6, #6366f1)',
-    'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    'linear-gradient(135deg, #6366f1, #06b6d4)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-  ];
-
   constructor(private readonly participationApi: ParticipationApi) {}
 
   ngOnInit(): void {
@@ -186,16 +178,9 @@ export class EventCardComponent {
     }
   }
 
-  /** Fond de la couverture : 1ʳᵉ image de l'événement, sinon dégradé festif déterministe (par id). */
+  /** Fond de la couverture — logique partagée (image de couverture, sinon dégradé festif). */
   coverBg(): string {
-    const image = this.event.media?.find((m) => m.contentType?.startsWith('image/')) ?? this.event.media?.[0];
-    if (image) {
-      return `center / cover no-repeat url("${image.url}")`;
-    }
-    let hash = 0;
-    for (const ch of this.event.id) hash = (hash + ch.charCodeAt(0)) | 0;
-    const list = EventCardComponent.PLACEHOLDERS;
-    return list[Math.abs(hash) % list.length];
+    return eventCoverBackground(this.event);
   }
 
   color(): string {

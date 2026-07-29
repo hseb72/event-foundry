@@ -5,6 +5,7 @@ import { PublicApi } from '../../core/api/public.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { EventDto } from '../../core/models';
 import { LogoComponent } from '../../shared/logo.component';
+import { eventCoverBackground } from '../../shared/event-cover';
 
 /**
  * Page de garde publique (accessible sans compte) — vitrine festive (UISPEC.13). Barre de navigation
@@ -378,15 +379,6 @@ export class LandingComponent implements OnInit {
   readonly located = signal(false);
   readonly year = new Date().getFullYear();
 
-  /** Palette de placeholders festifs (dégradés de marque) pour les événements sans image. */
-  private static readonly PLACEHOLDERS = [
-    'linear-gradient(135deg, #f97316, #ec4899)',
-    'linear-gradient(135deg, #8b5cf6, #6366f1)',
-    'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    'linear-gradient(135deg, #6366f1, #06b6d4)',
-    'linear-gradient(135deg, #f59e0b, #ef4444)',
-  ];
-
   constructor(
     private readonly api: PublicApi,
     private readonly auth: AuthService,
@@ -409,14 +401,7 @@ export class LandingComponent implements OnInit {
 
   /** Fond d'une carte : première image de l'événement si disponible, sinon dégradé festif déterministe. */
   cover(e: EventDto): string {
-    const image = e.media?.find((m) => m.contentType?.startsWith('image/'));
-    if (image) {
-      return `center / cover no-repeat url("${image.url}")`;
-    }
-    let hash = 0;
-    for (const ch of e.id) hash = (hash + ch.charCodeAt(0)) | 0;
-    const list = LandingComponent.PLACEHOLDERS;
-    return list[Math.abs(hash) % list.length];
+    return eventCoverBackground(e);
   }
 
   scrollTo(id: string): void {

@@ -8,6 +8,7 @@ import type { RecommendationContext, RecommendationRule } from '../domain/recomm
 import { defaultRecommendationRules } from '../domain/rules';
 import { RecommendationDto } from '../dto/recommendation-response.dto';
 import { RecommendationRepository } from '../repositories/recommendation.repository';
+import { EventCoverService } from '../../event-covers/services/event-cover.service';
 
 /**
  * Moteur de recommandation déterministe (ADR.09 / TSPEC.02). Pour un utilisateur, applique une
@@ -22,6 +23,7 @@ export class RecommendationService {
   constructor(
     private readonly repository: RecommendationRepository,
     private readonly follows: FollowService,
+    private readonly covers: EventCoverService,
   ) {}
 
   async recommend(
@@ -46,7 +48,7 @@ export class RecommendationService {
       now,
     };
 
-    return candidates
+    const recommendations = candidates
       .map((event) => this.score(event, context))
       .filter((scored) => scored.score > 0)
       // Classement déterministe : score décroissant, puis date, puis identifiant (départage stable).
@@ -62,6 +64,8 @@ export class RecommendationService {
         score: scored.score,
         reasons: scored.reasons,
       }));
+    await this.covers.attach(recommendations.map((reco) => reco.event));
+    return recommendations;
   }
 
   /** Regroupe les suivis actifs de l'utilisateur par type de cible (signaux d'intérêt explicites). */

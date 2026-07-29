@@ -81,6 +81,14 @@ export class EventResponseDto {
   @ApiProperty({ type: [EventMediaDto], description: 'Galerie (peuplée sur la fiche détaillée).' })
   media!: EventMediaDto[];
 
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      "URL présignée de l'image de couverture (première image de la galerie), peuplée aussi dans " +
+      'les vues en liste. `null` si l’événement n’a aucune image : l’interface applique son dégradé de repli.',
+  })
+  coverUrl!: string | null;
+
   @ApiPropertyOptional({ nullable: true, description: 'Ville en texte libre du lieu (legacy).' })
   city!: string | null;
 

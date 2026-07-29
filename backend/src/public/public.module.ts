@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PublicController } from './public.controller';
 import { PublicRepository } from './public.repository';
 import { PublicService } from './public.service';
+import { EventCoversModule } from '../event-covers/event-covers.module';
 
 /**
  * Vitrine publique (page de garde) : point d'accès **non authentifié** au catalogue, pour présenter
@@ -9,6 +10,7 @@ import { PublicService } from './public.service';
  * Lecture seule sur les seuls événements publiés ; aucun contexte utilisateur n'est exposé.
  */
 @Module({
+  imports: [EventCoversModule],
   controllers: [PublicController],
   providers: [PublicService, PublicRepository],
 })

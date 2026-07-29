@@ -60,6 +60,8 @@ export class EventMapper {
       subjectIds: event.subjects.map((link) => link.subjectId),
       modalities: event.modalities.map((link) => link.modality.name),
       media: [],
+      // Couverture résolue à part (présignature MinIO asynchrone) : EventCoverService.attach().
+      coverUrl: null,
       city: event.venue ? event.venue.city : null,
       startsAt: event.startsAt.toISOString(),
       endsAt: event.endsAt ? event.endsAt.toISOString() : null,

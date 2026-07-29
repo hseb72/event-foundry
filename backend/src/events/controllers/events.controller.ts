@@ -22,6 +22,7 @@ import { EventStatusEventDto } from '../dto/event-status-event.dto';
 import { PaginatedEventsResponseDto } from '../dto/paginated-events-response.dto';
 import { SearchEventsQueryDto } from '../dto/search-events-query.dto';
 import { EventMapper } from '../mappers/event.mapper';
+import { EventCoverService } from '../../event-covers/services/event-cover.service';
 import { EventMediaService } from '../services/event-media.service';
 import { EventsService } from '../services/events.service';
 import { OrganizerNotifyService } from '../services/organizer-notify.service';
@@ -34,6 +35,7 @@ export class EventsController {
   constructor(
     private readonly service: EventsService,
     private readonly mediaService: EventMediaService,
+    private readonly covers: EventCoverService,
     private readonly publishing: PublishingService,
     private readonly organizerNotify: OrganizerNotifyService,
   ) {}
@@ -52,14 +54,11 @@ export class EventsController {
     );
     // Le pseudo de l'auteur n'est exposé que dans la vue d'organisation (FSPEC.22), jamais en découverte.
     const includeCreator = Boolean(query.organizationScope);
-    return {
-      items: items.map((event) =>
-        EventMapper.toResponse(event, event.participations[0] ?? null, { includeCreator }),
-      ),
-      total,
-      skip,
-      take,
-    };
+    const events = items.map((event) =>
+      EventMapper.toResponse(event, event.participations[0] ?? null, { includeCreator }),
+    );
+    await this.covers.attach(events);
+    return { items: events, total, skip, take };
   }
 
   /** Création manuelle d'un Event (brouillon). Réservé à `event.create` (Organizer). */
@@ -86,12 +85,9 @@ export class EventsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedEventsResponseDto> {
     const items = await this.service.listPrivateEvents(user.userId);
-    return {
-      items: items.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null)),
-      total: items.length,
-      skip: 0,
-      take: items.length,
-    };
+    const events = items.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null));
+    await this.covers.attach(events);
+    return { items: events, total: items.length, skip: 0, take: items.length };
   }
 
   /**
@@ -181,6 +177,8 @@ export class EventsController {
     const event = await this.service.getForReader(id, user.userId);
     const dto = EventMapper.toResponse(event);
     dto.media = await this.mediaService.listWithUrls(id);
+    // La galerie est déjà présignée : la couverture s'en déduit sans requête supplémentaire.
+    dto.coverUrl = dto.media.find((m) => m.contentType?.startsWith('image/'))?.url ?? null;
     // §16 : proposer la notification de l'organisateur uniquement pour un événement privé qui mentionne
     // une fiche organisateur adossée à une organisation enregistrée.
     if (event.visibility === 'PRIVATE') {

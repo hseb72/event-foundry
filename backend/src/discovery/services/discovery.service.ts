@@ -3,6 +3,7 @@ import { EventResponseDto } from '../../events/dto/event-response.dto';
 import { EventMapper } from '../../events/mappers/event.mapper';
 import { FacetsDto } from '../dto/facets.dto';
 import { DiscoveryRepository } from '../repositories/discovery.repository';
+import { EventCoverService } from '../../event-covers/services/event-cover.service';
 
 /**
  * Domaine Discovery (TSPEC.04) : orchestration de l'exploration du catalogue. Sans donnée propre,
@@ -11,7 +12,10 @@ import { DiscoveryRepository } from '../repositories/discovery.repository';
  */
 @Injectable()
 export class DiscoveryService {
-  constructor(private readonly repository: DiscoveryRepository) {}
+  constructor(
+    private readonly repository: DiscoveryRepository,
+    private readonly covers: EventCoverService,
+  ) {}
 
   facets(): Promise<FacetsDto> {
     return this.repository.facets();
@@ -19,6 +23,8 @@ export class DiscoveryService {
 
   async surprise(userId: string, take: number): Promise<EventResponseDto[]> {
     const events = await this.repository.surprise(userId, take, new Date());
-    return events.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null));
+    const items = events.map((event) => EventMapper.toResponse(event, event.participations[0] ?? null));
+    await this.covers.attach(items);
+    return items;
   }
 }
