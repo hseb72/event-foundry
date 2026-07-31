@@ -1,0 +1,19 @@
+{
+  "name": "@event-foundry/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Contrats d'échange partagés entre les composants EventFoundry (ADR.03).",
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

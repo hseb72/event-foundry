@@ -1,0 +1,269 @@
+/* EventFoundry — design system (cf. docs/v3 04-UISPEC.13-VisualIdentity).
+   Identité par univers : Explorer = magenta, Organizer = vert, Operator = violet.
+   Les composants n'utilisent QUE des tokens (jamais de couleur en dur) :
+   - `--exp*`  : couleur de l'EXPÉRIENCE ACTIVE (suit le rôle en cours) ;
+   - `--surface/--text/…` : tokens neutres, pilotés par le THÈME (clair/sombre). */
+
+:root {
+  /* Couleurs de référence par univers (source de --exp). */
+  --explorer: #ec4899;
+  --explorer-strong: #db2777;
+  --explorer-weak: rgba(236, 72, 153, 0.12);
+
+  --organizer: #16a34a;
+  --organizer-strong: #15803d;
+  --organizer-weak: rgba(22, 163, 74, 0.12);
+
+  --operator: #6d28d9;
+  --operator-strong: #5b21b6;
+  --operator-weak: rgba(109, 40, 217, 0.12);
+
+  /* Famille « expérience active » : par défaut Explorer (surchargée par [data-exp]). */
+  --exp: var(--explorer);
+  --exp-strong: var(--explorer-strong);
+  --exp-weak: var(--explorer-weak);
+  --exp-contrast: #ffffff;
+
+  /* Rétrocompatibilité (anciens usages) : --accent suit désormais l'expérience active. */
+  --accent: var(--exp);
+  --accent-strong: var(--exp-strong);
+  --admin: var(--operator);
+  --organizer-legacy: var(--organizer);
+
+  /* Neutres — thème CLAIR par défaut. */
+  --bg: #f5f6fa;
+  --surface: #ffffff;
+  --surface-2: #f0f1f6;
+  --border: #e6e8ef;
+  --text: #1f2333;
+  --muted: #6b7185;
+
+  --blue: #2563eb;
+  --orange: #f97316;
+  --violet: #7c3aed;
+  --green: #16a34a;
+  --red: #dc2626;
+
+  /* Marque festive (UISPEC.13) : dégradé signature orange → rose → violet → indigo, décliné
+     du logo. Utilisé sur les surfaces sans contexte d'expérience (vitrine, auth, accents). */
+  --brand-1: #f97316;
+  --brand-2: #ec4899;
+  --brand-3: #8b5cf6;
+  --brand-4: #6366f1;
+  --brand: #7c3aed;
+  --brand-strong: #6d28d9;
+  --brand-gradient: linear-gradient(120deg, var(--brand-1) 0%, var(--brand-2) 38%, var(--brand-3) 70%, var(--brand-4) 100%);
+  --brand-gradient-soft: linear-gradient(120deg, rgba(249, 115, 22, 0.14), rgba(139, 92, 246, 0.14) 60%, rgba(99, 102, 241, 0.14));
+
+  --radius: 16px;
+  --radius-lg: 22px;
+  --shadow: 0 12px 34px rgba(30, 35, 51, 0.09);
+  --shadow-sm: 0 3px 12px rgba(30, 35, 51, 0.06);
+  --shadow-brand: 0 12px 30px rgba(124, 58, 237, 0.28);
+}
+
+/* La couleur SUIT l'expérience active : posée par le layout via [data-exp] (ADR.22 / RG-VIS-03). */
+[data-exp='EXPLORER'] {
+  --exp: var(--explorer);
+  --exp-strong: var(--explorer-strong);
+  --exp-weak: var(--explorer-weak);
+}
+[data-exp='ORGANIZER'] {
+  --exp: var(--organizer);
+  --exp-strong: var(--organizer-strong);
+  --exp-weak: var(--organizer-weak);
+}
+[data-exp='OPERATOR'] {
+  --exp: var(--operator);
+  --exp-strong: var(--operator-strong);
+  --exp-weak: var(--operator-weak);
+}
+
+/* Thème SOMBRE (préférence utilisateur — orthogonale à l'univers, ADR.22 §Thèmes).
+   Appliqué via l'attribut data-theme posé sur <html> par le ThemeService. */
+:root[data-theme='dark'] {
+  --bg: #14151c;
+  --surface: #1e2029;
+  --surface-2: #262933;
+  --border: #313543;
+  --text: #eceef5;
+  --muted: #9aa0b4;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 3px 12px rgba(0, 0, 0, 0.38);
+  --brand-gradient-soft: linear-gradient(120deg, rgba(249, 115, 22, 0.2), rgba(139, 92, 246, 0.2) 60%, rgba(99, 102, 241, 0.2));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.4rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--exp);
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  background: var(--exp);
+  border-color: transparent;
+  color: var(--exp-contrast);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--exp) 32%, transparent);
+}
+
+.btn-primary:hover {
+  background: var(--exp-strong);
+  border-color: transparent;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--exp) 42%, transparent);
+}
+
+/* Bouton signature : dégradé de marque (vitrine / auth / accents festifs, hors contexte d'expérience). */
+.btn-brand {
+  background: var(--brand-gradient);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-brand);
+}
+
+.btn-brand:hover {
+  border-color: transparent;
+  filter: brightness(1.05);
+  box-shadow: 0 16px 34px rgba(124, 58, 237, 0.36);
+}
+
+.btn-lg {
+  padding: 0.75rem 1.4rem;
+  font-size: 1rem;
+}
+
+.btn-sm {
+  padding: 0.32rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+/* Bouton d'action réduit à son icône : carré, sans libellé visible. Le sens reste porté par le
+   `title` et l'`aria-label` du bouton — jamais par le dessin seul (lecteurs d'écran, survol). */
+.btn-icon {
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.btn-icon.btn-sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.9rem;
+}
+
+.btn.active {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: var(--exp-contrast);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.25rem;
+}
+
+.input,
+.select {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--exp);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--exp) 18%, transparent);
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Texte en dégradé de marque (titres festifs de la vitrine). */
+.brand-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}

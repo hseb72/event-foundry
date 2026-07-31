@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Runner self-hosted aux ressources limitées : on annule les exécutions obsolètes
+# d'une même branche pour éviter l'empilement dans la file.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint · Build · Test
+    # Runner self-hosted enregistré au niveau du dépôt.
+    # Voir Settings > Actions > Runners. Ajoutez un label ici pour cibler une machine
+    # précise, p. ex. runs-on: [self-hosted, efoundry].
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared packages
+        run: |
+          npm run build --workspace @event-foundry/contracts
+          npm run build --workspace @event-foundry/libraries
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace @event-foundry/backend
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (unitaires)
+        run: npm test
+
+      # --- Tests intégration + E2E sur une vraie base (CLAUDE.md §12) ---
+      # PostgreSQL et Redis sont fournis par le docker-compose d'infra. MinIO n'est pas
+      # requis : il est remplacé par un stub dans les tests E2E.
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Start infra (PostgreSQL + Redis)
+        run: docker compose --env-file .env -f docker/docker-compose.yml up -d postgres redis
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            docker compose --env-file .env -f docker/docker-compose.yml exec -T postgres \
+              pg_isready -U eventfoundry && exit 0
+            sleep 2
+          done
+          echo "PostgreSQL n'est pas prêt" && exit 1
+
+      - name: Apply migrations
+        run: npm run prisma:migrate:deploy --workspace @event-foundry/backend
+
+      - name: Rebuild native deps (bcrypt)
+        run: npm rebuild bcrypt
+
+      - name: Integration & E2E tests
+        env:
+          DATABASE_URL: postgresql://eventfoundry:eventfoundry@localhost:5432/eventfoundry?schema=public
+          REDIS_HOST: localhost
+          REDIS_PORT: '6379'
+        run: |
+          npm run test:int --workspace @event-foundry/backend
+          npm run test:e2e --workspace @event-foundry/backend
+
+      - name: Stop infra
+        if: always()
+        run: docker compose --env-file .env -f docker/docker-compose.yml down

@@ -1,0 +1,1455 @@
+// Schéma Prisma EventFoundry — référence unique du modèle de données (TSPEC.02).
+// Conventions : tables au pluriel snake_case, modèles PascalCase, champs camelCase + @map,
+// clés primaires UUID générées côté application, dates en UTC (timestamptz).
+//
+// Les modèles complets seront ajoutés à l'EPIC 4 (Persistance), conformément à ARCHI.03 :
+//   User, Attachment, ImportJob, EventCandidate, Event,
+//   Domain, Activity, EventType, EventFormat, Alias, Organizer, Venue, UserParticipation.
+// Chaque évolution passe par une migration Prisma Migrate.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7 : l'URL de connexion n'est plus dans le schéma. Elle est fournie à Migrate via
+// prisma.config.ts, et au client applicatif via un driver adapter (@prisma/adapter-pg).
+datasource db {
+  provider = "postgresql"
+}
+
+// --- Énumérations (miroir de @event-foundry/contracts) ---
+
+enum ImportJobStatus {
+  PENDING
+  OCR_RUNNING
+  OCR_DONE
+  CLASSIFICATION_RUNNING
+  READY_FOR_VALIDATION
+  COMPLETED
+  FAILED
+  // Statuts du pipeline d'import unifié V3 (ADR.14 / FSPEC.01). Coexistent avec les statuts
+  // hérités du canal OCR V2 (Image/PDF), qui reste un cas particulier du framework.
+  DISCOVERING
+  FETCHING
+  EXTRACTING
+  VALIDATING
+  NORMALIZING
+  DEDUPLICATING
+  PERSISTING
+}
+
+/// Canal d'acquisition d'un import (ADR.13 / FSPEC.01). IMAGE = canal OCR hérité (V2).
+enum ImportChannel {
+  IMAGE
+  TEXT
+  CSV
+  JSON
+  URL
+}
+
+/// Niveau de confiance d'une source (RG-IMP-06) : pilote la sortie du pipeline.
+/// TRUSTED → Event publié directement ; REVIEW → EventCandidate à valider (héritage V2).
+enum SourceTrustLevel {
+  TRUSTED
+  REVIEW
+}
+
+enum EventCandidateStatus {
+  PENDING
+  CORRECTED
+  VALIDATED
+  REJECTED
+}
+
+enum EventSource {
+  IMPORT
+  MANUAL
+}
+
+/// Statut de publication d'un Event (workflow Publishing — EPIC 04) :
+/// DRAFT → SUBMITTED → PUBLISHED, et ARCHIVED. Les transitions sont contrôlées par le domaine ;
+/// chaque passage est journalisé dans event_status_events (traçabilité).
+enum EventStatus {
+  DRAFT
+  SUBMITTED
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Visibilité d'un Event (FSPEC.22) : PUBLIC = diffusable au catalogue (workflow Organizer) ;
+/// PRIVATE = événement personnel issu d'une validation Explorer, visible uniquement de son créateur
+/// (jamais publié, jamais indexé). Invariant : un Event PRIVATE n'est jamais au statut PUBLISHED.
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum AttachmentType {
+  IMAGE
+  TEXT
+}
+
+enum ReservationStatus {
+  NONE
+  RESERVED
+  WAITLIST
+  CANCELLED
+}
+
+enum PaymentStatus {
+  NONE
+  PENDING
+  PAID
+  REFUNDED
+}
+
+/// Retour utilisateur sur une recommandation (EPIC 06). ACCEPTED = intégrée à la réflexion de
+/// l'utilisateur ; IGNORED / REJECTED = écartée → exclue déterministiquement des recommandations
+/// futures (le moteur « apprend » uniquement des décisions explicitement observées — FSPEC.09).
+enum RecommendationAction {
+  ACCEPTED
+  IGNORED
+  REJECTED
+}
+
+/// Canal de diffusion d'une notification (EPIC 08). IN_APP est le canal interne (source de vérité
+/// consultable) ; EMAIL / PUSH sont des canaux de diffusion complémentaires.
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+/// État d'une notification interne (in-app) du point de vue du destinataire.
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+/// Priorité d'une notification (ADR.17 / FSPEC.04). `CRITICAL` outrepasse les réglages de récap
+/// et est diffusée immédiatement (RG-NOTIF-05).
+enum NotificationPriority {
+  INFORMATION
+  IMPORTANT
+  CRITICAL
+}
+
+/// Secrets Management (ADR.21). Types, portées et états d'un secret (métadonnées seulement).
+enum SecretType {
+  API_KEY
+  SMTP
+  OAUTH_SECRET
+  TLS_CERT
+  AI_KEY
+  DB_CREDENTIALS
+  OTHER
+}
+
+enum SecretScope {
+  PLATFORM
+  ORGANIZATION
+  USER
+}
+
+enum SecretStatus {
+  CONFIGURED
+  TESTED
+  FAILED
+  EXPIRED
+  REVOKED
+}
+
+/**
+ * Référence logique d'un secret (ADR.21 / TSPEC.08) : **métadonnées uniquement**, jamais la valeur.
+ * `last_four` est la seule fraction affichable (masquage `••••abcd`). La valeur chiffrée vit dans le
+ * *backend* (table `secret_material` pour le bouchon de dev ; un vault externe en production).
+ */
+model SecretRef {
+  id        String       @id @default(uuid()) @db.Uuid
+  reference String       @unique
+  type      SecretType
+  scope     SecretScope
+  scopeId   String?      @map("scope_id") @db.Uuid
+  provider  String?
+  lastFour  String?      @map("last_four")
+  status    SecretStatus @default(CONFIGURED)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  rotatedAt DateTime?    @map("rotated_at") @db.Timestamptz(6)
+  expiresAt DateTime?    @map("expires_at") @db.Timestamptz(6)
+
+  @@index([scope, scopeId])
+  @@map("secret_refs")
+}
+
+/**
+ * Stockage de la valeur chiffrée par le *backend bouchon* (dev/test). Séparé des métadonnées : un
+ * gestionnaire externe (K8s Secret / Vault) remplacerait cette table sans toucher à `secret_refs`.
+ * La valeur n'apparaît jamais en clair (chiffrée au repos — RG-SEC-04).
+ */
+model SecretMaterial {
+  reference  String   @id
+  ciphertext String
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("secret_material")
+}
+
+/**
+ * Configuration IA par portée (ADR.16 / TSPEC.07). Une config par cible (plateforme / organisation
+ * / utilisateur). La **clé API n'est jamais stockée ici** : seulement une **référence** vers le
+ * secret (ADR.21). Opt-in (`enabled`) + cas d'usage activés (`useCases`). La décision métier reste
+ * déterministe : l'IA n'assiste que l'extraction/l'enrichissement.
+ */
+model AiConfig {
+  id        String       @id @default(uuid()) @db.Uuid
+  scope     SecretScope
+  scopeKey  String       @map("scope_key") // userId / organizationId / 'PLATFORM'
+  provider  String
+  model     String
+  secretRef String?      @map("secret_ref") // référence logique du secret (clé API)
+  enabled   Boolean      @default(false)
+  useCases  Json         @map("use_cases")
+  status    SecretStatus @default(CONFIGURED) // CONFIGURED / TESTED / FAILED
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([scope, scopeKey])
+  @@map("ai_configs")
+}
+
+/**
+ * Paramètre de configuration plateforme (FSPEC.09 / TSPEC.09), à la main de l'Operator. Valeurs
+ * **non secrètes** en JSONB ; les identifiants sensibles (SMTP) sont référencés via `secret_ref`
+ * (ADR.21), jamais stockés ici en clair.
+ */
+model PlatformSetting {
+  id        String       @id @default(uuid()) @db.Uuid
+  section   String
+  key       String
+  value     Json
+  secretRef String?      @map("secret_ref")
+  status    SecretStatus @default(CONFIGURED)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([section, key])
+  @@map("platform_settings")
+}
+
+/**
+ * Journal des appels IA (traçabilité — ADR.16 §Traçabilité / RG-AI-04). Ne contient **jamais** de
+ * contenu ni de clé : uniquement fournisseur, modèle, durée, statut, cas d'usage et correlationId.
+ */
+model AiCallLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  useCase       String   @map("use_case")
+  provider      String
+  model         String
+  durationMs    Int      @map("duration_ms")
+  status        String
+  correlationId String   @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([useCase, createdAt])
+  @@map("ai_call_logs")
+}
+
+/// Types d'objets suivables (Follow Domain — ADR.19). Extensible sans changer le modèle.
+enum FollowTargetType {
+  ORGANIZATION
+  ORGANIZER
+  VENUE
+  ACTIVITY
+  SUBJECT
+  EVENT_SERIES
+}
+
+/**
+ * Follow (ADR.19 / FSPEC.06) : relation durable entre un utilisateur et un objet suivi. Référence
+ * polymorphe (targetType + targetId), intégrité vers l'objet assurée applicativement. Alimente la
+ * découverte, les recommandations et les notifications « information Explorer ». Suppression logique
+ * (unfollow) ; re-suivre réactive l'enregistrement (unicité par (user, type, cible)).
+ */
+model Follow {
+  id         String           @id @default(uuid()) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType FollowTargetType @map("target_type")
+  targetId   String           @map("target_id") @db.Uuid
+  notify     Boolean          @default(true)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt  DateTime?        @map("deleted_at") @db.Timestamptz(6)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@index([userId, deletedAt])
+  @@map("follows")
+}
+
+// --- Identity V2 (EPIC 01) : Roles / Permissions / Experiences / Subscriptions / Organizations.
+// Modèle aligné sur ADR.08 (RBAC), ADR.11 (Identity/Role/Experience/Subscription) et FSPEC.10.
+// Concepts volontairement indépendants : les rôles portent les permissions ; l'expérience ne
+// modifie jamais les permissions ; l'abonnement module le niveau de service, pas les droits.
+
+/// Portée d'un rôle : PLATFORM (Explorer, Operator, Finance…) ou ORGANIZATION (Organizer),
+/// auquel cas les permissions sont évaluées dans le contexte de l'organisation active (ADR.08).
+enum RoleScope {
+  PLATFORM
+  ORGANIZATION
+}
+
+/// Interface active de l'utilisateur (ADR.10/ADR.11). Une seule expérience active à la fois ;
+/// les expériences disponibles sont déduites des rôles. Le changement d'expérience ne modifie
+/// ni les rôles ni les permissions.
+enum Experience {
+  EXPLORER
+  ORGANIZER
+  OPERATOR
+}
+
+// --- Authentification & autorisation (EPIC 2) ---
+
+/// Utilisateur de la plateforme. Le mot de passe n'est jamais stocké en clair.
+model User {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  email                  String                   @unique
+  passwordHash           String                   @map("password_hash")
+  displayName            String                   @map("display_name")
+  isActive               Boolean                  @default(true) @map("is_active")
+  // Cycle de vie du compte (FSPEC.18) : REGISTERED (e-mail non vérifié, fonctionnalités limitées)
+  // → ACTIVE → SUSPENDED/DELETED. `isActive` reste la vue « peut se connecter » (synchronisée).
+  status                 AccountStatus            @default(ACTIVE)
+  emailVerifiedAt        DateTime?                @map("email_verified_at") @db.Timestamptz(6)
+  accountTokens          AccountToken[]
+  securityEvents         SecurityEvent[]
+  roles                  UserRole[]
+  participations         UserParticipation[]
+  recommendationFeedback RecommendationFeedback[]
+  notifications          Notification[]
+  follows                Follow[]
+  createdEvents          Event[]
+  casesRequested         Case[]                   @relation("CaseRequester")
+  casesAssigned          Case[]                   @relation("CaseAssignee")
+  // Identity V2 : appartenances aux organisations, expérience active et contexte org actif.
+  memberships            OrganizationMembership[]
+  activeExperience       Experience?              @map("active_experience")
+  activeOrganizationId   String?                  @map("active_organization_id") @db.Uuid
+  activeOrganization     Organization?            @relation("UserActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  // Préférences utilisateur (JSONB) : thème, langue, etc. Aucune donnée métier.
+  preferences            Json?                    @db.JsonB
+  // Onboarding (FSPEC.16/17) : acceptation des conditions d'utilisation (étape d'intégration).
+  termsAcceptedAt        DateTime?                @map("terms_accepted_at") @db.Timestamptz(6)
+  // MFA (FSPEC.18 §MFA) : secret TOTP (base32) + activation + codes de récupération (hachés).
+  mfaSecret              String?                  @map("mfa_secret")
+  mfaEnabledAt           DateTime?                @map("mfa_enabled_at") @db.Timestamptz(6)
+  mfaRecoveryCodes       String[]                 @default([]) @map("mfa_recovery_codes")
+  // Soumissions d'import de l'utilisateur (FSPEC.22 §5-6 — « Mes soumissions »).
+  importJobs             ImportJob[]              @relation("UserImportJobs")
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("users")
+}
+
+/// Cycle de vie d'un compte (FSPEC.18 §3). REGISTERED = créé mais e-mail non vérifié (IAM-003).
+enum AccountStatus {
+  REGISTERED
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+/// Familles de jetons de compte à usage unique (FSPEC.18 / IAM-005).
+enum AccountTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+  INVITATION
+}
+
+/// Jeton de compte **à usage unique et à durée limitée** (IAM-005) : vérification d'e-mail,
+/// récupération de mot de passe, changement d'e-mail, invitation. Seule l'empreinte (SHA-256)
+/// est stockée — jamais le jeton en clair. `payload` porte le contexte (ex. nouvelle adresse).
+model AccountToken {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      AccountTokenType
+  tokenHash String           @unique @map("token_hash")
+  payload   Json?            @db.JsonB
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, type])
+  @@map("account_tokens")
+}
+
+/// Journal d'audit des opérations de sécurité d'un compte (FSPEC.18 §15 / IAM-009) : création,
+/// vérification d'e-mail, connexions (succès/échec), changements de mot de passe / e-mail,
+/// suspension, réactivation, suppression. `userId` nullable : l'audit survit à la suppression.
+model SecurityEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type       String
+  metadata   Json?    @db.JsonB
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([userId, occurredAt])
+  @@map("security_events")
+}
+
+/// Rôle : responsabilité métier portant un ensemble de permissions (ADR.08). `scope` distingue
+/// les rôles plateforme (Explorer, Operator, Finance, Customer Success) des rôles d'organisation
+/// (Organizer). `experience` = expérience débloquée par ce rôle (FSPEC.10), sans fusionner les
+/// deux notions (ADR.11). Seed initial : ADMIN/USER (legacy V1) + rôles V2.
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique
+  description String?
+  scope       RoleScope        @default(PLATFORM)
+  experience  Experience?
+  users       UserRole[]
+  permissions RolePermission[]
+  memberships MembershipRole[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("roles")
+}
+
+/// Permission : capacité métier atomique (ex. `event.publish`). Unité de contrôle du backend
+/// (ADR.08). Accordée aux rôles, jamais directement aux utilisateurs.
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("permissions")
+}
+
+/// Rattachement N-N Role ↔ Permission.
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Affectation d'un rôle PLATEFORME à un utilisateur (Explorer, Operator, Finance…).
+/// Les rôles d'ORGANISATION passent par MembershipRole (contexte org).
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+/// Organisation : structure au sein de laquelle un Organizer publie (association, mairie,
+/// entreprise…). Les permissions d'un rôle d'organisation sont évaluées dans son contexte (ADR.08).
+model Organization {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  name               String
+  slug               String                   @unique
+  isActive           Boolean                  @default(true) @map("is_active")
+  // Informations générales (FSPEC.16 §4) : identité publique de l'organisation.
+  contactEmail       String?                  @map("contact_email")
+  website            String?
+  logoUrl            String?                  @map("logo_url")
+  description        String?
+  createdById        String?                  @map("created_by_id") @db.Uuid
+  // Fiche Organizer du référentiel que cette organisation déclare représenter (FSPEC.22 §16).
+  // Auto-déclaré (non vérifié), unique : sert à notifier l'organisation qu'un événement privé la
+  // mentionne. N'accorde aucun droit sur les événements privés (informational — ESUB-011).
+  organizerId        String?                  @unique @map("organizer_id") @db.Uuid
+  organizer          Organizer?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  subscriptionPlanId String?                  @map("subscription_plan_id") @db.Uuid
+  subscriptionPlan   SubscriptionPlan?        @relation(fields: [subscriptionPlanId], references: [id], onDelete: SetNull)
+  memberships        OrganizationMembership[]
+  activeForUsers     User[]                   @relation("UserActiveOrganization")
+  addresses          OrganizationAddress[]
+  invitations        OrganizationInvitation[]
+  coveredActivities  OrganizationActivity[]
+  coveredSubjects    OrganizationSubject[]
+  /// Événements créés dans le cadre de cette organisation (origine durable — FSPEC.22).
+  events             Event[]
+  /// Soumissions (imports) réalisées au nom de cette organisation (visibles de toute l'équipe).
+  importJobs         ImportJob[]
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organizations")
+}
+
+/// Activité prise en charge par une organisation (FSPEC.16 §6). Proposée à la création d'événement.
+model OrganizationActivity {
+  organizationId String       @map("organization_id") @db.Uuid
+  activityId     String       @map("activity_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  activity       Activity     @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([organizationId, activityId])
+  @@index([activityId])
+  @@map("organization_activities")
+}
+
+/// État d'une invitation à rejoindre une organisation (FSPEC.19 §6-8).
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  CANCELLED
+  EXPIRED
+}
+
+/// Invitation d'un collaborateur (FSPEC.19). La fonction est stockée par nom (Owner/Administrator/
+/// Event Manager), résolue en rôle à l'acceptation. Jeton à usage unique haché (jamais en clair).
+model OrganizationInvitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  function       String
+  status         InvitationStatus @default(PENDING)
+  tokenHash      String           @map("token_hash")
+  invitedById    String?          @map("invited_by_id") @db.Uuid
+  expiresAt      DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId, status])
+  @@index([tokenHash])
+  @@map("organization_invitations")
+}
+
+/**
+ * Adresse d'une organisation (Localisation V3, chantier §8.2). S'appuie sur le référentiel
+ * géographique : pays + code postal + commune (région dérivée). Une seule adresse principale par
+ * organisation. Proposée comme localisation à la création manuelle d'un événement.
+ */
+model OrganizationAddress {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  label          String
+  countryId      String        @map("country_id") @db.Uuid
+  country        Country       @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  municipalityId String?       @map("municipality_id") @db.Uuid
+  municipality   Municipality? @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  postalCode     String        @map("postal_code")
+  streetLines    String        @map("street_lines")
+  isPrimary      Boolean       @default(false) @map("is_primary")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId])
+  @@map("organization_addresses")
+}
+
+/// Appartenance d'un utilisateur à une organisation, porteuse de ses rôles d'organisation.
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roles          MembershipRole[]
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("organization_memberships")
+}
+
+/// Rôle d'ORGANISATION affecté au sein d'une appartenance (contexte org).
+model MembershipRole {
+  membershipId String                 @map("membership_id") @db.Uuid
+  roleId       String                 @map("role_id") @db.Uuid
+  assignedAt   DateTime               @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  membership   OrganizationMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  role         Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([membershipId, roleId])
+  @@map("membership_roles")
+}
+
+/// Offre commerciale (Free/Pro/Premium — ADR.11). Ne définit jamais les permissions : module le
+/// niveau de service parmi les fonctionnalités autorisées. `level` ordonne les offres.
+model SubscriptionPlan {
+  id            String         @id @default(uuid()) @db.Uuid
+  key           String         @unique
+  name          String
+  level         Int            @default(0)
+  isActive      Boolean        @default(true) @map("is_active")
+  organizations Organization[]
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("subscription_plans")
+}
+
+// --- Référentiels métier (EPIC 3) ---
+// Hiérarchie : Domain -> Activity -> EventType / EventFormat(optionnel).
+// Suppression logique via is_active (ARCHI.03, FSPEC.07) : les valeurs inactives ne sont
+// plus proposées mais restent référencées par les Events historiques.
+
+model Domain {
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String     @unique
+  isActive   Boolean    @default(true) @map("is_active")
+  activities Activity[]
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("domains")
+}
+
+model Activity {
+  id            String                 @id @default(uuid()) @db.Uuid
+  name          String
+  domainId      String                 @map("domain_id") @db.Uuid
+  isActive      Boolean                @default(true) @map("is_active")
+  provisional   Boolean                @default(false)
+  domain        Domain                 @relation(fields: [domainId], references: [id], onDelete: Restrict)
+  aliases       Alias[]
+  events        Event[]
+  organizations OrganizationActivity[]
+  families      ActivityFamily[]
+  venues        VenueActivity[]
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([domainId, name])
+  @@index([domainId])
+  @@map("activities")
+}
+
+model EventType {
+  // DATA.01 v2.0 — Type **transverse** (TAX-004) : plus de rattachement à l'Activité, `name` unique global.
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  isActive    Boolean  @default(true) @map("is_active")
+  provisional Boolean  @default(false)
+  events      Event[]
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("event_types")
+}
+
+/// Format d'un événement (DATA.01 §4) : **référentiel transverse**, indépendant de l'Activité
+/// (au même titre que Category/Tag). Un Event peut porter plusieurs Formats (N-N — TAX-003).
+/// Écriture alternative reconnue par le moteur expert (ex. « MTG » -> Magic).
+/// La valeur est unique : une écriture ne référence qu'une seule valeur métier (FSPEC.07).
+model Alias {
+  id         String   @id @default(uuid()) @db.Uuid
+  value      String   @unique
+  activityId String   @map("activity_id") @db.Uuid
+  isActive   Boolean  @default(true) @map("is_active")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([activityId])
+  @@map("aliases")
+}
+
+model Organizer {
+  id           String        @id @default(uuid()) @db.Uuid
+  name         String
+  website      String?
+  isActive     Boolean       @default(true) @map("is_active")
+  provisional  Boolean       @default(false)
+  venues       Venue[]
+  events       Event[]
+  /// Organisation (compte plateforme) déclarant représenter cette fiche Organizer (FSPEC.22 §16).
+  organization Organization?
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("organizers")
+}
+
+model Venue {
+  id          String          @id @default(uuid()) @db.Uuid
+  organizerId String?         @map("organizer_id") @db.Uuid
+  name        String
+  // Enrichissement (import boutiques / DATA.01 v2.0 §10.4) : fiche de lieu plus complète.
+  description String?
+  venueType   VenueType?      @map("venue_type")
+  address     String?
+  postalCode  String?         @map("postal_code")
+  city        String?
+  country     String?
+  phone       String?
+  website     String?
+  latitude    Float?
+  longitude   Float?
+  isActive    Boolean         @default(true) @map("is_active")
+  provisional Boolean         @default(false)
+  organizer   Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  events      Event[]
+  // Axe A partagé (Sujet) porté par le lieu, + Tags libres sur le lieu (DATA.01 v2.0).
+  activities  VenueActivity[]
+  subjects    VenueSubject[]
+  tags        VenueTag[]
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizerId])
+  @@map("venues")
+}
+
+// --- Référentiels géographiques (EPIC 02) : Country -> Region -> Municipality ---
+// Hiérarchie simple (les hiérarchies complexes relèvent de la V3 — TSPEC.08). Archivage logique
+// via is_active. RESTRICT sur les relations : un parent référencé ne peut être supprimé.
+
+model Country {
+  id           String                @id @default(uuid()) @db.Uuid
+  name         String                @unique
+  code         String?               @unique // ISO 3166-1 alpha-2 (optionnel)
+  isActive     Boolean               @default(true) @map("is_active")
+  regions      Region[]
+  orgAddresses OrganizationAddress[]
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("countries")
+}
+
+model Region {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  /// Code administratif de niveau 1 (ex. GeoNames admin code1). Optionnel, alimenté à l'ingestion.
+  code           String?
+  countryId      String         @map("country_id") @db.Uuid
+  isActive       Boolean        @default(true) @map("is_active")
+  country        Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  municipalities Municipality[]
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([countryId, name])
+  @@index([countryId])
+  @@map("regions")
+}
+
+/// Commune (TSPEC.03). Référentiel **local**, alimenté par une ingestion GeoNames batch (script
+/// `import-geonames.ts`) : le runtime n'appelle jamais GeoNames (résilience). Une commune peut porter
+/// plusieurs codes postaux (GeoNames) → une ligne par (region, name, postalCode). `latitude`/
+/// `longitude` proviennent de GeoNames (RG-LOC ; géoloc « à la Une »).
+model Municipality {
+  id           String                @id @default(uuid()) @db.Uuid
+  name         String
+  regionId     String                @map("region_id") @db.Uuid
+  postalCode   String?               @map("postal_code")
+  latitude     Float?
+  longitude    Float?
+  isActive     Boolean               @default(true) @map("is_active")
+  region       Region                @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  createdAt    DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  events       Event[]
+  orgAddresses OrganizationAddress[]
+
+  @@unique([regionId, name, postalCode])
+  @@index([regionId])
+  @@index([postalCode])
+  @@map("municipalities")
+}
+
+// --- Référentiels transverses (EPIC 02) : Category, Tag ---
+
+/// Catégorie (DATA.01 §5) : référentiel transverse. Un Event peut appartenir à plusieurs
+/// catégories (N-N — TAX-004).
+model Tag {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String     @unique
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  eventTags EventTag[]
+  venueTags VenueTag[]
+
+  @@map("tags")
+}
+
+// ============================================================================================
+// DATA.01 v2.0 — Taxonomie 4 axes. Axe A : Domain → Activity → ActivityFamily → Subject.
+// Axe C : ModalityDimension → Modality. Introduits en additif (cohabitent avec EventType scopé /
+// EventFormat / Category le temps de la migration des données — cf. DATA.01 §9).
+// ============================================================================================
+
+/// Family (niveau matérialisé entre Activity et Subject) : TCG, Jeu de plateau, Jazz & Blues…
+model ActivityFamily {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  activityId  String    @map("activity_id") @db.Uuid
+  isActive    Boolean   @default(true) @map("is_active")
+  provisional Boolean   @default(false)
+  activity    Activity  @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  subjects    Subject[]
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([activityId, name])
+  @@index([activityId])
+  @@map("activity_families")
+}
+
+/// Subject (« le sujet lui-même ») : Magic, Pokémon, Catane, Rock, Football… Unique par Family.
+model Subject {
+  id            String                @id @default(uuid()) @db.Uuid
+  name          String
+  familyId      String                @map("family_id") @db.Uuid
+  isActive      Boolean               @default(true) @map("is_active")
+  provisional   Boolean               @default(false)
+  family        ActivityFamily        @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  events        EventSubject[]
+  venues        VenueSubject[]
+  organizations OrganizationSubject[]
+  createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([familyId, name])
+  @@index([familyId])
+  @@map("subjects")
+}
+
+/// Dimension de modalité (Participation, Tarification, Public visé, Format de jeu…).
+model ModalityDimension {
+  id         String     @id @default(uuid()) @db.Uuid
+  name       String     @unique
+  isActive   Boolean    @default(true) @map("is_active")
+  modalities Modality[]
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("modality_dimensions")
+}
+
+/// Modalité (terme d'une dimension) : Présentiel, Payant, Compétitif, Draft… `name` unique global.
+model Modality {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  dimensionId String            @map("dimension_id") @db.Uuid
+  isActive    Boolean           @default(true) @map("is_active")
+  provisional Boolean           @default(false)
+  dimension   ModalityDimension @relation(fields: [dimensionId], references: [id], onDelete: Restrict)
+  events      EventModality[]
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([dimensionId])
+  @@map("modalities")
+}
+
+/// N-N Event ↔ Subject (0..N sujets par Event — Axe A).
+model EventSubject {
+  eventId   String  @map("event_id") @db.Uuid
+  subjectId String  @map("subject_id") @db.Uuid
+  event     Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, subjectId])
+  @@index([subjectId])
+  @@map("event_subjects")
+}
+
+/// N-N Event ↔ Modality (0..N modalités par Event — Axe C ; remplacera format/category links).
+model EventModality {
+  eventId    String   @map("event_id") @db.Uuid
+  modalityId String   @map("modality_id") @db.Uuid
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  modality   Modality @relation(fields: [modalityId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, modalityId])
+  @@index([modalityId])
+  @@map("event_modalities")
+}
+
+/// N-N Venue ↔ Activity (Axe A partagé porté par le lieu).
+model VenueActivity {
+  venueId    String   @map("venue_id") @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  venue      Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@id([venueId, activityId])
+  @@index([activityId])
+  @@map("venue_activities")
+}
+
+/// N-N Venue ↔ Subject (Axe A partagé porté par le lieu).
+model VenueSubject {
+  venueId   String  @map("venue_id") @db.Uuid
+  subjectId String  @map("subject_id") @db.Uuid
+  venue     Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([venueId, subjectId])
+  @@index([subjectId])
+  @@map("venue_subjects")
+}
+
+/// N-N Venue ↔ Tag (Axe D porté par le lieu).
+model VenueTag {
+  venueId String @map("venue_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  venue   Venue  @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([venueId, tagId])
+  @@index([tagId])
+  @@map("venue_tags")
+}
+
+/// N-N Organization ↔ Subject (Axe A partagé porté par l'organisation).
+model OrganizationSubject {
+  organizationId String       @map("organization_id") @db.Uuid
+  subjectId      String       @map("subject_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subject        Subject      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@id([organizationId, subjectId])
+  @@index([subjectId])
+  @@map("organization_subjects")
+}
+
+/// Type de lieu (import boutiques / DATA.01 v2.0 §10.4).
+enum VenueType {
+  GAME_STORE
+  BAR
+  EVENT_HALL
+  CLUB
+  ASSOCIATION
+  ONLINE
+  OTHER
+}
+
+// --- Acquisition & pipeline d'import (EPIC 5) ---
+
+/// Document original importé, conservé dans MinIO (jamais en base — ARCHI.01).
+model Attachment {
+  id            String         @id @default(uuid()) @db.Uuid
+  type          AttachmentType
+  originalName  String?        @map("original_name")
+  contentType   String         @map("content_type")
+  sizeBytes     Int            @map("size_bytes")
+  checksum      String
+  storageBucket String         @map("storage_bucket")
+  storageKey    String         @map("storage_key")
+  importJob     ImportJob?
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([checksum])
+  @@map("attachments")
+}
+
+/// Suit le cycle technique d'un import (un Attachment = un ImportJob).
+model ImportJob {
+  id                  String           @id @default(uuid()) @db.Uuid
+  attachmentId        String           @unique @map("attachment_id") @db.Uuid
+  status              ImportJobStatus  @default(PENDING)
+  ocrText             String?          @map("ocr_text")
+  // Métadonnées de l'OCRResult source, conservées pour la traçabilité / rejouabilité
+  // du pipeline (règle d'or 9 ; TSPEC.03 « Conservation des artefacts »). Nulles tant
+  // que l'OCR n'a pas abouti. Repropagées par le ClassificationResult (les Workers
+  // n'accèdent jamais à PostgreSQL).
+  ocrConfidence       Float?           @map("ocr_confidence")
+  ocrLanguage         String?          @map("ocr_language")
+  ocrEngine           String?          @map("ocr_engine")
+  ocrEngineVersion    String?          @map("ocr_engine_version")
+  ocrPageCount        Int?             @map("ocr_page_count")
+  ocrProcessingTimeMs Int?             @map("ocr_processing_time_ms")
+  correlationId       String           @map("correlation_id")
+  // Auteur de la soumission (FSPEC.22 §5-6) : permet à chacun de suivre ses propres soumissions.
+  // Nullable : jobs système / connecteurs automatiques sans utilisateur, et survie à la suppression.
+  createdById         String?          @map("created_by_id") @db.Uuid
+  createdBy           User?            @relation("UserImportJobs", fields: [createdById], references: [id], onDelete: SetNull)
+  // Organisation d'origine (FSPEC.22) : renseignée quand la soumission est faite depuis l'expérience
+  // Organizer (import de l'organisation, visible de toute l'équipe) ; null pour un import Explorer perso.
+  organizationId      String?          @map("organization_id") @db.Uuid
+  organization        Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  // Framework d'import unifié V3 (ADR.13/14) — nullables pour compatibilité avec les jobs OCR V2.
+  channel             ImportChannel?
+  providerId          String?          @map("provider_id")
+  importSourceId      String?          @map("import_source_id") @db.Uuid
+  // Volumétrie du pipeline (supervision — FSPEC.01 §Statistiques). Renseignée à la persistance.
+  objectsRead         Int?             @map("objects_read")
+  rawEventCount       Int?             @map("raw_event_count")
+  createdCount        Int?             @map("created_count")
+  updatedCount        Int?             @map("updated_count")
+  duplicateCount      Int?             @map("duplicate_count")
+  rejectedCount       Int?             @map("rejected_count")
+  startedAt           DateTime?        @map("started_at") @db.Timestamptz(6)
+  finishedAt          DateTime?        @map("finished_at") @db.Timestamptz(6)
+  attachment          Attachment       @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
+  importSource        ImportSource?    @relation(fields: [importSourceId], references: [id], onDelete: SetNull)
+  rawEvents           RawEvent[]
+  candidates          EventCandidate[]
+  events              ImportJobEvent[]
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([providerId])
+  @@index([organizationId])
+  @@index([createdById])
+  @@map("import_jobs")
+}
+
+/// Source d'acquisition configurée (ADR.13 §Configuration). Un fournisseur + sa configuration,
+/// séparés du code (modifiables sans redéploiement). Les secrets (auth) sont des références
+/// logiques résolues par le Secrets Management (ADR.21), jamais en clair. Le niveau de confiance
+/// pilote la sortie du pipeline (RG-IMP-06).
+model ImportSource {
+  id         String           @id @default(uuid()) @db.Uuid
+  providerId String           @map("provider_id")
+  label      String
+  config     Json             @default("{}")
+  secretRef  String?          @map("secret_ref")
+  trustLevel SourceTrustLevel @default(REVIEW) @map("trust_level")
+  isActive   Boolean          @default(true) @map("is_active")
+  jobs       ImportJob[]
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([providerId])
+  @@index([isActive])
+  @@map("import_sources")
+}
+
+/// Raw Event (ADR.15) : représentation fidèle et **immuable** des données source, produite par la
+/// phase d'extraction d'un connecteur. Conservé pour le rejeu, le diagnostic et l'audit (RG-IMP-02/03).
+/// Le domaine métier ne le manipule jamais : seule la normalisation le projette vers l'Event.
+model RawEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  importJobId      String    @map("import_job_id") @db.Uuid
+  providerId       String    @map("provider_id")
+  providerKey      String?   @map("provider_key")
+  connectorVersion String    @map("connector_version")
+  acquiredAt       DateTime  @map("acquired_at") @db.Timestamptz(6)
+  payload          Json
+  mediaRefs        String[]  @map("media_refs")
+  correlationId    String    @map("correlation_id")
+  importJob        ImportJob @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([importJobId])
+  @@index([providerId, providerKey])
+  @@map("raw_events")
+}
+
+/// Journal des transitions d'état d'un ImportJob (une ligne par passage d'état). Le Backend
+/// orchestrant chaque étape du pipeline, il historise chaque transition : cela permet les
+/// statistiques sur les passages entre états et les durées par étape (TSPEC.06 / ARCHI.02).
+/// Sous-entité d'audit : supprimée avec son ImportJob (Cascade).
+model ImportJobEvent {
+  id            String          @id @default(uuid()) @db.Uuid
+  importJobId   String          @map("import_job_id") @db.Uuid
+  status        ImportJobStatus
+  correlationId String          @map("correlation_id")
+  occurredAt    DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  importJob     ImportJob       @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+
+  @@index([importJobId])
+  @@index([status])
+  @@index([occurredAt])
+  @@map("import_job_events")
+}
+
+// --- Validation & Events (EPIC 8) ---
+
+/// Proposition d'événement issue du moteur expert, avant validation utilisateur.
+/// payload = brouillon d'Event ; confidence = un score par champ détecté (ARCHI.03).
+model EventCandidate {
+  id          String               @id @default(uuid()) @db.Uuid
+  importJobId String               @map("import_job_id") @db.Uuid
+  status      EventCandidateStatus @default(PENDING)
+  payload     Json
+  confidence  Json
+  eventId     String?              @unique @map("event_id") @db.Uuid
+  correctedBy String?              @map("corrected_by") @db.Uuid
+  correctedAt DateTime?            @map("corrected_at") @db.Timestamptz(6)
+  importJob   ImportJob            @relation(fields: [importJobId], references: [id], onDelete: Restrict)
+  event       Event?               @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([importJobId])
+  @@map("event_candidates")
+}
+
+/// Événement officiel de la plateforme. source figée (IMPORT/MANUAL). Suppression logique.
+/// Le Domain n'est pas stocké : il est déduit de l'Activity.
+model Event {
+  id                     String                   @id @default(uuid()) @db.Uuid
+  source                 EventSource
+  status                 EventStatus              @default(PUBLISHED)
+  visibility             EventVisibility          @default(PUBLIC) @map("visibility")
+  activityId             String                   @map("activity_id") @db.Uuid
+  eventTypeId            String?                  @map("event_type_id") @db.Uuid
+  organizerId            String?                  @map("organizer_id") @db.Uuid
+  venueId                String?                  @map("venue_id") @db.Uuid
+  municipalityId         String?                  @map("municipality_id") @db.Uuid
+  title                  String
+  description            String?
+  startsAt               DateTime                 @map("starts_at") @db.Timestamptz(6)
+  endsAt                 DateTime?                @map("ends_at") @db.Timestamptz(6)
+  price                  Float?
+  currency               String?
+  createdById            String?                  @map("created_by_id") @db.Uuid
+  // Origine durable (FSPEC.22) : un Event privé personnel a `organizationId = null` (visibility
+  // PRIVATE) ; un Event créé **dans le cadre d'une organisation** porte son `organizationId`
+  // (visibility PUBLIC). Un organisateur autonome (sans organisation) : null + PUBLIC.
+  organizationId         String?                  @map("organization_id") @db.Uuid
+  publishedAt            DateTime?                @map("published_at") @db.Timestamptz(6)
+  deletedAt              DateTime?                @map("deleted_at") @db.Timestamptz(6)
+  createdBy              User?                    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  organization           Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  activity               Activity                 @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  eventType              EventType?               @relation(fields: [eventTypeId], references: [id], onDelete: SetNull)
+  organizer              Organizer?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  venue                  Venue?                   @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  municipality           Municipality?            @relation(fields: [municipalityId], references: [id], onDelete: SetNull)
+  // DATA.01 v2.0 — Axe A (Subject) + Axe C (Modality) remplacent Format/Catégorie (retirés).
+  subjects               EventSubject[]
+  modalities             EventModality[]
+  tags                   EventTag[]
+  media                  EventMedia[]
+  statusEvents           EventStatusEvent[]
+  candidate              EventCandidate?
+  searchDocument         SearchDocument?
+  recommendationFeedback RecommendationFeedback[]
+  notifications          Notification[]
+  participations         UserParticipation[]
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([startsAt])
+  @@index([venueId])
+  @@index([organizerId])
+  @@index([activityId])
+  @@index([municipalityId])
+  @@index([status])
+  @@index([source])
+  @@index([createdById])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("events")
+}
+
+/// Rattachement N-N Event ↔ Tag (classification transverse du catalogue — EPIC 03).
+model EventTag {
+  eventId String @map("event_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([eventId, tagId])
+  @@index([tagId])
+  @@map("event_tags")
+}
+
+/// Rattachement N-N Event ↔ EventFormat (DATA.01 §4 / TAX-003). Le Format est transverse.
+/// Média (image) d'un Event. Le fichier vit dans MinIO (ARCHI.01) ; seule la clé d'objet est en
+/// base. `position` ordonne la galerie. Supprimé en cascade avec l'Event.
+model EventMedia {
+  id          String   @id @default(uuid()) @db.Uuid
+  eventId     String   @map("event_id") @db.Uuid
+  objectKey   String   @map("object_key")
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  position    Int      @default(0)
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_media")
+}
+
+/// Journal d'audit des transitions de statut d'un Event (workflow Publishing — EPIC 04).
+/// Une ligne par passage d'état ; base de la traçabilité et des statistiques de publication.
+model EventStatusEvent {
+  id         String       @id @default(uuid()) @db.Uuid
+  eventId    String       @map("event_id") @db.Uuid
+  fromStatus EventStatus? @map("from_status")
+  toStatus   EventStatus  @map("to_status")
+  actorId    String?      @map("actor_id") @db.Uuid
+  event      Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  occurredAt DateTime     @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([eventId, occurredAt])
+  @@map("event_status_events")
+}
+
+/// Projection technique de recherche (TSPEC.09 — domaine Search). Un document par Event publié,
+/// entièrement reconstructible depuis le Catalog (jamais source de vérité). Le vecteur plein texte
+/// pondéré (`search_vector`, tsvector) est maintenu par le Repository Search via SQL et indexé en
+/// GIN. Le document est retiré dès qu'un Event quitte l'état publié (dépublication / archivage /
+/// suppression logique).
+model SearchDocument {
+  eventId          String                   @id @map("event_id") @db.Uuid
+  title            String
+  description      String?
+  activityId       String                   @map("activity_id") @db.Uuid
+  activityName     String                   @map("activity_name")
+  // Sujets et modalités projetés en listes (DATA.01 v2.0 : Axe A / Axe C, cardinalité N).
+  subjectIds       String[]                 @map("subject_ids") @db.Uuid
+  subjectNames     String[]                 @map("subject_names")
+  modalityIds      String[]                 @map("modality_ids") @db.Uuid
+  modalityNames    String[]                 @map("modality_names")
+  municipalityId   String?                  @map("municipality_id") @db.Uuid
+  municipalityName String?                  @map("municipality_name")
+  organizerName    String?                  @map("organizer_name")
+  venueName        String?                  @map("venue_name")
+  tagIds           String[]                 @map("tag_ids") @db.Uuid
+  tagNames         String[]                 @map("tag_names")
+  startsAt         DateTime                 @map("starts_at") @db.Timestamptz(6)
+  publishedAt      DateTime?                @map("published_at") @db.Timestamptz(6)
+  searchVector     Unsupported("tsvector")? @map("search_vector")
+  indexedAt        DateTime                 @default(now()) @map("indexed_at") @db.Timestamptz(6)
+  event            Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([municipalityId])
+  @@index([startsAt])
+  @@index([searchVector], type: Gin)
+  @@map("search_documents")
+}
+
+/// Retour utilisateur sur une recommandation (EPIC 06 — moteur déterministe ADR.09). Le moteur
+/// calcule les recommandations à la volée ; seule la décision de l'utilisateur est persistée. Une
+/// recommandation ignorée / refusée est déterministiquement exclue des propositions ultérieures.
+/// Un seul retour par couple (user, event) ; la dernière décision fait foi.
+model RecommendationFeedback {
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @map("user_id") @db.Uuid
+  eventId   String               @map("event_id") @db.Uuid
+  action    RecommendationAction
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("recommendation_feedback")
+}
+
+/// Notification interne destinée à un utilisateur (EPIC 08). Le domaine Notifications transforme
+/// des événements métier d'autres domaines en messages ; il ne porte aucune décision métier. La
+/// notification est un canal de communication, jamais un objet métier (TSPEC.07). Le lien vers
+/// l'Event est optionnel (contexte de rebond) et facultatif.
+model Notification {
+  id               String               @id @default(uuid()) @db.Uuid
+  userId           String               @map("user_id") @db.Uuid
+  type             String
+  title            String
+  body             String
+  channel          NotificationChannel  @default(IN_APP)
+  status           NotificationStatus   @default(UNREAD)
+  priority         NotificationPriority @default(INFORMATION)
+  eventId          String?              @map("event_id") @db.Uuid
+  user             User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event            Event?               @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt           DateTime?            @map("read_at") @db.Timestamptz(6)
+  // Idempotence des récaps (RG-NOTIF-05) : horodate l'inclusion d'une notification dans le récap
+  // quotidien / hebdomadaire, indépendamment par piste (pas de double envoi sur une même piste).
+  dailyDigestedAt  DateTime?            @map("daily_digested_at") @db.Timestamptz(6)
+  weeklyDigestedAt DateTime?            @map("weekly_digested_at") @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([dailyDigestedAt])
+  @@index([weeklyDigestedAt])
+  @@map("notifications")
+}
+
+/// Relation personnelle d'un utilisateur avec un Event (FSPEC.06). Trois axes indépendants.
+/// Un seul enregistrement par couple (user, event). Supprimé dès que tout redevient neutre.
+model UserParticipation {
+  id                String            @id @default(uuid()) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  eventId           String            @map("event_id") @db.Uuid
+  interested        Boolean           @default(false)
+  reservationStatus ReservationStatus @default(NONE) @map("reservation_status")
+  paymentStatus     PaymentStatus     @default(NONE) @map("payment_status")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event             Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("user_participation")
+}
+
+// --- Case Management (FSPEC.21) : file unifiée d'intervention Operator. ---
+
+/// Cycle de vie d'une Case (FSPEC.21 §11). Une Case n'est jamais supprimée (CASE-007).
+enum CaseStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_FOR_USER
+  WAITING_FOR_ORGANIZER
+  RESOLVED
+  CLOSED
+  ARCHIVED
+}
+
+/// Priorité d'une Case (FSPEC.21 §12).
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// Dossier adressé aux Operators (FSPEC.21). Type/Domain/Work Queue stockés par clé (catalogue
+/// configurable). Toujours rattachée à un Domain et une Work Queue (CASE-012).
+model Case {
+  id             String       @id @default(uuid()) @db.Uuid
+  reference      String       @unique
+  type           String
+  domain         String
+  workQueue      String       @map("work_queue")
+  status         CaseStatus   @default(NEW)
+  priority       CasePriority @default(MEDIUM)
+  subject        String
+  description    String
+  origin         String
+  requesterId    String?      @map("requester_id") @db.Uuid
+  requester      User?        @relation("CaseRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  assigneeId     String?      @map("assignee_id") @db.Uuid
+  assignee       User?        @relation("CaseAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  organizationId String?      @map("organization_id") @db.Uuid
+  eventId        String?      @map("event_id") @db.Uuid
+  metadata       Json?        @db.JsonB
+  events         CaseEvent[]
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  closedAt       DateTime?    @map("closed_at") @db.Timestamptz(6)
+  closeReason    String?      @map("close_reason")
+
+  @@index([status, domain, workQueue])
+  @@index([assigneeId])
+  @@index([requesterId])
+  @@index([priority, status])
+  @@map("cases")
+}
+
+/// Entrée immuable de l'historique d'une Case (FSPEC.21 §20) : transitions, commentaires, décisions.
+/// `visibility` distingue les échanges internes (INTERNAL) des échanges avec le demandeur (PUBLIC).
+model CaseEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  caseId     String   @map("case_id") @db.Uuid
+  case       Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind       String
+  actorId    String?  @map("actor_id") @db.Uuid
+  body       String?
+  visibility String   @default("INTERNAL")
+  metadata   Json?    @db.JsonB
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+
+  @@index([caseId, occurredAt])
+  @@map("case_events")
+}
+
+/// Règle de routage configurable d'une Case (FSPEC.21 §14 / CASE-008). Évaluées par ordre croissant
+/// (`orderIndex`), la première applicable l'emporte ; un repli déterministe (catalogue) garantit une
+/// destination si aucune règle ne matche. Critères et résultat stockés en JSON (aucun code métier).
+model CaseRoutingRule {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  orderIndex Int      @map("order_index")
+  isActive   Boolean  @default(true) @map("is_active")
+  criteria   Json     @db.JsonB
+  result     Json     @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isActive, orderIndex])
+  @@map("case_routing_rules")
+}
+
+// --- Platform Moderation (FSPEC.20) : décisions de modération sur les objets publiés. ---
+
+/// Journal des décisions de modération (FSPEC.20 §15 / MOD-003). Immuable, conservé. `objectType`
+/// + `objectId` identifient la cible (événement, organisation, lieu, image…). Lié éventuellement à
+/// la Case (signalement) qui l'a motivée.
+model ModerationLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  objectType    String   @map("object_type")
+  objectId      String   @map("object_id") @db.Uuid
+  decision      String
+  justification String?
+  operatorId    String?  @map("operator_id") @db.Uuid
+  caseId        String?  @map("case_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([objectType, objectId, createdAt])
+  @@map("moderation_logs")
+}
+
+/// Nature d'un terme de modération (FSPEC.20 / FSPEC.22 §13).
+enum ModerationTermKind {
+  BANNED
+  SPAM
+}
+
+/// Référentiel des termes de modération (FSPEC.22 §13). Alimente les contrôles automatiques
+/// **déterministes** de soumission : aucune liste métier codée en dur (règle d'or n°1) — les
+/// Operators gèrent ce référentiel. Un terme actif détecté dans un brouillon ouvre une Case.
+model ModerationTerm {
+  id        String             @id @default(uuid()) @db.Uuid
+  term      String             @unique
+  kind      ModerationTermKind @default(BANNED)
+  isActive  Boolean            @default(true) @map("is_active")
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([isActive])
+  @@map("moderation_terms")
+}
+
+/// Invitation à devenir Operator (FSPEC.17 §5). Portée PLATEFORME (rôle Operator), distincte des
+/// invitations d'organisation. Jeton à usage unique haché ; expire (comme les invitations d'org).
+model OperatorInvitation {
+  id          String           @id @default(uuid()) @db.Uuid
+  email       String
+  roleName    String           @map("role_name")
+  status      InvitationStatus @default(PENDING)
+  tokenHash   String           @map("token_hash")
+  invitedById String?          @map("invited_by_id") @db.Uuid
+  expiresAt   DateTime         @map("expires_at") @db.Timestamptz(6)
+  acceptedAt  DateTime?        @map("accepted_at") @db.Timestamptz(6)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([tokenHash])
+  @@map("operator_invitations")
+}

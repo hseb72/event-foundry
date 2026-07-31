@@ -1,0 +1,32 @@
+{
+  "name": "@event-foundry/classifier-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Worker de classification experte : OCRResult -> ClassificationResult. Règles déterministes, aucune IA.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "dotenv -e ../.env -- ts-node src/main.ts",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@event-foundry/contracts": "*",
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/core": "^11.1.28",
+    "bullmq": "^5.80.8",
+    "reflect-metadata": "^0.2.2",
+    "ioredis": "^5.4.1",
+    "@event-foundry/libraries": "*"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.20.1",
+    "dotenv-cli": "^7.4.2",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  }
+}

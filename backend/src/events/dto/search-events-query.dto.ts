@@ -1,0 +1,155 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
+import type { DatePeriod } from '../date-range.util';
+
+const PERIODS: DatePeriod[] = ['today', 'this-week', 'this-month', 'next-7-days', 'next-30-days'];
+
+/** Filtres de recherche cumulables (FSPEC.04). */
+export class SearchEventsQueryDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  activityId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  eventTypeId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  eventFormatId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  organizerId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  venueId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par catégorie.' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par commune.' })
+  @IsOptional()
+  @IsUUID()
+  municipalityId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filtrer par tag.' })
+  @IsOptional()
+  @IsUUID()
+  tagId?: string;
+
+  @ApiPropertyOptional({
+    enum: ['DRAFT', 'PUBLISHED', 'ARCHIVED'],
+    description: 'Statut catalogue (défaut : PUBLISHED).',
+  })
+  @IsOptional()
+  @IsIn(['DRAFT', 'PUBLISHED', 'ARCHIVED'])
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+  @ApiPropertyOptional({
+    description: "Ne retourner que mes événements (tous statuts par défaut). Espace Organizer.",
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  createdByMe?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Espace Organizer : ne retourner que les événements de l'organisation active (ou, en mode " +
+      'autonome, mes propres événements sans organisation). Tous statuts par défaut.',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  organizationScope?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'Recherche plein texte (titre, description).' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({
+    enum: ['all', 'mine', 'none'],
+    description: 'Filtre de participation : tous, mes événements, sans participation.',
+  })
+  @IsOptional()
+  @IsIn(['all', 'mine', 'none'])
+  participation?: 'all' | 'mine' | 'none';
+
+  @ApiPropertyOptional({
+    enum: ['upcoming', 'newest', 'title'],
+    description: 'Tri : à venir (défaut), nouveautés, alphabétique.',
+  })
+  @IsOptional()
+  @IsIn(['upcoming', 'newest', 'title'])
+  sort?: 'upcoming' | 'newest' | 'title';
+
+  @ApiPropertyOptional({
+    enum: ['startsAt', 'title', 'status'],
+    description:
+      "Colonne de tri directionnel (espace Organizer, tableau paginé côté serveur). Prioritaire sur `sort`.",
+  })
+  @IsOptional()
+  @IsIn(['startsAt', 'title', 'status'])
+  sortBy?: 'startsAt' | 'title' | 'status';
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'], description: 'Sens du tri directionnel (défaut asc).' })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDir?: 'asc' | 'desc';
+
+  @ApiPropertyOptional({ enum: PERIODS, description: 'Filtre temporel rapide.' })
+  @IsOptional()
+  @IsIn(PERIODS)
+  period?: DatePeriod;
+
+  @ApiPropertyOptional({ description: 'Début de période personnalisée (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({ description: 'Fin de période personnalisée (ISO 8601).' })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
+
+  @ApiPropertyOptional({ minimum: 0, default: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  skip?: number;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  take?: number;
+}

@@ -1,0 +1,347 @@
+[
+  {
+    "id": "venue-cartapapa",
+    "slug": "cartapapa-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Cartapapa",
+    "description": "Boutique historique spécialisée dans les jeux de cartes à collectionner.",
+    "address": {
+      "street": "21 Rue des Étuves",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": "+33 4 67 55 73 48",
+    "website": "https://cartapapa.fr",
+    "games": [
+      "Magic: The Gathering",
+      "Pokémon",
+      "Yu-Gi-Oh!",
+      "Disney Lorcana",
+      "One Piece Card Game",
+      "Star Wars Unlimited"
+    ],
+    "services": [
+      "Tournois",
+      "Avant-premières",
+      "Cartes à l'unité",
+      "Rachat de collections"
+    ],
+    "tags": [
+      "tcg",
+      "magic",
+      "pokemon",
+      "lorcana",
+      "one-piece",
+      "swu"
+    ]
+  },
+  {
+    "id": "venue-antre-du-tcg",
+    "slug": "antre-du-tcg-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "L'antre du TCG",
+    "description": "Boutique dédiée aux TCG.",
+    "address": {
+      "street": "58 Avenue Georges Clemenceau",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [
+      "Magic: The Gathering",
+      "Pokémon",
+      "Disney Lorcana",
+      "One Piece Card Game",
+      "Star Wars Unlimited",
+      "Altered"
+    ],
+    "services": [
+      "Tournois",
+      "Ligues",
+      "Avant-premières"
+    ],
+    "tags": [
+      "tcg",
+      "altered",
+      "swu"
+    ]
+  },
+  {
+    "id": "venue-pick-a-pack",
+    "slug": "pick-a-pack-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Pick A Pack TCG Store",
+    "description": "Boutique spécialisée dans les cartes à collectionner.",
+    "address": {
+      "street": "1 Rue Font du Pila Saint-Gély",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [
+      "Pokémon",
+      "Magic: The Gathering",
+      "One Piece Card Game",
+      "Disney Lorcana"
+    ],
+    "services": [
+      "Vente",
+      "Tournois",
+      "Accessoires"
+    ],
+    "tags": [
+      "tcg",
+      "collectibles"
+    ]
+  },
+  {
+    "id": "venue-antre-2-jeux",
+    "slug": "lantre-2-jeux-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "L'Antre 2 Jeux",
+    "description": "Jeux de société et TCG.",
+    "address": {
+      "street": "2 Rue de la Vieille",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": "+33 4 99 58 12 55",
+    "website": "https://www.lantre2jeux.shop",
+    "games": [
+      "Magic: The Gathering",
+      "Pokémon",
+      "Disney Lorcana",
+      "One Piece Card Game"
+    ],
+    "services": [
+      "Tournois",
+      "Jeux de société",
+      "Accessoires"
+    ],
+    "tags": [
+      "boardgames",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-tableraze",
+    "slug": "tableraze-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Tableraze",
+    "description": "Communauté et boutique de jeux.",
+    "address": {
+      "street": "4 Rue Joseph Vidal",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": "+33 6 72 56 98 87",
+    "website": null,
+    "games": [
+      "Magic: The Gathering",
+      "Flesh and Blood",
+      "Disney Lorcana",
+      "One Piece Card Game",
+      "Star Wars Unlimited",
+      "Altered"
+    ],
+    "services": [
+      "Tournois",
+      "Soirées jeux"
+    ],
+    "tags": [
+      "community",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-excalibur",
+    "slug": "excalibur-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Excalibur",
+    "description": "Boutique généraliste avec rayon TCG.",
+    "address": {
+      "street": "7 Rue de l'Ancien Courrier",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": "+33 4 67 60 81 33",
+    "website": null,
+    "games": [
+      "Magic: The Gathering",
+      "Pokémon"
+    ],
+    "services": [
+      "Jeux de société",
+      "Accessoires"
+    ],
+    "tags": [
+      "boardgames",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-game-jutsu",
+    "slug": "game-jutsu-montpellier",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Game Jutsu Montpellier",
+    "description": "Culture japonaise et TCG.",
+    "address": {
+      "street": "26 Allée Jules Milhau",
+      "postalCode": "34000",
+      "city": "Montpellier",
+      "country": "France"
+    },
+    "phone": "+33 4 67 73 89 95",
+    "website": "https://game-jutsu.fr",
+    "games": [
+      "Pokémon",
+      "One Piece Card Game",
+      "Dragon Ball Super Card Game",
+      "Union Arena"
+    ],
+    "services": [
+      "Tournois",
+      "Goodies",
+      "Mangas"
+    ],
+    "tags": [
+      "anime",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-repaire-collectionneur",
+    "slug": "repaire-du-collectionneur-lattes",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Le Repaire du Collectionneur",
+    "description": "Boutique spécialisée cartes de collection.",
+    "address": {
+      "street": "4 Plan du Néga Cat",
+      "postalCode": "34970",
+      "city": "Lattes",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [
+      "Pokémon",
+      "Magic: The Gathering"
+    ],
+    "services": [
+      "Vente",
+      "Collection"
+    ],
+    "tags": [
+      "collectibles",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-collector-world",
+    "slug": "collector-world-lattes",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Collector-World",
+    "description": "Spécialiste cartes à collectionner.",
+    "address": {
+      "street": "295 Rue de la Roseraie",
+      "postalCode": "34970",
+      "city": "Lattes",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [
+      "Pokémon",
+      "Magic: The Gathering",
+      "Disney Lorcana"
+    ],
+    "services": [
+      "Vente",
+      "Accessoires"
+    ],
+    "tags": [
+      "collectibles",
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-les-tresors-du-tcg",
+    "slug": "les-tresors-du-tcg",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Les Trésors du TCG",
+    "description": "À compléter.",
+    "address": {
+      "street": null,
+      "postalCode": null,
+      "city": "Agglomération de Montpellier",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [],
+    "services": [],
+    "tags": [
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-alpha-game",
+    "slug": "alpha-game",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Alpha Game",
+    "description": "À compléter.",
+    "address": {
+      "street": null,
+      "postalCode": null,
+      "city": "Agglomération de Montpellier",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [],
+    "services": [],
+    "tags": [
+      "tcg"
+    ]
+  },
+  {
+    "id": "venue-piikaboo",
+    "slug": "piikaboo",
+    "type": "GAME_STORE",
+    "status": "ACTIVE",
+    "name": "Piikaboo",
+    "description": "À compléter.",
+    "address": {
+      "street": null,
+      "postalCode": null,
+      "city": "Agglomération de Montpellier",
+      "country": "France"
+    },
+    "phone": null,
+    "website": null,
+    "games": [],
+    "services": [],
+    "tags": [
+      "tcg"
+    ]
+  }
+]

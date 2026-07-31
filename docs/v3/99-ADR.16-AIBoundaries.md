@@ -1,0 +1,333 @@
+# ADR.16 – AI Boundaries
+
+**Document** : ADR.16
+
+**Fichier** : 99-ADR.16-AIBoundaries.md
+
+**Version** : 3.0
+
+**Statut** : Accepted
+
+---
+
+# Contexte
+
+La V3 introduit la possibilité d'utiliser des services d'intelligence artificielle afin d'améliorer certaines fonctionnalités de la plateforme.
+
+Ces services peuvent intervenir lors de différentes opérations, notamment :
+
+- extraction d'informations depuis une image ;
+- OCR de documents ;
+- transcription de contenu ;
+- génération ou amélioration de descriptions ;
+- traduction ;
+- classification assistée.
+
+L'intégration de ces capacités constitue une évolution importante de la plateforme.
+
+Cependant, l'utilisation d'une intelligence artificielle introduit un niveau d'incertitude incompatible avec certaines décisions métier.
+
+Une frontière claire doit donc être définie entre les responsabilités de l'IA et celles du domaine métier.
+
+---
+
+# Problème
+
+Les modèles d'intelligence artificielle sont probabilistes.
+
+Ils peuvent :
+
+- produire des réponses différentes pour une même question ;
+- évoluer au fil des mises à jour du fournisseur ;
+- générer des erreurs ;
+- inventer des informations absentes de la source.
+
+Ces caractéristiques sont acceptables pour assister un utilisateur.
+
+Elles sont en revanche incompatibles avec les exigences de reproductibilité et de traçabilité des traitements métier.
+
+Sans règle explicite, le risque est de voir progressivement des décisions fonctionnelles être déléguées à l'IA.
+
+Cette situation rendrait les comportements de la plateforme difficilement explicables et impossibles à reproduire de manière déterministe.
+
+---
+
+# Décision
+
+L'intelligence artificielle est considérée comme un **service d'assistance**.
+
+Elle peut proposer, enrichir ou extraire de l'information.
+
+Elle ne prend jamais de décision métier.
+
+Toutes les décisions ayant un impact fonctionnel restent déterministes et sont implémentées par les règles métier de la plateforme.
+
+---
+
+# Principes
+
+L'utilisation de l'IA repose sur les principes suivants.
+
+## Assistance
+
+L'IA fournit une aide.
+
+Elle ne remplace jamais les règles métier.
+
+---
+
+## Déterminisme
+
+Une décision métier doit toujours produire le même résultat pour une même entrée.
+
+Une réponse générée par une IA ne peut donc jamais constituer la seule base d'une décision fonctionnelle.
+
+---
+
+## Vérifiabilité
+
+Les résultats produits par une IA doivent pouvoir être :
+
+- contrôlés ;
+- corrigés ;
+- rejetés.
+
+La plateforme doit toujours être capable d'expliquer la décision finale.
+
+---
+
+## Indépendance
+
+Le domaine métier ne dépend d'aucun fournisseur d'intelligence artificielle.
+
+Le remplacement d'un fournisseur ne doit entraîner aucune modification des règles fonctionnelles.
+
+---
+
+# Cas d'usage autorisés
+
+L'IA peut être utilisée pour assister les traitements suivants.
+
+## OCR
+
+Extraction de texte à partir d'une image ou d'un document.
+
+---
+
+## Compréhension de documents
+
+Extraction d'informations structurées depuis un contenu non structuré.
+
+---
+
+## Traduction
+
+Traduction de descriptions ou d'informations textuelles.
+
+---
+
+## Reformulation
+
+Amélioration de la qualité rédactionnelle d'un texte.
+
+---
+
+## Résumé
+
+Production d'un résumé destiné à faciliter la lecture d'un contenu.
+
+---
+
+## Enrichissement
+
+Compléter certaines informations lorsqu'elles peuvent être déduites de manière fiable à partir du contenu fourni.
+
+---
+
+# Cas d'usage interdits
+
+L'IA ne peut jamais :
+
+- décider qu'un événement est valide ;
+- créer un événement sans validation du pipeline ;
+- déterminer l'identité d'une organisation ;
+- décider qu'un événement est un doublon ;
+- attribuer automatiquement une catégorie métier définitive ;
+- modifier les préférences d'un utilisateur ;
+- planifier un événement dans l'agenda d'un utilisateur ;
+- décider qu'une notification doit être envoyée ;
+- modifier une donnée métier existante sans contrôle des règles métier.
+
+Ces responsabilités appartiennent exclusivement au domaine fonctionnel.
+
+---
+
+# Frontière dans le pipeline d'import (extraction vs décision)
+
+Cette section précise **où** l'IA intervient dans le pipeline d'import (ADR.14) et **ce qu'elle
+produit**, afin de concilier trois exigences : efficacité, rejouabilité et déterminisme.
+
+## L'IA produit un Raw Event, jamais une décision
+
+Lorsqu'un canal d'acquisition utilise l'IA (extraction depuis une image / un document), l'IA réalise
+la phase **Extract** et **remplit un Raw Event** (ADR.15) contre un **schéma pivot d'extraction**.
+
+- Le Raw Event ne contient que des **valeurs brutes telles qu'écrites dans la source** : titre, dates
+  en texte, libellés d'activité / type / lieu / prix *tels que reconnus*, description. Ce sont des
+  **libellés**, jamais des identifiants de référentiels internes.
+- L'IA **ne résout jamais** un libellé vers un référentiel de la plateforme (Activity, EventType,
+  Category, Venue…), ne décide jamais d'un doublon, ne produit jamais un Event « prêt à publier ».
+
+## La décision reste déterministe, en aval du Raw Event
+
+Les étapes **Normalize → Deduplicate → Persist** sont déterministes et appartiennent au domaine :
+
+- **Normalize** résout les libellés bruts vers les référentiels (règles + référentiels du classifier),
+  harmonise formats (dates UTC, nombres). Un libellé non reconnu n'est **jamais inventé** : il part en
+  validation humaine.
+- **Deduplicate** et la sortie (EventCandidate / Event selon la confiance de la source — RG-IMP-06)
+  restent déterministes.
+
+## Conséquence sur les trois exigences
+
+- **Efficacité** : un **seul** appel IA transforme le document en Raw Event structuré (pas de texte
+  intermédiaire re-parsé ensuite). On évite le double traitement « IA→texte puis re-extraction ».
+- **Rejouabilité** : le Raw Event (sortie de l'IA) est **conservé et tracé** (version de connecteur,
+  version de prompt). Le rejeu ré-exécute Normalize→Persist **sans rappeler l'IA** (RG-IMP-03) — donc
+  sans nouveau coût ni nouvelle variabilité.
+- **Déterminisme** : l'extraction n'a jamais eu à être déterministe ; seule la **décision** l'est, et
+  elle vit entièrement en aval du Raw Event, sur des règles reproductibles.
+
+> Règle : *l'IA extrait des libellés dans le Raw Event ; le domaine décide, déterministe, à partir du
+> Raw Event.* Toute sortie d'IA contenant un identifiant de référentiel ou une décision de
+> publication constitue une violation de la règle d'or n°1.
+
+---
+
+# Intégration dans l'architecture
+
+Les services d'IA sont considérés comme des fournisseurs externes.
+
+Ils sont consommés au travers d'interfaces dédiées.
+
+Le domaine métier n'accède jamais directement à une API d'intelligence artificielle.
+
+Cette abstraction garantit l'indépendance de la plateforme vis-à-vis des fournisseurs.
+
+---
+
+# Configuration
+
+Le choix du fournisseur d'IA est entièrement configurable.
+
+La plateforme peut utiliser, selon le contexte :
+
+- OpenAI ;
+- Anthropic ;
+- Google Gemini ;
+- Mistral AI ;
+- Ollama ;
+- toute autre solution compatible.
+
+L'architecture ne dépend d'aucun fournisseur particulier.
+
+---
+
+# Traçabilité
+
+Chaque appel à une IA doit pouvoir être retracé.
+
+Les informations suivantes sont conservées :
+
+- fournisseur utilisé ;
+- modèle utilisé ;
+- date d'exécution ;
+- version du prompt ;
+- résultat obtenu ;
+- durée d'exécution.
+
+Cette traçabilité facilite les audits et le diagnostic des traitements.
+
+---
+
+# Confidentialité
+
+Les données transmises à une IA doivent respecter la politique de sécurité de la plateforme.
+
+Les informations sensibles ne sont envoyées que si cela est explicitement autorisé par la configuration.
+
+La plateforme doit permettre de désactiver totalement l'utilisation de services d'IA.
+
+---
+
+# Conséquences
+
+Cette décision implique que :
+
+- les traitements métier restent entièrement déterministes ;
+- les fournisseurs d'IA peuvent être remplacés sans impact fonctionnel ;
+- les utilisateurs conservent la maîtrise des décisions importantes ;
+- les résultats générés par une IA restent explicables et auditables.
+
+L'intelligence artificielle devient un composant d'assistance de la plateforme, sans jamais constituer une source de vérité métier.
+
+---
+
+# Alternatives étudiées
+
+## IA décisionnelle
+
+Confier certaines décisions métier directement à un modèle d'intelligence artificielle.
+
+Cette approche simplifie certains développements mais rend les traitements non déterministes, difficilement auditables et dépendants d'un fournisseur externe.
+
+Cette solution est rejetée.
+
+---
+
+## IA d'assistance
+
+Utiliser l'IA uniquement pour enrichir ou préparer les données avant leur traitement par le domaine métier.
+
+Les décisions fonctionnelles restent implémentées par les règles de la plateforme.
+
+Cette solution garantit la reproductibilité des traitements tout en bénéficiant des capacités offertes par les modèles d'intelligence artificielle.
+
+Cette solution est retenue.
+
+---
+
+# Documents impactés
+
+01-ARCHI.*
+
+02-FSPEC.01-Import.*
+
+02-FSPEC.AI.*
+
+03-TSPEC.AI.*
+
+03-TSPEC.01-Import.*
+
+99-ADR.*
+
+---
+
+# Documents liés
+
+ADR.12 – Platform Architecture Principles
+
+ADR.13 – Import Connector Framework
+
+ADR.14 – Import Pipeline
+
+ADR.15 – Raw Event Model
+
+---
+
+# Historique
+
+| Version | Description |
+|----------|-------------|
+| 3.0 | Définition des principes de gouvernance et des limites d'utilisation de l'intelligence artificielle au sein de la plateforme. |
+| 3.1 | Précision de la frontière dans le pipeline d'import : l'IA remplit un Raw Event (libellés bruts) en phase Extract ; la décision (résolution des référentiels, déduplication, sortie) reste déterministe en aval. Concilie efficacité, rejouabilité et déterminisme. |

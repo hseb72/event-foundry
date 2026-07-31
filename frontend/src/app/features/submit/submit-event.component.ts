@@ -1,0 +1,762 @@
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { EventCandidatesApi } from '../../core/api/event-candidates.service';
+import { ImportsApi } from '../../core/api/imports.service';
+import {
+  CreateEventInput,
+  EventCandidateDetailDto,
+  EventCandidateDto,
+  EventDraft,
+  EventDto,
+  EventEditValue,
+  ImportResponse,
+} from '../../core/models';
+import { EventsApi } from '../../core/api/events.service';
+import { ToastService } from '../../core/toast.service';
+import { EventFormComponent } from '../../shared/event-form.component';
+import { FileDropComponent } from '../../shared/file-drop.component';
+import { DataColumn, DataTableComponent } from '../../shared/data-table.component';
+import { formatDateTime } from '../../shared/date-format';
+import { IconComponent } from '../../shared/icon.component';
+import { eventCoverBackground } from '../../shared/event-cover';
+
+type SubmitTab = 'document' | 'text' | 'url' | 'structured' | 'create';
+/** Colonnes de tri proposées en vue cartes (la vue tableau trie par en-tête). */
+type PrivateSortKey = 'startsAt' | 'title' | 'status';
+
+/**
+ * Entonnoir de soumission Explorer (FSPEC.22 §5-6, §15) — homogénéisé avec l'expérience Organizer.
+ * Une **seule** entrée « Mes événements privés » regroupe la soumission (box « Nouvelle soumission »
+ * repliable, mêmes onglets : Documents, Texte, URL, Fichiers structurés, Création), le suivi des
+ * soumissions en cours d'analyse, la validation des brouillons, et la liste des événements privés —
+ * en **cartes ou en tableau**, au choix de l'utilisateur (préférence mémorisée localement), comme
+ * dans « Nos événements ». Après validation, chaque brouillon devient un **événement
+ * privé** (visible du seul créateur, jamais publié — ESUB-009) qui apparaît **ici**, jamais dans
+ * l'expérience Organizer. Le scoping par créateur est appliqué côté API.
+ */
+@Component({
+  selector: 'app-submit-event',
+  standalone: true,
+  imports: [FormsModule, DatePipe, EventFormComponent, FileDropComponent, DataTableComponent, IconComponent],
+  styles: [
+    `
+      .intro { color: var(--muted); margin: 0 0 1rem; }
+      .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+      .card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 1rem 1.1rem; }
+      .box-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+      .box-head h2 { margin: 0; }
+      .tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; background: var(--surface-2); border-radius: 12px; padding: 0.25rem; width: fit-content; margin-bottom: 0.8rem; }
+      .tabs button { border: 0; background: transparent; color: var(--muted); border-radius: 9px; padding: 0.4rem 0.9rem; font-weight: 600; }
+      .tabs button.on { background: var(--exp); color: var(--exp-contrast, #fff); }
+      textarea, input[type='url'] { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.7rem; font: inherit; background: var(--bg); color: var(--text); }
+      textarea { min-height: 8rem; resize: vertical; }
+      .row { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
+      .ai { display: flex; gap: 0.45rem; align-items: center; font-size: 0.85rem; margin: 0.4rem 0; }
+      .disclaimer { background: rgba(234, 179, 8, 0.14); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.82rem; margin: 0.5rem 0; }
+      .sub { display: flex; justify-content: space-between; gap: 0.6rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; align-items: center; }
+      .badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--surface-2); }
+      .badge.running { color: #b45309; background: rgba(234, 179, 8, 0.15); }
+      .draft-item { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; cursor: pointer; }
+      .draft-item.on { border-color: var(--exp); box-shadow: 0 0 0 1px var(--exp); }
+      .muted { color: var(--muted); }
+      .ok { background: rgba(22, 163, 74, 0.12); border: 1px solid rgba(22, 163, 74, 0.4); border-radius: 10px; padding: 0.6rem 0.9rem; margin-bottom: 0.8rem; }
+      .hold { background: rgba(234, 179, 8, 0.14); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 0.6rem 0.9rem; }
+      .err { color: var(--red); }
+      h2 { font-size: 1rem; margin: 0 0 0.6rem; }
+      .note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgba(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
+      .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
+
+      /* En-tête de la liste : titre + sélecteur de vue (cartes / tableau). */
+      .events-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+      .events-head h2 { margin: 0; }
+      .view-toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 0.2rem; gap: 0.15rem; }
+      .view-toggle button { border: 0; background: transparent; color: var(--muted); border-radius: 8px; padding: 0.3rem 0.6rem; font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem; }
+      .view-toggle button.on { background: var(--exp); color: var(--exp-contrast, #fff); }
+      .sort-bar { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; color: var(--muted); font-size: 0.85rem; }
+      .sort-bar select { border: 1px solid var(--border); border-radius: 8px; padding: 0.35rem 0.55rem; font: inherit; background: var(--surface); color: var(--text); }
+      .sort-bar .dir { border: 1px solid var(--border); background: var(--surface); border-radius: 8px; padding: 0.3rem 0.55rem; cursor: pointer; color: var(--text); }
+
+      /* Vue « cartes de gestion » : couverture illustrée + mêmes actions qu'en tableau. */
+      .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.1rem; }
+      .mcard { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+      .mcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .mcard.archived { opacity: 0.72; }
+      .mcard .cover { position: relative; height: 130px; background-size: cover; background-position: center; }
+      .mcard .cover .chip { position: absolute; top: 0.55rem; left: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0.12rem 0.55rem; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
+      .mcard .cover .status { position: absolute; top: 0.55rem; right: 0.55rem; font-size: 0.66rem; font-weight: 800; padding: 0.12rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+      .status.draft { background: rgba(255, 255, 255, 0.9); color: #1f2333; }
+      .status.arch { background: rgba(220, 38, 38, 0.9); color: #fff; }
+      .mcard .mbody { padding: 0.7rem 0.85rem; display: grid; gap: 0.22rem; flex: 1; }
+      .mcard .mtitle { font-weight: 700; cursor: pointer; }
+      .mcard .mtitle:hover { color: var(--exp); }
+      .mcard .mmeta { font-size: 0.8rem; color: var(--muted); }
+      .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
+      .private-tag { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+    `,
+  ],
+  template: `
+    <h1>Mes événements privés</h1>
+    <p class="intro">
+      Vos événements personnels. Soumettez une affiche, un texte, un lien ou un fichier — ou créez
+      directement un événement : après validation, chaque événement devient un
+      <strong>événement privé</strong>, visible de vous seul, que vous pouvez suivre dans votre
+      planning sans qu'il soit publié.
+    </p>
+
+    @if (message()) { <div class="ok">✅ {{ message() }}</div> }
+
+    <div class="grid">
+      <!-- Box « Nouvelle soumission » repliable -->
+      <section class="card">
+        <div class="box-head">
+          <h2>Nouvelle soumission</h2>
+          <button class="btn btn-sm" (click)="submitOpen.set(!submitOpen())" [attr.aria-expanded]="submitOpen()">
+            {{ submitOpen() ? '▲ Réduire' : '▼ Étendre' }}
+          </button>
+        </div>
+
+        @if (submitOpen()) {
+          <div class="tabs">
+            <button [class.on]="tab() === 'document'" (click)="tab.set('document')">Documents</button>
+            <button [class.on]="tab() === 'text'" (click)="tab.set('text')">Texte</button>
+            <button [class.on]="tab() === 'url'" (click)="tab.set('url')">URL</button>
+            <button [class.on]="tab() === 'structured'" (click)="tab.set('structured')">Fichiers structurés</button>
+            <button [class.on]="tab() === 'create'" (click)="tab.set('create')">Création</button>
+          </div>
+
+          @if (tab() === 'document') {
+            <app-file-drop accept="image/png,image/jpeg,application/pdf"
+              hint="JPG, PNG ou PDF — glisser-déposer, parcourir ou coller" (fileSelected)="file = $event" />
+            <label class="ai"><input type="checkbox" [(ngModel)]="fileUseAi" [disabled]="isPdf()" />
+              Extraction assistée par IA <span class="muted">(image, si configurée)</span></label>
+            <div class="row">
+              <button class="btn btn-primary" [disabled]="!file || busy()" (click)="submitDocument()">Analyser le document</button>
+            </div>
+          } @else if (tab() === 'text') {
+            <textarea [(ngModel)]="text" placeholder="Collez l'annonce de l'événement…"></textarea>
+            <label class="ai"><input type="checkbox" [(ngModel)]="useAi" /> Extraction assistée par IA <span class="muted">(si configurée)</span></label>
+            <div class="row">
+              <button class="btn btn-primary" [disabled]="busy() || !text.trim()" (click)="submitText()">Analyser le texte</button>
+            </div>
+          } @else if (tab() === 'url') {
+            <input type="url" [(ngModel)]="url" placeholder="https://…" />
+            <div class="disclaimer">
+              ⚠️ Les pages nécessitant une authentification (connexion, espace privé) peuvent ne pas
+              donner de bons résultats : la capture ne voit que le contenu public de la page.
+            </div>
+            <div class="row">
+              <button class="btn btn-primary" [disabled]="busy() || !url.trim()" (click)="submitUrl()">Capturer la page</button>
+            </div>
+          } @else if (tab() === 'structured') {
+            <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem">
+              Canal 100 % déterministe (sans OCR ni IA). Colonnes/clés :
+              <code>title, starts_at, activity, event_type, venue, city, price, url…</code> ·
+              requis : <code>title</code>, <code>starts_at</code>. Chaque ligne devient un événement à valider.
+            </p>
+            <app-file-drop accept=".csv,.json,text/csv,application/json"
+              hint="Fichier CSV ou JSON — ou collez le contenu ci-dessous" (fileSelected)="onStructuredFile($event)" />
+            <textarea [(ngModel)]="structured" style="margin-top:0.5rem"
+              placeholder="key,title,starts_at&#10;t1,Tournoi Magic,2026-08-01T18:00:00Z"></textarea>
+            <div class="row">
+              <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
+            </div>
+          } @else {
+            @if (formPending()) {
+              <p class="muted">Chargement de l'événement…</p>
+            } @else {
+              @if (formSource(); as src) {
+                <div class="dup-note">
+                  ✏️ Modification de « {{ src.title }} » — l'enregistrement met à jour cet événement.
+                  <button class="btn btn-sm" (click)="cancelForm()">Repartir d'un formulaire vide</button>
+                </div>
+              }
+              <app-event-form
+                [submitLabel]="editingId() ? 'Enregistrer les modifications' : 'Créer mon événement privé'"
+                [busy]="createBusy()" [initial]="formInitial()" (save)="onSaveEvent($event)" />
+            }
+            @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
+          }
+          @if (error()) { <p class="err">{{ error() }}</p> }
+        }
+      </section>
+
+      <!-- Soumissions en cours d'analyse (visible seulement s'il y en a) -->
+      @if (inAnalysis().length) {
+        <section class="card">
+          <h2>Soumissions <span class="muted">(analyse en cours)</span></h2>
+          @for (s of inAnalysis(); track s.id) {
+            <div class="sub">
+              <span>{{ s.type }} · {{ s.createdAt | date: 'short' }}</span>
+              <span class="badge running">{{ statusLabel(s.status) }}</span>
+            </div>
+          }
+        </section>
+      }
+
+      <!-- Validation des brouillons (visible seulement s'il y en a) -->
+      @if (drafts().length || selected()) {
+        <section class="card">
+          <h2>Validation <span class="muted">(brouillons à qualifier)</span></h2>
+          @for (d of drafts(); track d.id) {
+            <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
+              <strong>{{ draftTitle(d) }}</strong>
+              <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
+            </div>
+          }
+          @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
+          @if (selected(); as sel) {
+            <div style="margin-top:0.8rem">
+              <h2>Qualifier ce brouillon</h2>
+              <app-event-form [draft]="draft()" submitLabel="Valider → mon événement privé" [showReject]="true"
+                [busy]="busy()" (save)="validate($event)" (reject)="reject(sel.id)" />
+            </div>
+          }
+        </section>
+      }
+
+      <!-- Mes événements : tableau trié / paginé -->
+      <section class="card">
+        <div class="events-head">
+          <h2>Mes événements</h2>
+          <div class="view-toggle" role="tablist" aria-label="Affichage de la liste">
+            <button type="button" [class.on]="view() === 'cards'" (click)="setView('cards')" aria-label="Vue cartes">▦ Cartes</button>
+            <button type="button" [class.on]="view() === 'table'" (click)="setView('table')" aria-label="Vue tableau">▤ Tableau</button>
+          </div>
+        </div>
+        <div class="note">
+          🔒 Une fois qualifiés, vos événements privés apparaissent <strong>ici</strong> — jamais dans
+          l'expérience Organizer. Un événement privé n'est jamais publié au catalogue.
+        </div>
+        @if (loading()) {
+          <p class="muted">Chargement…</p>
+        } @else if (!events().length) {
+          <p class="muted">Aucun événement privé pour l'instant. Validez un brouillon ou créez-en un ci-dessus.</p>
+        } @else if (view() === 'cards') {
+          <!-- Tri explicite : les en-têtes cliquables du tableau n'existent pas en vue cartes. -->
+          <div class="sort-bar">
+            <span>Trier</span>
+            <select [ngModel]="sortKey()" (ngModelChange)="sortKey.set($event)">
+              <option value="startsAt">Date de début</option>
+              <option value="title">Titre</option>
+              <option value="status">Statut</option>
+            </select>
+            <button class="dir" type="button" (click)="toggleDir()"
+              [title]="sortDir() === 'asc' ? 'Croissant' : 'Décroissant'">
+              {{ sortDir() === 'asc' ? '▲' : '▼' }}
+            </button>
+          </div>
+          <div class="mgrid">
+            @for (e of sortedEvents(); track e.id) {
+              <article class="mcard" [class.archived]="e.status === 'ARCHIVED'">
+                <div class="cover" [style.background]="coverBg(e)">
+                  <span class="chip">{{ e.activity }}</span>
+                  <span class="status" [class.arch]="e.status === 'ARCHIVED'"
+                    [class.draft]="e.status !== 'ARCHIVED'">{{ pubStatus(e) }}</span>
+                </div>
+                <div class="mbody">
+                  <span class="mtitle" (click)="openEventById(e.id)">{{ e.title }}</span>
+                  <span class="mmeta">{{ date(e) }}</span>
+                  <span class="mmeta">{{ categoryOf(e) }}</span>
+                </div>
+                <div class="mfoot">
+                  <!-- Pas de bascule de publication : un événement privé n'est jamais publié (ESUB-009). -->
+                  <span class="private-tag">🔒 Privé</span>
+                  <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                    @if (e.status !== 'ARCHIVED') {
+                      <button class="btn btn-sm btn-icon" title="Modifier — corriger cet événement"
+                        aria-label="Modifier — corriger cet événement" (click)="editPrivate(e)">
+                        <app-icon name="edit" />
+                      </button>
+                    }
+                    <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                      aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                      <app-icon name="duplicate" />
+                    </button>
+                    @if (e.status === 'ARCHIVED') {
+                      <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                        [disabled]="busyRow() === e.id" (click)="rowAction(e, 'restore')">
+                        <app-icon name="restore" />
+                      </button>
+                    } @else {
+                      <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                        [disabled]="busyRow() === e.id" (click)="rowAction(e, 'archive')">
+                        <app-icon name="archive" />
+                      </button>
+                    }
+                  </span>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <app-data-table
+            [columns]="privateColumns"
+            [rows]="$any(events())"
+            [rowActions]="rowActions"
+            actionsLabel="Actions"
+            [rowClickable]="true"
+            (rowClick)="openEvent($event)"
+            [pageSize]="10"
+            searchPlaceholder="Rechercher un événement…"
+          />
+          <ng-template #rowActions let-e>
+            <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+              @if (e.status !== 'ARCHIVED') {
+                <button class="btn btn-sm btn-icon" title="Modifier — corriger cet événement"
+                  aria-label="Modifier — corriger cet événement" (click)="editPrivate($any(e))">
+                  <app-icon name="edit" />
+                </button>
+              }
+              <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                aria-label="Dupliquer — créer un événement identique" (click)="duplicate($any(e))">
+                <app-icon name="duplicate" />
+              </button>
+              @if (e.status === 'ARCHIVED') {
+                <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                  [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'restore')">
+                  <app-icon name="restore" />
+                </button>
+              } @else {
+                <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                  [disabled]="busyRow() === e.id" (click)="rowAction($any(e), 'archive')">
+                  <app-icon name="archive" />
+                </button>
+              }
+            </span>
+          </ng-template>
+        }
+        @if (error()) { <p class="err">{{ error() }}</p> }
+      </section>
+    </div>
+  `,
+})
+export class SubmitEventComponent implements OnInit {
+  private readonly imports = inject(ImportsApi);
+  private readonly candidates = inject(EventCandidatesApi);
+  private readonly eventsApi = inject(EventsApi);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
+
+  readonly submitOpen = signal(false);
+  readonly tab = signal<SubmitTab>('document');
+  readonly submissions = signal<ImportResponse[]>([]);
+  readonly drafts = signal<EventCandidateDto[]>([]);
+  readonly events = signal<EventDto[]>([]);
+  readonly selected = signal<EventCandidateDetailDto | null>(null);
+  readonly draft = signal<EventDraft | null>(null);
+  readonly busy = signal(false);
+  readonly busyRow = signal<string | null>(null);
+  readonly loading = signal(true);
+  readonly message = signal('');
+  readonly holdNotice = signal('');
+  readonly error = signal('');
+  readonly createBusy = signal(false);
+  readonly createMsg = signal('');
+
+  /**
+   * Formulaire de **correction** d'un événement privé existant (`editingId`) : le formulaire de
+   * création est prérempli à partir de l'événement, et l'enregistrement met à jour celui-ci.
+   * Une duplication passe par ce même chemin, la copie étant d'abord créée côté serveur.
+   */
+  readonly formSource = signal<EventEditValue | null>(null);
+  readonly formPending = signal(false);
+  readonly editingId = signal<string | null>(null);
+
+  /** Valeurs injectées dans le formulaire (telles quelles : le titre de copie vient du serveur). */
+  readonly formInitial = computed<EventEditValue | null>(() => this.formSource());
+
+  file: File | null = null;
+  fileUseAi = false;
+  text = '';
+  useAi = false;
+  url = '';
+  structured = '';
+
+  /** Soumissions encore en cours d'analyse (ni terminées, ni en échec, ni prêtes à valider). */
+  readonly inAnalysis = computed(() =>
+    this.submissions().filter((s) => !['COMPLETED', 'FAILED', 'READY_FOR_VALIDATION'].includes(s.status)),
+  );
+
+  // --- Affichage de la liste : cartes ou tableau, au choix de l'utilisateur ---
+
+  private static readonly VIEW_KEY = 'ef-private-events-view';
+  readonly view = signal<'cards' | 'table'>(SubmitEventComponent.readView());
+  readonly sortKey = signal<PrivateSortKey>('startsAt');
+  readonly sortDir = signal<'asc' | 'desc'>('asc');
+
+  private static readView(): 'cards' | 'table' {
+    try {
+      return localStorage.getItem(SubmitEventComponent.VIEW_KEY) === 'cards' ? 'cards' : 'table';
+    } catch {
+      return 'table';
+    }
+  }
+
+  setView(view: 'cards' | 'table'): void {
+    this.view.set(view);
+    try {
+      localStorage.setItem(SubmitEventComponent.VIEW_KEY, view);
+    } catch {
+      /* stockage indisponible : la préférence reste en mémoire pour la session. */
+    }
+  }
+
+  toggleDir(): void {
+    this.sortDir.update((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+  }
+
+  /**
+   * Tri de la vue cartes. La liste des événements privés est chargée en entier côté client (elle
+   * est propre à un seul utilisateur) : le tri se fait donc en mémoire, comme celui d'`app-data-table`
+   * en vue tableau.
+   */
+  readonly sortedEvents = computed(() => {
+    const key = this.sortKey();
+    const factor = this.sortDir() === 'asc' ? 1 : -1;
+    return [...this.events()].sort((a, b) => {
+      const left = key === 'startsAt' ? a.startsAt : key === 'title' ? a.title : a.status;
+      const right = key === 'startsAt' ? b.startsAt : key === 'title' ? b.title : b.status;
+      return String(left ?? '').localeCompare(String(right ?? ''), 'fr') * factor;
+    });
+  });
+
+  /** Libellé de statut affiché sur la couverture. Un événement privé n'est jamais « publié ». */
+  pubStatus(e: EventDto): string {
+    return e.status === 'ARCHIVED' ? 'Archivé' : 'Brouillon';
+  }
+
+  /** Fond de la couverture — logique partagée (image de couverture, sinon dégradé festif). */
+  coverBg(e: EventDto): string {
+    return eventCoverBackground(e);
+  }
+
+  // Colonnes du tableau « Mes événements » (tri/recherche/pagination via app-data-table).
+  readonly privateColumns: DataColumn[] = [
+    {
+      key: 'startsAt',
+      label: 'Date début',
+      sortable: true,
+      value: (r) => this.date(r as unknown as EventDto),
+      sortValue: (r) => String(r['startsAt'] ?? ''),
+    },
+    { key: 'title', label: 'Titre', sortable: true, value: (r) => String(r['title'] ?? '') },
+    { key: 'subjects', label: 'Sujets', sortable: true, value: (r) => this.categoryOf(r as unknown as EventDto) },
+  ];
+
+  ngOnInit(): void {
+    this.refresh();
+    // Actions demandées depuis une autre vue (fiche d'événement) : correction ou duplication.
+    const params = this.route.snapshot.queryParamMap;
+    const editId = params.get('edit');
+    const duplicateId = params.get('duplicate');
+    if (editId) {
+      this.loadForEdit(editId);
+    } else if (duplicateId) {
+      this.runDuplicate(duplicateId);
+    }
+  }
+
+  /**
+   * Duplique un événement : la copie privée est **créée immédiatement** (nouvel identifiant,
+   * brouillon), puis sa correction s'ouvre. L'original reste intact.
+   */
+  duplicate(event: EventDto): void {
+    this.runDuplicate(event.id);
+  }
+
+  private runDuplicate(sourceId: string): void {
+    this.createMsg.set('');
+    this.error.set('');
+    this.busyRow.set(sourceId);
+    this.eventsApi.duplicateAsPrivate(sourceId).subscribe({
+      next: (copy) => {
+        this.busyRow.set(null);
+        this.message.set('Copie créée : ajustez-la puis enregistrez.');
+        this.toast.success('Copie créée', 'Ajustez-la puis enregistrez.');
+        this.refresh();
+        this.loadForEdit(copy.id);
+      },
+      error: (err: unknown) => {
+        this.busyRow.set(null);
+        this.error.set('La duplication a échoué.');
+        this.toast.fromHttp('Duplication impossible', err);
+      },
+    });
+  }
+
+  /** Ouvre la correction d'un de mes événements privés (formulaire prérempli, mise à jour à l'envoi). */
+  editPrivate(event: EventDto): void {
+    this.loadForEdit(event.id);
+  }
+
+  /** Repart d'un formulaire vierge (abandon de la modification en cours). */
+  cancelForm(): void {
+    this.formSource.set(null);
+    this.editingId.set(null);
+    this.createMsg.set('');
+  }
+
+  /**
+   * Charge un événement privé dans le formulaire pour correction. Le formulaire n'est rendu qu'une
+   * fois la source chargée : son préremplissage a lieu à l'initialisation du composant et ne peut
+   * pas être appliqué après coup.
+   */
+  private loadForEdit(id: string): void {
+    this.submitOpen.set(true);
+    this.tab.set('create');
+    this.createMsg.set('');
+    this.formSource.set(null);
+    this.editingId.set(id);
+    this.formPending.set(true);
+    this.eventsApi.getPrivateForEdit(id).subscribe({
+      next: (source) => {
+        this.formSource.set(source);
+        this.formPending.set(false);
+      },
+      error: (err: unknown) => {
+        this.formPending.set(false);
+        this.editingId.set(null);
+        this.error.set("L'événement est introuvable.");
+        this.toast.fromHttp('Ouverture impossible', err, "L'événement est introuvable.");
+      },
+    });
+  }
+
+  refresh(): void {
+    this.imports.listMine().subscribe({ next: (list) => this.submissions.set(list) });
+    this.candidates.listMine('PENDING').subscribe({ next: (list) => this.drafts.set(list) });
+    this.eventsApi.myPrivateEvents().subscribe({
+      next: (page) => {
+        this.events.set(page.items);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  // --- Soumission ---
+
+  isPdf(): boolean {
+    return this.file?.type === 'application/pdf';
+  }
+
+  onStructuredFile(file: File): void {
+    void file.text().then((content) => (this.structured = content));
+  }
+
+  submitDocument(): void {
+    if (!this.file) return;
+    const useAi = this.fileUseAi && !this.isPdf();
+    this.run(useAi ? this.imports.aiExtractFile(this.file) : this.imports.uploadFile(this.file), () => {
+      this.file = null;
+      this.fileUseAi = false;
+    });
+  }
+
+  submitText(): void {
+    this.run(this.useAi ? this.imports.importAiExtract(this.text) : this.imports.importText(this.text), () => (this.text = ''));
+  }
+
+  submitUrl(): void {
+    this.run(this.imports.importUrl(this.url), () => (this.url = ''));
+  }
+
+  submitStructured(): void {
+    this.run(this.imports.importStructured(this.structured), () => (this.structured = ''));
+  }
+
+  private run(obs: Observable<ImportResponse>, onDone: () => void): void {
+    this.busy.set(true);
+    this.error.set('');
+    obs.subscribe({
+      next: () => {
+        this.busy.set(false);
+        onDone();
+        this.message.set("Soumission envoyée : l'analyse est en cours.");
+        this.toast.success('Soumission envoyée', "L'analyse est en cours ; le brouillon apparaîtra ici.");
+        this.refresh();
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.error.set('La soumission a échoué.');
+        this.toast.fromHttp('Soumission refusée', err);
+      },
+    });
+  }
+
+  /**
+   * Enregistre le formulaire : **mise à jour** de l'événement en cours de modification, sinon
+   * **création** d'un nouvel événement privé (saisie directe ou duplication).
+   */
+  onSaveEvent(input: CreateEventInput): void {
+    const editingId = this.editingId();
+    this.createBusy.set(true);
+    this.createMsg.set('');
+    const request = editingId
+      ? this.eventsApi.updatePrivate(editingId, input)
+      : this.eventsApi.createPrivate(input);
+    request.subscribe({
+      next: () => {
+        this.createBusy.set(false);
+        this.createMsg.set(
+          editingId ? '✅ Modifications enregistrées.' : '✅ Événement privé créé.',
+        );
+        this.message.set(editingId ? 'Événement privé mis à jour.' : 'Événement privé créé.');
+        this.toast.success(
+          editingId ? 'Modifications enregistrées' : 'Événement privé créé',
+          editingId ? undefined : 'Il apparaît dans « Mes événements ».',
+        );
+        // L'intention est consommée : le formulaire repart vierge pour la saisie suivante.
+        this.formSource.set(null);
+        this.editingId.set(null);
+        this.refresh();
+      },
+      error: (err: unknown) => {
+        this.createBusy.set(false);
+        const message = (err as { error?: { message?: string } })?.error?.message;
+        this.createMsg.set(
+          message ?? (editingId ? "L'enregistrement a échoué." : 'La création a échoué.'),
+        );
+        // Le formulaire est long : le message posé au-dessus est hors écran au moment du clic.
+        this.toast.fromHttp(editingId ? 'Enregistrement refusé' : 'Création refusée', err);
+      },
+    });
+  }
+
+  // --- Validation ---
+
+  select(candidate: EventCandidateDto): void {
+    this.holdNotice.set('');
+    this.candidates.detail(candidate.id).subscribe({
+      next: (detail) => {
+        this.selected.set(detail);
+        this.draft.set(toDraft(detail.payload));
+      },
+    });
+  }
+
+  validate(input: CreateEventInput): void {
+    const sel = this.selected();
+    if (!sel) return;
+    this.busy.set(true);
+    this.holdNotice.set('');
+    this.candidates.validate(sel.id, input).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.selected.set(null);
+        this.message.set('Événement privé créé.');
+        this.toast.success('Brouillon validé', 'Il devient un événement privé.');
+        this.refresh();
+      },
+      error: (err: { error?: { code?: string; message?: string } }) => {
+        this.busy.set(false);
+        if (err?.error?.code === 'SUBMISSION_HELD_FOR_REVIEW') {
+          // Retenue pour revue : l'encadré explicatif reste, le toast signale que rien n'a été créé.
+          const reason = err.error.message ?? 'Validation retenue pour vérification.';
+          this.holdNotice.set(reason);
+          this.toast.info('Validation retenue pour vérification', reason);
+        } else {
+          this.error.set('La validation a échoué.');
+          this.toast.fromHttp('Validation refusée', err);
+        }
+      },
+    });
+  }
+
+  reject(id: string): void {
+    this.busy.set(true);
+    this.candidates.reject(id).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.selected.set(null);
+        this.refresh();
+      },
+      error: (err: unknown) => {
+        this.busy.set(false);
+        this.toast.fromHttp('Rejet impossible', err);
+      },
+    });
+  }
+
+  draftTitle(d: EventCandidateDto): string {
+    const t = d.payload?.['title'];
+    return typeof t === 'string' && t.trim() ? t : 'Brouillon sans titre';
+  }
+
+  statusLabel(status: string): string {
+    const map: Record<string, string> = {
+      PENDING: 'En attente',
+      OCR_RUNNING: 'Analyse…',
+      OCR_DONE: 'Analyse OK',
+      CLASSIFICATION_RUNNING: 'Extraction…',
+      DISCOVERING: 'Découverte…',
+      FETCHING: 'Récupération…',
+      EXTRACTING: 'Extraction…',
+      VALIDATING: 'Contrôles…',
+      NORMALIZING: 'Normalisation…',
+      DEDUPLICATING: 'Dédoublonnage…',
+      PERSISTING: 'Enregistrement…',
+    };
+    return map[status] ?? status;
+  }
+
+  // --- Tableau des événements privés ---
+
+  date(e: EventDto): string {
+    return formatDateTime(e.startsAt);
+  }
+
+  categoryOf(e: EventDto): string {
+    return e.subjects?.length ? e.subjects.join(', ') : '—';
+  }
+
+  openEvent(row: Record<string, unknown>): void {
+    this.openEventById(String(row['id']));
+  }
+
+  openEventById(id: string): void {
+    void this.router.navigate(['/events', id]);
+  }
+
+  rowAction(e: EventDto, action: 'archive' | 'restore'): void {
+    this.busyRow.set(e.id);
+    this.error.set('');
+    const call = action === 'archive' ? this.eventsApi.archivePrivate(e.id) : this.eventsApi.restorePrivate(e.id);
+    call.subscribe({
+      next: (updated) => {
+        this.events.update((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
+        this.busyRow.set(null);
+      },
+      error: (err: unknown) => {
+        this.busyRow.set(null);
+        this.error.set("L'action a échoué.");
+        this.toast.fromHttp("L'action a échoué", err);
+      },
+    });
+  }
+}
+
+function toDraft(payload: Record<string, unknown>): EventDraft {
+  const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
+  const num = (v: unknown): number | undefined => (typeof v === 'number' && !Number.isNaN(v) ? v : undefined);
+  const strList = (v: unknown): string[] | undefined =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : undefined;
+  return {
+    title: str(payload['title']),
+    description: str(payload['description']),
+    startsAt: str(payload['startsAt']),
+    endsAt: str(payload['endsAt']),
+    price: num(payload['price']),
+    currency: str(payload['currency']),
+    activityName: str(payload['activity']),
+    eventTypeName: str(payload['eventType']),
+    subjectNames: strList(payload['subjects']),
+    modalityNames: strList(payload['modalities']),
+    organizerName: str(payload['organizer']),
+    venueName: str(payload['venue']),
+  };
+}

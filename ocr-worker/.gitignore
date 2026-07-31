@@ -1,0 +1,4 @@
+eval/fixtures/*
+!eval/fixtures/.gitkeep
+!eval/fixtures/fixtures.example.json
+*.traineddata
