@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ClassificationContext, ClassificationRule } from '../classification-rule.interface';
-import { containsWord } from '../engine/text-utils';
+import { matchAll } from '../engine/reference-match';
 
 /**
  * Reconnaît l'Activity via les référentiels (nom + alias). Le Domain n'est jamais
@@ -11,30 +11,26 @@ export class ActivityRule implements ClassificationRule {
   readonly name = 'ActivityRule';
 
   async execute(context: ClassificationContext): Promise<void> {
-    const matches = context.reference.activities.filter(
-      (activity) =>
-        containsWord(context.normalizedText, activity.name) ||
-        activity.aliases.some((alias) => containsWord(context.normalizedText, alias)),
-    );
+    const matches = matchAll(context.normalizedText, context.reference.activities);
     if (matches.length === 0) {
       return;
     }
 
-    const byName = matches.filter((activity) => containsWord(context.normalizedText, activity.name));
-    const chosen = [...(byName.length ? byName : matches)].sort(
-      (a, b) => b.name.length - a.name.length,
-    )[0];
-    const exactName = containsWord(context.normalizedText, chosen.name);
+    // Nom d'abord (matchAll les place en tête), puis libellé le plus long : « Jeu de rôle » avant
+    // « Jeu » quand les deux figurent au référentiel.
+    const byName = matches.filter((m) => m.kind === 'NAME');
+    const pool = byName.length ? byName : matches;
+    const chosen = [...pool].sort((a, b) => b.entry.name.length - a.entry.name.length)[0];
 
-    context.extractedFields.activity = chosen.name;
-    context.confidenceByField.activity = exactName ? 0.95 : 0.85;
+    context.extractedFields.activity = chosen.entry.name;
+    context.confidenceByField.activity = chosen.kind === 'NAME' ? 0.95 : 0.85;
 
-    if (new Set(matches.map((activity) => activity.id)).size > 1) {
+    if (new Set(matches.map((m) => m.entry.id)).size > 1) {
       context.diagnostics.push({
         rule: this.name,
         level: 'WARNING',
         field: 'activity',
-        message: `Plusieurs activités possibles : ${matches.map((a) => a.name).join(', ')}.`,
+        message: `Plusieurs activités possibles : ${matches.map((m) => m.entry.name).join(', ')}.`,
       });
     }
   }

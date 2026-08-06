@@ -273,39 +273,75 @@ import { ToastService } from '../../core/toast.service';
                 Proposé : <strong>{{ kindLabel(sg.kind) }}</strong> « {{ sg.label }} »
                 @if (sg.context) { <span>· constaté sur « {{ sg.context }} »</span> }
               </p>
-              @if (createdReferenceOf(d)) {
-                <p class="muted" style="margin:0">✅ Référence déjà créée pour cette demande.</p>
+              @if (decidedSuggestion(d); as done) {
+                <p class="muted" style="margin:0">✅ {{ done }}</p>
               } @else {
-                <p class="muted" style="margin:0 0 0.5rem">
-                  Le libellé est <strong>modifiable</strong> avant validation : la proposition est un
-                  point de départ, pas un ordre de création. Un refus passe par « Changer l'état »,
-                  motif à l'appui.
-                </p>
-                <div class="row">
-                  <input class="input" [(ngModel)]="suggestionName" placeholder="Libellé retenu"
-                         style="flex:1;min-width:180px" />
-                  @if (parentKindOf(sg.kind) === 'DOMAIN') {
-                    <select [(ngModel)]="suggestionParentId">
-                      <option value="">Domaine de rattachement…</option>
-                      @for (dom of domains(); track dom.id) { <option [value]="dom.id">{{ dom.name }}</option> }
-                    </select>
-                  }
-                  @if (parentKindOf(sg.kind) === 'FAMILY') {
-                    <select [(ngModel)]="suggestionParentId">
-                      <option value="">Famille de rattachement…</option>
-                      @for (f of families(); track f.id) {
-                        <option [value]="f.id">{{ activityName(f.activityId) }} › {{ f.name }}</option>
+                <div class="row" style="margin-bottom:0.5rem">
+                  <label class="muted">
+                    <input type="radio" name="sgMode" value="CREATE" [(ngModel)]="suggestionMode" />
+                    Créer une nouvelle référence
+                  </label>
+                  <label class="muted">
+                    <input type="radio" name="sgMode" value="ALIAS" [(ngModel)]="suggestionMode" />
+                    Rattacher comme libellé alternatif
+                  </label>
+                </div>
+
+                @if (suggestionMode === 'CREATE') {
+                  <p class="muted" style="margin:0 0 0.5rem">
+                    Le libellé est <strong>modifiable</strong> : la proposition est un point de départ,
+                    pas un ordre de création. Un refus passe par « Changer l'état », motif à l'appui.
+                  </p>
+                  <div class="row">
+                    <input class="input" [(ngModel)]="suggestionName" placeholder="Libellé retenu"
+                           style="flex:1;min-width:180px" />
+                    @if (parentKindOf(sg.kind) === 'DOMAIN') {
+                      <select [(ngModel)]="suggestionParentId">
+                        <option value="">Domaine de rattachement…</option>
+                        @for (dom of domains(); track dom.id) { <option [value]="dom.id">{{ dom.name }}</option> }
+                      </select>
+                    }
+                    @if (parentKindOf(sg.kind) === 'FAMILY') {
+                      <select [(ngModel)]="suggestionParentId">
+                        <option value="">Famille de rattachement…</option>
+                        @for (f of families(); track f.id) {
+                          <option [value]="f.id">{{ activityName(f.activityId) }} › {{ f.name }}</option>
+                        }
+                      </select>
+                    }
+                  </div>
+                } @else {
+                  <p class="muted" style="margin:0 0 0.5rem">
+                    Le terme n'entre pas au vocabulaire : il devient une autre façon de nommer une
+                    référence <strong>existante</strong>, que le moteur reconnaîtra désormais. Créer
+                    un doublon fragmenterait le référentiel.
+                  </p>
+                  <div class="row">
+                    <input class="input" [(ngModel)]="suggestionName" placeholder="Libellé alternatif"
+                           style="flex:1;min-width:150px" />
+                    <select [(ngModel)]="aliasTargetId">
+                      <option value="">{{ kindLabel(sg.kind) }} existant(e)…</option>
+                      @for (r of aliasCandidates(sg.kind); track r.id) {
+                        <option [value]="r.id">{{ r.name }}</option>
                       }
                     </select>
-                  }
-                </div>
+                  </div>
+                }
+
                 <textarea class="input" [(ngModel)]="suggestionComment" style="margin-top:0.4rem"
                           placeholder="Motif de la décision (facultatif)…"></textarea>
                 <div class="row" style="margin-top:0.4rem">
-                  <button class="btn btn-sm btn-primary" (click)="acceptSuggestion(d, sg)"
-                          [disabled]="!canAcceptSuggestion(sg)">
-                    Accepter et créer la référence
-                  </button>
+                  @if (suggestionMode === 'CREATE') {
+                    <button class="btn btn-sm btn-primary" (click)="acceptSuggestion(d, sg)"
+                            [disabled]="!canAcceptSuggestion(sg)">
+                      Accepter et créer la référence
+                    </button>
+                  } @else {
+                    <button class="btn btn-sm btn-primary" (click)="aliasSuggestion(d, sg)"
+                            [disabled]="!aliasTargetId || !(suggestionName || sg.label).trim()">
+                      Enregistrer comme libellé alternatif
+                    </button>
+                  }
                 </div>
               }
             </div>
@@ -391,9 +427,69 @@ export class CasesConsoleComponent implements OnInit {
   readonly domains = signal<ReferentialItem[]>([]);
   readonly families = signal<FamilyDto[]>([]);
   readonly activities = signal<ActivityDto[]>([]);
+  readonly eventTypes = signal<ReferentialItem[]>([]);
+  readonly subjects = signal<ReferentialItem[]>([]);
+  readonly organizers = signal<ReferentialItem[]>([]);
+  readonly venues = signal<ReferentialItem[]>([]);
+  /** Deux issues possibles : créer une référence, ou enrichir une référence existante d'un alias. */
+  suggestionMode: 'CREATE' | 'ALIAS' = 'CREATE';
   suggestionName = '';
   suggestionParentId = '';
+  aliasTargetId = '';
   suggestionComment = '';
+
+  /** Entrées existantes du référentiel visé — cibles possibles d'un libellé alternatif. */
+  aliasCandidates(kind: ReferenceKind): ReferentialItem[] {
+    switch (kind) {
+      case 'ACTIVITY':
+        return this.activities();
+      case 'EVENT_TYPE':
+        return this.eventTypes();
+      case 'SUBJECT':
+        return this.subjects();
+      case 'ORGANIZER':
+        return this.organizers();
+      case 'VENUE':
+        return this.venues();
+    }
+  }
+
+  /** Décision déjà prise sur cette demande : elle ne se rejoue pas. */
+  decidedSuggestion(d: CaseDetail): string | null {
+    const meta = d.metadata as { createdReferenceId?: string; createdAliasId?: string } | null;
+    if (meta?.createdReferenceId) return 'Référence créée pour cette demande.';
+    if (meta?.createdAliasId) return 'Libellé alternatif enregistré pour cette demande.';
+    return null;
+  }
+
+  aliasSuggestion(d: CaseDetail, sg: ReferenceSuggestion): void {
+    const value = (this.suggestionName || sg.label).trim();
+    this.api
+      .aliasReferenceSuggestion(d.id, {
+        target: sg.kind,
+        targetId: this.aliasTargetId,
+        value,
+        comment: this.suggestionComment.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.toast.success(
+            'Libellé alternatif enregistré',
+            `« ${value} » sera désormais reconnu ; demande résolue.`,
+          );
+          this.resetSuggestionForm();
+          this.after();
+        },
+        error: (err: unknown) => this.toast.fromHttp('Enregistrement refusé', err),
+      });
+  }
+
+  private resetSuggestionForm(): void {
+    this.suggestionName = '';
+    this.suggestionParentId = '';
+    this.aliasTargetId = '';
+    this.suggestionComment = '';
+  }
 
   /** Proposition portée par la Case, si c'en est une. Lue dans les métadonnées d'ouverture. */
   suggestionOf(d: CaseDetail): ReferenceSuggestion | null {
@@ -402,11 +498,6 @@ export class CasesConsoleComponent implements OnInit {
     }
     const suggestion = (d.metadata as { suggestion?: ReferenceSuggestion } | null)?.suggestion;
     return suggestion ?? null;
-  }
-
-  /** Référence déjà créée pour cette demande : la décision ne se rejoue pas. */
-  createdReferenceOf(d: CaseDetail): string | null {
-    return ((d.metadata as { createdReferenceId?: string } | null)?.createdReferenceId) ?? null;
   }
 
   kindLabel(kind: ReferenceKind): string {
@@ -441,9 +532,7 @@ export class CasesConsoleComponent implements OnInit {
       .subscribe({
         next: () => {
           this.toast.success('Référence créée', `« ${name} » ajoutée au référentiel ; demande résolue.`);
-          this.suggestionName = '';
-          this.suggestionParentId = '';
-          this.suggestionComment = '';
+          this.resetSuggestionForm();
           this.after();
         },
         // La Case reste ouverte en cas de refus du référentiel (doublon, terme interdit) : corriger
@@ -482,6 +571,11 @@ export class CasesConsoleComponent implements OnInit {
     this.refData.domains().subscribe((list) => this.domains.set(list));
     this.refData.families().subscribe((list) => this.families.set(list));
     this.refData.activities().subscribe((list) => this.activities.set(list));
+    // Cibles possibles d'un libellé alternatif, pour chaque référentiel aliasable.
+    this.refData.eventTypes().subscribe((list) => this.eventTypes.set(list));
+    this.refData.subjects().subscribe((list) => this.subjects.set(list));
+    this.refData.organizers().subscribe((list) => this.organizers.set(list));
+    this.refData.venues().subscribe((list) => this.venues.set(list));
   }
 
   load(): void {

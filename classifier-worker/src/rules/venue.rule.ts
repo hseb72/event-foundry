@@ -1,22 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import type { ClassificationContext, ClassificationRule } from '../classification-rule.interface';
-import { containsWord } from '../engine/text-utils';
+import { matchAll } from '../engine/reference-match';
 
-/** Reconnaît un Venue connu du référentiel (et sa ville, si renseignée). */
+/** Reconnaît un Venue connu du référentiel (et sa ville, si renseignée), par nom ou par alias. */
 @Injectable()
 export class VenueRule implements ClassificationRule {
   readonly name = 'VenueRule';
 
   async execute(context: ClassificationContext): Promise<void> {
-    const match = context.reference.venues.find((venue) =>
-      containsWord(context.normalizedText, venue.name),
-    );
+    const match = matchAll(context.normalizedText, context.reference.venues)[0];
     if (match) {
-      context.extractedFields.venue = match.name;
-      if (match.city) {
-        context.extractedFields.city = match.city;
+      context.extractedFields.venue = match.entry.name;
+      if (match.entry.city) {
+        context.extractedFields.city = match.entry.city;
       }
-      context.confidenceByField.venue = 0.7;
+      context.confidenceByField.venue = match.kind === 'NAME' ? 0.7 : 0.6;
     }
   }
 }

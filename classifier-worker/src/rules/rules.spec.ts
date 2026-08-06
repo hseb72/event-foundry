@@ -5,6 +5,8 @@ import { EMPTY_SNAPSHOT, type ReferenceSnapshot } from '../reference/reference-s
 import { ActivityFromSubjectRule } from './activity-from-subject.rule';
 import { ActivityRule } from './activity.rule';
 import { EventTypeRule } from './event-type.rule';
+import { OrganizerRule } from './organizer.rule';
+import { VenueRule } from './venue.rule';
 import { SubjectRule } from './subject.rule';
 import { DateRule } from './date.rule';
 import { PriceRule } from './price.rule';
@@ -109,12 +111,13 @@ describe('Axe A — reconnaissance du sujet puis déduction de l’activité (DA
       { id: 'fam-amplifiees', name: 'Musiques amplifiées', activityId: 'act-musique' },
     ],
     subjects: [
-      { id: 'sub-magic', name: 'Magic', familyId: 'fam-tcg' },
-      { id: 'sub-pokemon', name: 'Pokémon', familyId: 'fam-tcg' },
-      { id: 'sub-catane', name: 'Catane', familyId: 'fam-plateau' },
-      { id: 'sub-rock', name: 'Rock', familyId: 'fam-amplifiees' },
+      // « MTG » et « D&D » : ce qu'une affiche écrit réellement, jamais le nom complet.
+      { id: 'sub-magic', name: 'Magic', familyId: 'fam-tcg', aliases: ['MTG'] },
+      { id: 'sub-pokemon', name: 'Pokémon', familyId: 'fam-tcg', aliases: [] },
+      { id: 'sub-catane', name: 'Catane', familyId: 'fam-plateau', aliases: [] },
+      { id: 'sub-rock', name: 'Rock', familyId: 'fam-amplifiees', aliases: [] },
     ],
-    eventTypes: [{ id: 'et-1', name: 'Tournoi' }],
+    eventTypes: [{ id: 'et-1', name: 'Tournoi', aliases: ['tournament'] }],
   };
 
   const run = async (text: string): Promise<ClassificationContext> => {
@@ -166,5 +169,69 @@ describe('Axe A — reconnaissance du sujet puis déduction de l’activité (DA
   it('ne déduit rien sans sujet reconnu', async () => {
     const context = await run('Grande brocante du village');
     expect(context.extractedFields.activity).toBeUndefined();
+  });
+});
+
+describe('Alias multi-référentiels : ce qu’une affiche écrit vraiment', () => {
+  const reference: ReferenceSnapshot = {
+    ...EMPTY_SNAPSHOT,
+    activities: [{ id: 'act-jeux', name: 'Jeux', domainId: 'dom-1', aliases: [] }],
+    families: [{ id: 'fam-tcg', name: 'TCG', activityId: 'act-jeux' }],
+    subjects: [
+      { id: 'sub-magic', name: 'Magic', familyId: 'fam-tcg', aliases: ['MTG'] },
+      { id: 'sub-dd', name: 'Donjons & Dragons', familyId: 'fam-tcg', aliases: ['D&D', 'DnD'] },
+    ],
+    eventTypes: [{ id: 'et-1', name: 'Avant-première', aliases: ['AP'] }],
+    organizers: [{ id: 'org-1', name: 'Association Ludique Nantaise', aliases: ['ALN'] }],
+    venues: [{ id: 'ven-1', name: 'Salle Jean Moulin', city: 'Nantes', aliases: ['SJM'] }],
+  };
+
+  it('reconnaît un sujet par son sigle et en déduit l’activité', async () => {
+    const context = makeContext('Tournoi MTG samedi', reference);
+    await new ActivityRule().execute(context);
+    await new SubjectRule().execute(context);
+    await new ActivityFromSubjectRule().execute(context);
+
+    expect(context.extractedFields.subjects).toEqual(['Magic']);
+    // Reconnu par abréviation : moins sûr qu'un sujet nommé explicitement.
+    expect(context.confidenceByField.subjects).toBe(0.75);
+    expect(context.extractedFields.activity).toBe('Jeux');
+  });
+
+  it('ne fait pas remonter deux fois un sujet cité par son nom et par son alias', async () => {
+    const context = makeContext('Soirée Magic (MTG) ce vendredi', reference);
+    await new SubjectRule().execute(context);
+
+    expect(context.extractedFields.subjects).toEqual(['Magic']);
+    expect(context.confidenceByField.subjects).toBe(0.85);
+  });
+
+  it('reconnaît un alias ponctué (« D&D »)', async () => {
+    const context = makeContext('Table de D&D ouverte à tous', reference);
+    await new SubjectRule().execute(context);
+    expect(context.extractedFields.subjects).toEqual(['Donjons & Dragons']);
+  });
+
+  it('reconnaît un type, un organisateur et un lieu par leur sigle', async () => {
+    const context = makeContext('AP organisée par l’ALN à la SJM', reference);
+    await new EventTypeRule().execute(context);
+    await new OrganizerRule().execute(context);
+    await new VenueRule().execute(context);
+
+    expect(context.extractedFields.eventType).toBe('Avant-première');
+    expect(context.extractedFields.organizer).toBe('Association Ludique Nantaise');
+    expect(context.extractedFields.venue).toBe('Salle Jean Moulin');
+    expect(context.extractedFields.city).toBe('Nantes');
+    // Un sigle est moins sûr qu'un nom complet.
+    expect(context.confidenceByField.eventType).toBe(0.7);
+    expect(context.confidenceByField.venue).toBe(0.6);
+  });
+
+  it('privilégie le nom sur l’alias quand les deux sont présents', async () => {
+    const context = makeContext('Avant-première à la Salle Jean Moulin', reference);
+    await new EventTypeRule().execute(context);
+    await new VenueRule().execute(context);
+    expect(context.confidenceByField.eventType).toBe(0.8);
+    expect(context.confidenceByField.venue).toBe(0.7);
   });
 });

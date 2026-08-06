@@ -46,6 +46,8 @@ export interface ReferenceSuggestionMetadata {
   suggestion: ReferenceSuggestion;
   /** Identifiant de la référence créée à l'acceptation — trace la décision. */
   createdReferenceId?: string;
+  /** Identifiant de l'alias créé, quand la proposition s'est révélée être un simple libellé. */
+  createdAliasId?: string;
 }
 
 export function isReferenceKind(value: string): value is ReferenceKind {

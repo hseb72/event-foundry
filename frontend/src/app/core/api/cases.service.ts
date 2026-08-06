@@ -100,6 +100,20 @@ export class CasesApi {
     );
   }
 
+  /**
+   * Requalifie une proposition en **alias** d'une référence existante : le libellé rejoint une
+   * entrée du référentiel au lieu d'en créer une nouvelle.
+   */
+  aliasReferenceSuggestion(
+    id: string,
+    decision: { target: ReferenceKind; targetId: string; value: string; comment?: string },
+  ): Observable<CaseSummary> {
+    return this.http.post<CaseSummary>(
+      `${API_BASE}/cases/${id}/reference-suggestion/alias`,
+      decision,
+    );
+  }
+
   // Operator
   /** File Operator : filtrable, triable, paginée côté serveur. */
   list(filter: Record<string, string>): Observable<PaginatedCases> {

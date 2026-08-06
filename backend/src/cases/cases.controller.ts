@@ -30,6 +30,7 @@ import type { CaseRoutingRule } from '@prisma/client';
 import { ReferenceSuggestionService } from './reference-suggestion.service';
 import {
   AcceptReferenceSuggestionDto,
+  AliasReferenceSuggestionDto,
   AssignCaseDto,
   ChangePriorityDto,
   ChangeStatusDto,
@@ -240,6 +241,27 @@ export class CasesController {
     return this.suggestions.accept(
       id,
       { kind: dto.kind, name: dto.name, parentId: dto.parentId, comment: dto.comment },
+      user.userId,
+    );
+  }
+
+  /**
+   * Requalifie la proposition en **alias** d'une référence existante : « MTG » n'est pas un sujet de
+   * plus, c'est la façon dont les affiches écrivent Magic. Le moteur le reconnaîtra désormais, sans
+   * qu'un terme s'ajoute au vocabulaire métier.
+   */
+  @Post(':id/reference-suggestion/alias')
+  @RequirePermissions('case.manage')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Alias enregistré, Case résolue.' })
+  aliasSuggestion(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AliasReferenceSuggestionDto,
+  ): Promise<Case> {
+    return this.suggestions.acceptAsAlias(
+      id,
+      { target: dto.target, targetId: dto.targetId, value: dto.value, comment: dto.comment },
       user.userId,
     );
   }

@@ -87,6 +87,13 @@ export class ReferenceDataApi {
     });
   }
 
+  /** Alias d'une entrée de référentiel (tous référentiels aliasables). */
+  aliasesOf(target: string, targetId: string): Observable<{ id: string; value: string }[]> {
+    return this.http.get<{ id: string; value: string }[]>(
+      `${API_BASE}/aliases/${target}/${targetId}`,
+    );
+  }
+
   /** Familles (Axe A — DATA.01 v2.0) : maillon Activity → Family → Subject. */
   families(activityId?: string): Observable<FamilyDto[]> {
     return this.http.get<FamilyDto[]>(`${API_BASE}/activity-families`, {

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { ALIAS_TARGETS, type AliasTarget } from './alias-target';
 
 export class CreateAliasDto {
   @ApiProperty({ example: 'MTG' })
@@ -30,8 +31,14 @@ export class AliasResponseDto {
   @ApiProperty()
   value!: string;
 
-  @ApiProperty({ format: 'uuid' })
-  activityId!: string;
+  @ApiProperty({ enum: ALIAS_TARGETS, description: 'Référentiel portant l’alias.' })
+  target!: AliasTarget;
+
+  @ApiProperty({ format: 'uuid', description: 'Entrée de référentiel désignée.' })
+  targetId!: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Compatibilité : renseigné si cible = Activité.' })
+  activityId!: string | null;
 
   @ApiProperty()
   isActive!: boolean;

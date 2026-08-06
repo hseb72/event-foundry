@@ -20,11 +20,16 @@ export class ReferentialProvisioningRepository {
     if (byName) {
       return byName.id;
     }
+    // Les alias portent désormais sur cinq référentiels : ne retenir que ceux visant une activité.
     const alias = await this.prisma.alias.findFirst({
-      where: { value: { equals: label, mode: 'insensitive' }, isActive: true },
+      where: {
+        value: { equals: label, mode: 'insensitive' },
+        isActive: true,
+        activityId: { not: null },
+      },
       select: { activityId: true },
     });
-    if (alias) {
+    if (alias?.activityId) {
       return alias.activityId;
     }
     if (!defaultDomainId) {

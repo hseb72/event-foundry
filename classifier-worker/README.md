@@ -43,6 +43,17 @@ que produisent réellement les affiches et l'OCR :
 Restent **refusés** : un fragment de mot (« Magicien » n'est pas *Magic*), l'absence de séparateur
 (« hiphop » n'est pas *Hip-hop*) et l'inversion des mots.
 
+## Alias : ce qu'une affiche écrit vraiment
+
+Les cinq référentiels reconnus dans le texte — Activity, EventType, Subject, Organizer, Venue —
+portent des **alias**. Une affiche écrit « MTG », « D&D », « LoL », « BD », un sigle d'association,
+rarement le nom complet du référentiel. Chaque règle reconnaît donc `nom OU alias`, avec une
+**confiance moindre pour un alias** : une abréviation est plus ambiguë qu'un nom explicite. Quand un
+texte cite les deux (« Magic (MTG) »), la référence ne remonte qu'une fois et le nom prime.
+
+Les alias sont chargés en **un seul appel** (`GET /aliases`) : un chargement par entrée aurait
+multiplié les requêtes par la taille du référentiel.
+
 ## Référentiels (jamais codés en dur)
 
 Les règles travaillent sur un `ReferenceSnapshot` (activités + alias, types, **familles**, sujets,
@@ -57,10 +68,9 @@ il est déduit de l'`Activity` par le Backend.
 - Heuristiques d'extraction volontairement simples (dates FR, heures, prix €, URL) — à
   enrichir. `TitleRule` prend la première ligne significative.
 - `CapacityRule` produit un diagnostic (la capacité n'est pas un champ d'Event en V1).
-- **Les alias n'existent que sur l'Activity** (table `aliases`). « MTG », « JCC », « D&D », « LoL »
-  ne sont donc pas reconnus comme sujets : il faudrait étendre les alias aux Subject / EventType
-  (schéma + administration). Les libellés extraits mais non résolus restent proposables à la
-  modération depuis le formulaire de qualification (Case `REFERENCE_SUGGESTION`).
+- Les libellés extraits mais non résolus restent proposables à la modération depuis le formulaire de
+  qualification (Case `REFERENCE_SUGGESTION`), qui peut les accepter comme nouvelle référence **ou**
+  comme alias d'une référence existante.
 
 ## Démarrage
 

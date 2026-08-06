@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { CaseStatus } from '@prisma/client';
 import type { ActivitiesService } from '../reference-data/activities/activities.service';
+import type { AliasesService } from '../reference-data/aliases/aliases.service';
 import type { EventTypesService } from '../reference-data/event-types/event-types.service';
 import type { OrganizersService } from '../reference-data/organizers/organizers.service';
 import type { SubjectsService } from '../reference-data/subjects/subjects.service';
@@ -20,6 +21,7 @@ describe('ReferenceSuggestionService — proposer, puis trancher', () => {
   let subjects: { create: jest.Mock };
   let organizers: { create: jest.Mock };
   let venues: { create: jest.Mock };
+  let aliases: { createFor: jest.Mock };
   let service: ReferenceSuggestionService;
 
   beforeEach(() => {
@@ -34,6 +36,7 @@ describe('ReferenceSuggestionService — proposer, puis trancher', () => {
     subjects = { create: jest.fn().mockResolvedValue({ id: 'sub-1' }) };
     organizers = { create: jest.fn().mockResolvedValue({ id: 'org-1' }) };
     venues = { create: jest.fn().mockResolvedValue({ id: 'venue-1' }) };
+    aliases = { createFor: jest.fn().mockResolvedValue({ id: 'alias-1' }) };
     service = new ReferenceSuggestionService(
       cases as unknown as CasesService,
       activities as unknown as ActivitiesService,
@@ -41,6 +44,7 @@ describe('ReferenceSuggestionService — proposer, puis trancher', () => {
       subjects as unknown as SubjectsService,
       organizers as unknown as OrganizersService,
       venues as unknown as VenuesService,
+      aliases as unknown as AliasesService,
     );
   });
 
@@ -119,6 +123,40 @@ describe('ReferenceSuggestionService — proposer, puis trancher', () => {
       await expect(
         service.accept('case-1', { kind: 'SUBJECT', name: 'Magic', parentId: 'fam-tcg' }, 'op-1'),
       ).rejects.toThrow('doublon');
+      expect(cases.changeStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requalification en alias', () => {
+    it('enregistre le libellé sur la référence existante, sans créer de référence', async () => {
+      // « MTG » n'est pas un sujet de plus : c'est la façon dont les affiches écrivent Magic.
+      await service.acceptAsAlias(
+        'case-1',
+        { target: 'SUBJECT', targetId: 'sub-magic', value: 'MTG' },
+        'operator-1',
+      );
+
+      expect(aliases.createFor).toHaveBeenCalledWith('SUBJECT', 'sub-magic', 'MTG');
+      expect(subjects.create).not.toHaveBeenCalled();
+      expect(cases.mergeMetadata).toHaveBeenCalledWith('case-1', { createdAliasId: 'alias-1' });
+      expect(cases.changeStatus).toHaveBeenCalledWith(
+        'case-1',
+        CaseStatus.RESOLVED,
+        'operator-1',
+        expect.any(String),
+      );
+    });
+
+    it('laisse la Case ouverte si l’alias est déjà pris', async () => {
+      aliases.createFor.mockRejectedValue(new Error('alias déjà utilisé'));
+
+      await expect(
+        service.acceptAsAlias(
+          'case-1',
+          { target: 'SUBJECT', targetId: 'sub-magic', value: 'MTG' },
+          'op-1',
+        ),
+      ).rejects.toThrow('alias déjà utilisé');
       expect(cases.changeStatus).not.toHaveBeenCalled();
     });
   });

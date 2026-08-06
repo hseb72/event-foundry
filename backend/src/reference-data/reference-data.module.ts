@@ -115,6 +115,7 @@ import { ModalityDimensionsService } from './modality-dimensions/modality-dimens
     SubjectsService,
     OrganizersService,
     VenuesService,
+    AliasesService,
     DomainRepository,
     ActivityRepository,
     EventTypeRepository,

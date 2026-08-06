@@ -1,21 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Alias } from '@prisma/client';
-import { ActivityRepository } from '../activities/activity.repository';
-import { ActivityNotFoundException, AliasNotFoundException } from '../common/exceptions';
+import { AliasNotFoundException } from '../common/exceptions';
 import { rethrowAsConflict } from '../common/prisma-error';
+import { ALIAS_TARGET_LABELS, type AliasTarget } from './alias-target';
 import { CreateAliasDto, UpdateAliasDto } from './alias.dto';
 import { AliasRepository } from './alias.repository';
 
+/**
+ * Alias de référentiel (DATA.01 v2.0) : libellés alternatifs reconnus par le moteur d'analyse.
+ * Portent sur **l'un des cinq** référentiels — Activity, EventType, Subject, Organizer, Venue —
+ * puisque ce qu'une affiche abrège est le plus souvent un sujet (« MTG ») ou un type.
+ */
 @Injectable()
 export class AliasesService {
-  constructor(
-    private readonly repository: AliasRepository,
-    private readonly activityRepository: ActivityRepository,
-  ) {}
+  constructor(private readonly repository: AliasRepository) {}
 
-  async listByActivity(activityId: string, includeInactive: boolean): Promise<Alias[]> {
-    await this.assertActivityExists(activityId);
-    return this.repository.listByActivity(activityId, includeInactive);
+  async listByTarget(
+    target: AliasTarget,
+    targetId: string,
+    includeInactive: boolean,
+  ): Promise<Alias[]> {
+    await this.assertTargetExists(target, targetId);
+    return this.repository.listByTarget(target, targetId, includeInactive);
+  }
+
+  /** Instantané complet des alias actifs : une seule requête pour tout le moteur d'analyse. */
+  listAllActive(): Promise<Alias[]> {
+    return this.repository.listAllActive();
   }
 
   async getOrThrow(id: string): Promise<Alias> {
@@ -26,12 +37,20 @@ export class AliasesService {
     return alias;
   }
 
-  async create(activityId: string, dto: CreateAliasDto): Promise<Alias> {
-    await this.assertActivityExists(activityId);
+  async create(target: AliasTarget, targetId: string, dto: CreateAliasDto): Promise<Alias> {
+    return this.createFor(target, targetId, dto.value);
+  }
+
+  /**
+   * Rattache un libellé à une entrée existante. L'unicité globale de `value` est voulue : un même
+   * libellé ne peut pas désigner deux références, sans quoi la reconnaissance serait ambiguë.
+   */
+  async createFor(target: AliasTarget, targetId: string, value: string): Promise<Alias> {
+    await this.assertTargetExists(target, targetId);
     try {
-      return await this.repository.create({ value: dto.value, activityId });
+      return await this.repository.createForTarget(target, targetId, value);
     } catch (error) {
-      rethrowAsConflict(error, `L'alias « ${dto.value} » est déjà utilisé.`);
+      rethrowAsConflict(error, `L'alias « ${value} » est déjà utilisé.`);
     }
   }
 
@@ -49,10 +68,10 @@ export class AliasesService {
     return this.repository.deactivate(id);
   }
 
-  private async assertActivityExists(activityId: string): Promise<void> {
-    const activity = await this.activityRepository.findById(activityId);
-    if (!activity) {
-      throw new ActivityNotFoundException(activityId);
+  /** L'entrée visée doit exister : un alias orphelin serait irrécupérable côté moteur. */
+  private async assertTargetExists(target: AliasTarget, targetId: string): Promise<void> {
+    if (!(await this.repository.targetExists(target, targetId))) {
+      throw new NotFoundException(`${ALIAS_TARGET_LABELS[target]} ${targetId} introuvable.`);
     }
   }
 }

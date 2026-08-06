@@ -98,15 +98,26 @@ Deux temps strictement séparés :
 | Temps | Qui | Effet |
 |-------|-----|-------|
 | Proposer | tout utilisateur authentifié | ouvre une Case ; **aucune écriture au référentiel** |
-| Trancher | modération (`case.manage`) | accepte — en **corrigeant le libellé** et en choisissant le parent si besoin — ou refuse |
+| Trancher | modération (`case.manage`) | crée la référence, la **requalifie en alias**, ou refuse |
 
-L'acceptation crée l'entrée **puis** résout la Case. Dans cet ordre : si le référentiel refuse la
-création (doublon, terme interdit, parent inconnu), la Case reste ouverte et la modération corrige,
-plutôt qu'une Case résolue sans référence créée. Un refus emprunte le changement d'état ordinaire,
-motif obligatoire à l'appui.
+### Trois issues, pas deux
 
-La proposition est portée par les métadonnées de la Case (`suggestion`), et la référence créée y est
-consignée (`createdReferenceId`) : la décision reste traçable.
+| Décision | Quand | Effet |
+|----------|-------|-------|
+| **Créer la référence** | le terme manque vraiment au vocabulaire | nouvelle entrée, libellé et parent tels que tranchés par la modération |
+| **Rattacher comme libellé alternatif** | le terme désigne une référence **existante** | un **alias** est posé sur cette référence ; le moteur le reconnaîtra, sans qu'un terme s'ajoute au vocabulaire |
+| **Refuser** | proposition non pertinente | changement d'état ordinaire, motif obligatoire |
+
+La requalification en alias est le cas le plus fréquent : « MTG » n'est pas un sujet de plus, c'est
+la façon dont les affiches écrivent *Magic*. Créer une seconde entrée fragmenterait le référentiel et
+disperserait les événements entre deux sujets équivalents.
+
+L'acceptation crée l'entrée (ou l'alias) **puis** résout la Case. Dans cet ordre : si le référentiel
+refuse (doublon, terme interdit, parent inconnu, alias déjà pris), la Case reste ouverte et la
+modération corrige, plutôt qu'une Case résolue sans rien de créé.
+
+La proposition est portée par les métadonnées de la Case (`suggestion`), et la décision y est
+consignée (`createdReferenceId` ou `createdAliasId`) : elle reste traçable et ne se rejoue pas.
 
 Une Activité exige un **Domain** de rattachement, un Sujet une **Family** : c'est la modération qui le
 choisit, le proposant n'ayant pas à connaître la hiérarchie du référentiel.

@@ -646,6 +646,7 @@ model EventType {
   events      Event[]
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  aliases     Alias[]
 
   @@map("event_types")
 }
@@ -654,16 +655,33 @@ model EventType {
 /// (au même titre que Category/Tag). Un Event peut porter plusieurs Formats (N-N — TAX-003).
 /// Écriture alternative reconnue par le moteur expert (ex. « MTG » -> Magic).
 /// La valeur est unique : une écriture ne référence qu'une seule valeur métier (FSPEC.07).
+/// Libellé alternatif reconnu par le moteur d'analyse (« MTG » → Magic, « D&D » → Donjons & Dragons).
+/// Porte sur **un seul** référentiel : les clés étrangères sont explicites et nullables, une
+/// contrainte SQL (`num_nonnulls(...) = 1`) garantissant qu'exactement une est renseignée. Ce choix
+/// préserve l'intégrité référentielle et le RESTRICT (TSPEC.02), qu'une table polymorphe
+/// `targetType/targetId` aurait perdus.
 model Alias {
-  id         String   @id @default(uuid()) @db.Uuid
-  value      String   @unique
-  activityId String   @map("activity_id") @db.Uuid
-  isActive   Boolean  @default(true) @map("is_active")
-  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String     @id @default(uuid()) @db.Uuid
+  value       String     @unique
+  activityId  String?    @map("activity_id") @db.Uuid
+  eventTypeId String?    @map("event_type_id") @db.Uuid
+  subjectId   String?    @map("subject_id") @db.Uuid
+  organizerId String?    @map("organizer_id") @db.Uuid
+  venueId     String?    @map("venue_id") @db.Uuid
+  isActive    Boolean    @default(true) @map("is_active")
+  activity    Activity?  @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  eventType   EventType? @relation(fields: [eventTypeId], references: [id], onDelete: Restrict)
+  subject     Subject?   @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  organizer   Organizer? @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  venue       Venue?     @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([activityId])
+  @@index([eventTypeId])
+  @@index([subjectId])
+  @@index([organizerId])
+  @@index([venueId])
   @@map("aliases")
 }
 
@@ -675,6 +693,7 @@ model Organizer {
   provisional  Boolean       @default(false)
   venues       Venue[]
   events       Event[]
+  aliases      Alias[]
   /// Organisation (compte plateforme) déclarant représenter cette fiche Organizer (FSPEC.22 §16).
   organization Organization?
   createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -706,6 +725,7 @@ model Venue {
   activities  VenueActivity[]
   subjects    VenueSubject[]
   tags        VenueTag[]
+  aliases     Alias[]
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -821,6 +841,7 @@ model Subject {
   events        EventSubject[]
   venues        VenueSubject[]
   organizations OrganizationSubject[]
+  aliases       Alias[]
   createdAt     DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
 

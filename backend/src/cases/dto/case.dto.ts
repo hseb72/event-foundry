@@ -14,6 +14,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CASE_DOMAINS, CASE_TYPES } from '../case-catalog';
+import { ALIAS_TARGETS, type AliasTarget } from '../../reference-data/aliases/alias-target';
 import { REFERENCE_KINDS, type ReferenceKind } from '../reference-suggestion';
 
 export class OpenCaseDto {
@@ -184,6 +185,32 @@ export class AcceptReferenceSuggestionDto {
   @IsOptional()
   @IsUUID()
   parentId?: string;
+
+  @ApiPropertyOptional({ description: 'Motif de la décision, joint à l’historique.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  comment?: string;
+}
+
+/**
+ * Décision « c'est un libellé alternatif » : le terme proposé rejoint une référence **existante**
+ * plutôt que d'en créer une nouvelle.
+ */
+export class AliasReferenceSuggestionDto {
+  @ApiProperty({ enum: ALIAS_TARGETS })
+  @IsIn(ALIAS_TARGETS as unknown as string[])
+  target!: AliasTarget;
+
+  @ApiProperty({ format: 'uuid', description: 'Référence existante à enrichir.' })
+  @IsUUID()
+  targetId!: string;
+
+  @ApiProperty({ description: 'Libellé à enregistrer comme alias.' })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  value!: string;
 
   @ApiPropertyOptional({ description: 'Motif de la décision, joint à l’historique.' })
   @IsOptional()

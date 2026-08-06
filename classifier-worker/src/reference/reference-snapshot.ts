@@ -6,10 +6,14 @@ export interface ReferenceActivity {
   aliases: string[];
 }
 
-/** EventType : référentiel **transverse** (DATA.01 v2.0), sans rattachement à une Activité. */
+/**
+ * EventType : référentiel **transverse** (DATA.01 v2.0), sans rattachement à une Activité.
+ * `aliases` porte les libellés alternatifs reconnus (« JCC » → TCG, « impro » → Improvisation).
+ */
 export interface ReferenceNamed {
   id: string;
   name: string;
+  aliases: string[];
 }
 
 /**
@@ -28,6 +32,8 @@ export interface ReferenceSubject {
   name: string;
   /** Famille de rattachement : ouvre le chemin Subject → Family → Activity. */
   familyId: string;
+  /** Libellés alternatifs (« MTG » → Magic, « D&D » → Donjons & Dragons). */
+  aliases: string[];
 }
 
 /** Modalité (Axe C — DATA.01 v2.0). Référentiel transverse, reconnu par nom. */
@@ -39,12 +45,14 @@ export interface ReferenceModality {
 export interface ReferenceOrganizer {
   id: string;
   name: string;
+  aliases: string[];
 }
 
 export interface ReferenceVenue {
   id: string;
   name: string;
   city: string | null;
+  aliases: string[];
 }
 
 export interface ReferenceSnapshot {

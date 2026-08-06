@@ -129,6 +129,29 @@ const MODALITY_DIMENSIONS: Record<string, string[]> = {
   'Format de jeu': ['Constructed', 'Draft', 'Scellé', 'Standard', 'Commander', 'Limité'],
 };
 
+/**
+ * Alias de **sujets** : ce qu'une affiche écrit réellement. Sans eux, « Tournoi MTG » ou « table de
+ * D&D » — les formulations les plus courantes — ne sont reconnues par aucune règle.
+ *
+ * Jeu de départ volontairement restreint aux abréviations d'usage établi : un alias est unique sur
+ * toute la plateforme, une abréviation ambiguë créerait un conflit plutôt qu'une reconnaissance.
+ */
+const SUBJECT_ALIASES: Record<string, string[]> = {
+  Magic: ['MTG', 'Magic The Gathering'],
+  'Yu-Gi-Oh!': ['Yugioh', 'YGO'],
+  'Donjons & Dragons': ['D&D', 'DnD', 'Dungeons & Dragons'],
+  'Warhammer 40,000': ['Warhammer 40k', '40k'],
+  'League of Legends': ['LoL'],
+  'Counter-Strike': ['CS', 'CS2'],
+  'Super Smash Bros': ['Smash'],
+  'EA Sports FC': ['FIFA'],
+  'Rap/Hip-hop': ['Hip-hop', 'Rap'],
+  'Musique classique': ['Classique'],
+  'Tennis de table': ['Ping-pong'],
+  MMA: ['Arts martiaux mixtes'],
+  'Bande dessinée': ['BD'],
+};
+
 export async function seedTaxonomyV2(prisma: PrismaClient): Promise<void> {
   // Familles + sujets rattachés aux activités généralistes existantes (Domain « Général »).
   const general = await prisma.domain.findUnique({ where: { name: 'Général' } });
@@ -151,6 +174,19 @@ export async function seedTaxonomyV2(prisma: PrismaClient): Promise<void> {
             create: { name: subjectName, familyId: family.id },
           });
         }
+      }
+    }
+  }
+
+  // Alias de sujets (idempotents : un alias déjà pris, éventuellement par une autre référence,
+  // est laissé en l'état — le seed ne réattribue jamais un libellé existant).
+  for (const [subjectName, aliases] of Object.entries(SUBJECT_ALIASES)) {
+    const subject = await prisma.subject.findFirst({ where: { name: subjectName } });
+    if (!subject) continue;
+    for (const value of aliases) {
+      const existing = await prisma.alias.findUnique({ where: { value } });
+      if (!existing) {
+        await prisma.alias.create({ data: { value, subjectId: subject.id } });
       }
     }
   }

@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CaseStatus, type Case } from '@prisma/client';
 import { ActivitiesService } from '../reference-data/activities/activities.service';
+import { AliasesService } from '../reference-data/aliases/aliases.service';
+import type { AliasTarget } from '../reference-data/aliases/alias-target';
 import { EventTypesService } from '../reference-data/event-types/event-types.service';
 import { OrganizersService } from '../reference-data/organizers/organizers.service';
 import { SubjectsService } from '../reference-data/subjects/subjects.service';
@@ -14,6 +16,18 @@ import {
   type ReferenceSuggestion,
   type ReferenceSuggestionMetadata,
 } from './reference-suggestion';
+
+/**
+ * Décision « ce n'est pas une nouvelle référence, c'est une autre façon de nommer une référence
+ * existante » : le libellé proposé devient un **alias**, et le moteur le reconnaîtra désormais.
+ */
+export interface AliasSuggestionInput {
+  target: AliasTarget;
+  targetId: string;
+  /** Libellé à enregistrer comme alias (corrigeable : casse, ponctuation…). */
+  value: string;
+  comment?: string;
+}
 
 /** Décision de la modération : la proposition telle qu'elle sera créée (libellé corrigeable). */
 export interface AcceptSuggestionInput {
@@ -42,6 +56,7 @@ export class ReferenceSuggestionService {
     private readonly subjects: SubjectsService,
     private readonly organizers: OrganizersService,
     private readonly venues: VenuesService,
+    private readonly aliases: AliasesService,
   ) {}
 
   /** Ouvre la proposition. Aucune écriture au référentiel : seule une Case est créée. */
@@ -98,6 +113,36 @@ export class ReferenceSuggestionService {
       `${REFERENCE_KIND_LABELS[input.kind]} « ${name} » ajoutée au référentiel.`;
     await this.cases.addComment(caseId, operatorId, comment, false);
     await this.cases.mergeMetadata(caseId, { createdReferenceId: createdId });
+    return this.cases.changeStatus(caseId, CaseStatus.RESOLVED, operatorId, comment);
+  }
+
+  /**
+   * Traite la proposition comme un **alias** d'une référence existante, plutôt que comme une
+   * référence nouvelle.
+   *
+   * C'est le cas le plus fréquent en pratique : « MTG » n'est pas un sujet de plus, c'est la façon
+   * dont les affiches écrivent Magic. Créer une seconde entrée aurait fragmenté le référentiel et
+   * dispersé les événements entre deux sujets équivalents. L'alias, lui, enrichit la reconnaissance
+   * sans ajouter de terme au vocabulaire métier.
+   *
+   * Même ordre que l'acceptation : l'alias d'abord, la résolution ensuite.
+   */
+  async acceptAsAlias(
+    caseId: string,
+    input: AliasSuggestionInput,
+    operatorId: string,
+  ): Promise<Case> {
+    const value = input.value.trim();
+    if (!value) {
+      throw new BadRequestException("Le libellé de l'alias est obligatoire.");
+    }
+    const alias = await this.aliases.createFor(input.target, input.targetId, value);
+
+    const comment =
+      input.comment?.trim() ||
+      `« ${value} » enregistré comme libellé alternatif d'une référence existante.`;
+    await this.cases.addComment(caseId, operatorId, comment, false);
+    await this.cases.mergeMetadata(caseId, { createdAliasId: alias.id });
     return this.cases.changeStatus(caseId, CaseStatus.RESOLVED, operatorId, comment);
   }
 

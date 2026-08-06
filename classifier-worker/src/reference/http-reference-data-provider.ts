@@ -18,8 +18,11 @@ interface ActivityDto {
   name: string;
   domainId: string;
 }
+/** Alias actif avec sa cible : un seul appel les rapporte tous, tous référentiels confondus. */
 interface AliasDto {
   value: string;
+  target: 'ACTIVITY' | 'EVENT_TYPE' | 'SUBJECT' | 'ORGANIZER' | 'VENUE';
+  targetId: string;
 }
 interface NamedDto {
   id: string;
@@ -86,34 +89,34 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
 
   private async load(): Promise<ReferenceSnapshot> {
     const token = await this.login();
-    const [activities, eventTypes, families, subjects, modalities, organizers, venues] = await Promise.all([
-      this.getJson<ActivityDto[]>('/activities', token),
-      this.getJson<NamedDto[]>('/event-types', token),
-      // Les familles ne sont pas reconnues dans le texte : elles portent le chemin sujet → activité.
-      this.getJson<FamilyDto[]>('/activity-families', token),
-      this.getJson<SubjectDto[]>('/subjects', token),
-      this.getJson<SimpleRefDto[]>('/modalities', token),
-      this.getJson<OrganizerDto[]>('/organizers', token),
-      this.getJson<VenueDto[]>('/venues', token),
-    ]);
+    const [activities, eventTypes, families, subjects, modalities, organizers, venues, aliases] =
+      await Promise.all([
+        this.getJson<ActivityDto[]>('/activities', token),
+        this.getJson<NamedDto[]>('/event-types', token),
+        // Les familles ne sont pas reconnues dans le texte : elles portent le chemin sujet → activité.
+        this.getJson<FamilyDto[]>('/activity-families', token),
+        this.getJson<SubjectDto[]>('/subjects', token),
+        this.getJson<SimpleRefDto[]>('/modalities', token),
+        this.getJson<OrganizerDto[]>('/organizers', token),
+        this.getJson<VenueDto[]>('/venues', token),
+        // Tous les alias actifs en **un** appel : le chargement par entrée multipliait les requêtes
+        // par le nombre d'activités, pour un référentiel qui en compte maintenant cinq.
+        this.getJson<AliasDto[]>('/aliases', token),
+      ]);
 
-    const activitiesWithAliases: ReferenceActivity[] = await Promise.all(
-      activities.map(async (activity) => {
-        const aliases = await this.getJson<AliasDto[]>(
-          `/activities/${activity.id}/aliases`,
-          token,
-        );
-        return {
-          id: activity.id,
-          name: activity.name,
-          domainId: activity.domainId,
-          aliases: aliases.map((alias) => alias.value),
-        };
-      }),
-    );
+    const aliasesOf = this.indexAliases(aliases);
 
-    const named = (items: NamedDto[]): ReferenceNamed[] =>
-      items.map((item) => ({ id: item.id, name: item.name }));
+    const acts: ReferenceActivity[] = activities.map((activity) => ({
+      id: activity.id,
+      name: activity.name,
+      domainId: activity.domainId,
+      aliases: aliasesOf('ACTIVITY', activity.id),
+    }));
+    const types: ReferenceNamed[] = eventTypes.map((item) => ({
+      id: item.id,
+      name: item.name,
+      aliases: aliasesOf('EVENT_TYPE', item.id),
+    }));
     const fams: ReferenceFamily[] = families.map((f) => ({
       id: f.id,
       name: f.name,
@@ -123,20 +126,40 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
       id: s.id,
       name: s.name,
       familyId: s.familyId,
+      aliases: aliasesOf('SUBJECT', s.id),
     }));
     const mods: ReferenceModality[] = modalities.map((m) => ({ id: m.id, name: m.name }));
-    const orgs: ReferenceOrganizer[] = organizers.map((o) => ({ id: o.id, name: o.name }));
-    const places: ReferenceVenue[] = venues.map((v) => ({ id: v.id, name: v.name, city: v.city }));
+    const orgs: ReferenceOrganizer[] = organizers.map((o) => ({
+      id: o.id,
+      name: o.name,
+      aliases: aliasesOf('ORGANIZER', o.id),
+    }));
+    const places: ReferenceVenue[] = venues.map((v) => ({
+      id: v.id,
+      name: v.name,
+      city: v.city,
+      aliases: aliasesOf('VENUE', v.id),
+    }));
 
     return {
-      activities: activitiesWithAliases,
-      eventTypes: named(eventTypes),
+      activities: acts,
+      eventTypes: types,
       families: fams,
       subjects: subs,
       modalities: mods,
       organizers: orgs,
       venues: places,
     };
+  }
+
+  /** Indexe les alias par (référentiel, identifiant) — une seule passe pour toutes les entrées. */
+  private indexAliases(aliases: AliasDto[]): (target: AliasDto['target'], id: string) => string[] {
+    const byKey = new Map<string, string[]>();
+    for (const alias of aliases) {
+      const key = `${alias.target}:${alias.targetId}`;
+      byKey.set(key, [...(byKey.get(key) ?? []), alias.value]);
+    }
+    return (target, id) => byKey.get(`${target}:${id}`) ?? [];
   }
 
   private async login(): Promise<string> {
