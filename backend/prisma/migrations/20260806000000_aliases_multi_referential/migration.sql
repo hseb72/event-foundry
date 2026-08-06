@@ -18,15 +18,22 @@ ALTER TABLE "aliases" ADD COLUMN IF NOT EXISTS "subject_id" UUID;
 ALTER TABLE "aliases" ADD COLUMN IF NOT EXISTS "organizer_id" UUID;
 ALTER TABLE "aliases" ADD COLUMN IF NOT EXISTS "venue_id" UUID;
 
+-- `ADD CONSTRAINT` n'est pas idempotent en PostgreSQL : on retire d'abord une éventuelle contrainte
+-- homonyme, pour que ce fichier reste rejouable après un échec partiel (cf. README, § « migration
+-- en échec »).
+ALTER TABLE "aliases" DROP CONSTRAINT IF EXISTS "aliases_event_type_id_fkey";
 ALTER TABLE "aliases"
   ADD CONSTRAINT "aliases_event_type_id_fkey" FOREIGN KEY ("event_type_id")
   REFERENCES "event_types"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "aliases" DROP CONSTRAINT IF EXISTS "aliases_subject_id_fkey";
 ALTER TABLE "aliases"
   ADD CONSTRAINT "aliases_subject_id_fkey" FOREIGN KEY ("subject_id")
   REFERENCES "subjects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "aliases" DROP CONSTRAINT IF EXISTS "aliases_organizer_id_fkey";
 ALTER TABLE "aliases"
   ADD CONSTRAINT "aliases_organizer_id_fkey" FOREIGN KEY ("organizer_id")
   REFERENCES "organizers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "aliases" DROP CONSTRAINT IF EXISTS "aliases_venue_id_fkey";
 ALTER TABLE "aliases"
   ADD CONSTRAINT "aliases_venue_id_fkey" FOREIGN KEY ("venue_id")
   REFERENCES "venues"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -37,6 +44,7 @@ CREATE INDEX IF NOT EXISTS "aliases_organizer_id_idx" ON "aliases"("organizer_id
 CREATE INDEX IF NOT EXISTS "aliases_venue_id_idx" ON "aliases"("venue_id");
 
 -- Un alias désigne une cible et une seule : ni orphelin, ni ambigu.
+ALTER TABLE "aliases" DROP CONSTRAINT IF EXISTS "aliases_exactly_one_target";
 ALTER TABLE "aliases"
   ADD CONSTRAINT "aliases_exactly_one_target"
   CHECK (num_nonnulls("activity_id", "event_type_id", "subject_id", "organizer_id", "venue_id") = 1);

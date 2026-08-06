@@ -36,6 +36,60 @@ npm run start:dev --workspace @event-foundry/backend
 
 API préfixée `/api/v1`, documentation Swagger sur `/docs`.
 
+## Rattraper une migration en échec (P3009)
+
+`prisma migrate deploy` refuse d'appliquer quoi que ce soit tant qu'une migration antérieure est
+enregistrée en échec :
+
+```
+Error: P3009 — migrate found failed migrations in the target database
+The `<nom>` migration started at ... failed
+```
+
+Prisma exécute chaque fichier dans une **transaction** : la base est donc revenue à son état
+d'avant, seule la ligne de suivi reste marquée en échec. Il faut donc traiter la **cause**, puis
+autoriser une nouvelle tentative — jamais marquer la migration « appliquée », car les migrations
+suivantes s'appuient sur les objets qu'elle crée.
+
+**1. Lire l'erreur réelle** (elle est conservée en base) :
+
+```sql
+SELECT migration_name, started_at, finished_at, rolled_back_at, logs
+FROM _prisma_migrations
+WHERE finished_at IS NULL
+ORDER BY started_at DESC;
+```
+
+**2. Corriger la cause.** Le cas le plus courant sur un poste de développement est un **conflit de
+données**, pas un problème de schéma : une migration qui resserre une contrainte échoue si les
+données existantes ne la respectent pas. Exemple vécu avec
+`20260727000000_data01_taxonomy_nn`, qui rend le nom d'un `event_formats` unique **globalement**
+alors qu'il ne l'était qu'**par activité** :
+
+```sql
+-- Diagnostic : des noms en double, légitimes sous l'ancienne contrainte.
+SELECT name, count(*) FROM event_formats GROUP BY name HAVING count(*) > 1;
+
+-- Correction (base de développement) : les formats sont de toute façon retirés deux migrations
+-- plus loin, et les référentiels sont réamorcés par le seed. La clé étrangère est en SET NULL,
+-- les événements ne sont pas supprimés.
+DELETE FROM event_formats;
+```
+
+**3. Autoriser une nouvelle tentative**, puis relancer :
+
+```bash
+npx prisma migrate resolve --rolled-back <nom_de_la_migration>
+npm run prisma:migrate:deploy --workspace @event-foundry/backend
+npm run prisma:seed --workspace @event-foundry/backend   # réamorce les référentiels
+```
+
+> `--rolled-back` (et non `--applied`) : la transaction **a** été annulée, le travail reste à faire.
+> `--applied` sauterait la migration et casserait les suivantes.
+
+En dernier recours sur un poste de développement, une base repartie de zéro reste le chemin le plus
+court : `npx prisma migrate reset` (destructif) puis `npm run prisma:seed`.
+
 ## Données de démonstration (phase de test)
 
 `npm run prisma:seed` n'initialise que les **référentiels**, les rôles et l'admin de développement
