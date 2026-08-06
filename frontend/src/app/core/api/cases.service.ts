@@ -29,6 +29,8 @@ export interface CaseEventEntry {
 export interface CaseDetail extends CaseSummary {
   description: string;
   origin: string;
+  /** Contexte d'ouverture : porte notamment la proposition d'ajout au référentiel. */
+  metadata?: Record<string, unknown> | null;
   events: CaseEventEntry[];
   /** États atteignables depuis l'état courant (§11) — pour ne proposer que des transitions valides. */
   allowedTransitions?: string[];
@@ -77,6 +79,25 @@ export class CasesApi {
 
   myCase(id: string): Observable<CaseDetail> {
     return this.http.get<CaseDetail>(`${API_BASE}/cases/mine/${id}`);
+  }
+
+  /**
+   * Propose l'ajout d'une référence manquante au référentiel. N'écrit rien : ouvre une Case vers la
+   * modération, qui acceptera, corrigera ou refusera. L'utilisateur poursuit sa qualification.
+   */
+  proposeReference(input: ReferenceSuggestionInput): Observable<CaseSummary> {
+    return this.http.post<CaseSummary>(`${API_BASE}/cases/reference-suggestions`, input);
+  }
+
+  /** Accepte une proposition : crée la référence (libellé/parent tels que tranchés) puis résout. */
+  acceptReferenceSuggestion(
+    id: string,
+    decision: { kind: ReferenceKind; name: string; parentId?: string; comment?: string },
+  ): Observable<CaseSummary> {
+    return this.http.post<CaseSummary>(
+      `${API_BASE}/cases/${id}/reference-suggestion/accept`,
+      decision,
+    );
   }
 
   // Operator
@@ -146,6 +167,33 @@ export class CasesApi {
   deleteRule(id: string): Observable<{ deleted: boolean }> {
     return this.http.delete<{ deleted: boolean }>(`${API_BASE}/cases/routing-rules/${id}`);
   }
+}
+
+/** Référentiels sur lesquels une proposition d'ajout peut porter (FSPEC.21 §4). */
+export type ReferenceKind = 'ACTIVITY' | 'EVENT_TYPE' | 'SUBJECT' | 'ORGANIZER' | 'VENUE';
+
+export const REFERENCE_KIND_LABELS: Record<ReferenceKind, string> = {
+  ACTIVITY: 'Activité',
+  EVENT_TYPE: "Type d'événement",
+  SUBJECT: 'Sujet',
+  ORGANIZER: 'Organisateur',
+  VENUE: 'Lieu',
+};
+
+export interface ReferenceSuggestionInput {
+  kind: ReferenceKind;
+  label: string;
+  /** Titre de l'événement en cours : de quoi juger sur pièces côté modération. */
+  context?: string;
+  eventId?: string;
+}
+
+/** Proposition telle que portée par les métadonnées d'une Case `REFERENCE_SUGGESTION`. */
+export interface ReferenceSuggestion {
+  kind: ReferenceKind;
+  label: string;
+  parentId?: string;
+  context?: string;
 }
 
 export interface RoutingRuleInput {

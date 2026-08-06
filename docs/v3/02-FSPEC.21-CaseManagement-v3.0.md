@@ -76,11 +76,40 @@ Exemples :
 | Organization Verification |
 | Data Correction |
 | AI Review |
+| Reference Suggestion |
 | Billing Request |
 | GDPR Request |
 | Other |
 
 Le catalogue des types est entièrement configurable.
+
+## Reference Suggestion — proposition d'ajout au référentiel
+
+Le moteur d'analyse extrait régulièrement un libellé (activité, type, sujet, organisateur, lieu) qui
+**n'existe pas au référentiel**. L'utilisateur qui qualifie l'événement ne peut ni le créer — le droit
+`reference.manage` est réservé — ni l'ignorer sans perdre l'information.
+
+Il **propose** donc l'ajout, depuis le formulaire de qualification et **sans le quitter** : une Case
+`REFERENCE_SUGGESTION` part vers la **modération** (priorité normale — la soumission en cours n'est pas
+bloquée, elle se poursuit sans la référence manquante).
+
+Deux temps strictement séparés :
+
+| Temps | Qui | Effet |
+|-------|-----|-------|
+| Proposer | tout utilisateur authentifié | ouvre une Case ; **aucune écriture au référentiel** |
+| Trancher | modération (`case.manage`) | accepte — en **corrigeant le libellé** et en choisissant le parent si besoin — ou refuse |
+
+L'acceptation crée l'entrée **puis** résout la Case. Dans cet ordre : si le référentiel refuse la
+création (doublon, terme interdit, parent inconnu), la Case reste ouverte et la modération corrige,
+plutôt qu'une Case résolue sans référence créée. Un refus emprunte le changement d'état ordinaire,
+motif obligatoire à l'appui.
+
+La proposition est portée par les métadonnées de la Case (`suggestion`), et la référence créée y est
+consignée (`createdReferenceId`) : la décision reste traçable.
+
+Une Activité exige un **Domain** de rattachement, un Sujet une **Family** : c'est la modération qui le
+choisit, le proposant n'ayant pas à connaître la hiérarchie du référentiel.
 
 ---
 

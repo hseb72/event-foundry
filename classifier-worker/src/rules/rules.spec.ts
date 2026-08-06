@@ -2,7 +2,10 @@ import type { OCRResult } from '@event-foundry/contracts';
 import type { ClassificationContext } from '../classification-rule.interface';
 import { normalize } from '../engine/text-utils';
 import { EMPTY_SNAPSHOT, type ReferenceSnapshot } from '../reference/reference-snapshot';
+import { ActivityFromSubjectRule } from './activity-from-subject.rule';
 import { ActivityRule } from './activity.rule';
+import { EventTypeRule } from './event-type.rule';
+import { SubjectRule } from './subject.rule';
 import { DateRule } from './date.rule';
 import { PriceRule } from './price.rule';
 import { TimeRule } from './time.rule';
@@ -89,5 +92,79 @@ describe('ActivityRule', () => {
     const context = makeContext('Tournoi Magic', reference);
     await new ActivityRule().execute(context);
     expect(context.confidenceByField.activity).toBe(0.95);
+  });
+});
+
+describe('Axe A — reconnaissance du sujet puis déduction de l’activité (DATA.01 v2.0)', () => {
+  // Hiérarchie réelle du référentiel généraliste : l'affiche nomme le sujet, jamais l'activité.
+  const reference: ReferenceSnapshot = {
+    ...EMPTY_SNAPSHOT,
+    activities: [
+      { id: 'act-jeux', name: 'Jeux', domainId: 'dom-1', aliases: [] },
+      { id: 'act-musique', name: 'Musique', domainId: 'dom-2', aliases: [] },
+    ],
+    families: [
+      { id: 'fam-tcg', name: 'TCG', activityId: 'act-jeux' },
+      { id: 'fam-plateau', name: 'Jeu de plateau', activityId: 'act-jeux' },
+      { id: 'fam-amplifiees', name: 'Musiques amplifiées', activityId: 'act-musique' },
+    ],
+    subjects: [
+      { id: 'sub-magic', name: 'Magic', familyId: 'fam-tcg' },
+      { id: 'sub-pokemon', name: 'Pokémon', familyId: 'fam-tcg' },
+      { id: 'sub-catane', name: 'Catane', familyId: 'fam-plateau' },
+      { id: 'sub-rock', name: 'Rock', familyId: 'fam-amplifiees' },
+    ],
+    eventTypes: [{ id: 'et-1', name: 'Tournoi' }],
+  };
+
+  const run = async (text: string): Promise<ClassificationContext> => {
+    const context = makeContext(text, reference);
+    await new ActivityRule().execute(context);
+    await new EventTypeRule().execute(context);
+    await new SubjectRule().execute(context);
+    await new ActivityFromSubjectRule().execute(context);
+    return context;
+  };
+
+  it('déduit l’activité du sujet reconnu (« Tournoi Magic » → Jeux)', async () => {
+    const context = await run('Grand tournoi Magic le samedi 12 juillet');
+    expect(context.extractedFields.subjects).toEqual(['Magic']);
+    expect(context.extractedFields.eventType).toBe('Tournoi');
+    expect(context.extractedFields.activity).toBe('Jeux');
+    // Déduite : moins sûre qu'une activité littéralement présente dans le texte.
+    expect(context.confidenceByField.activity).toBe(0.75);
+  });
+
+  it('reconnaît le sujet malgré un retour à la ligne de l’OCR et un pluriel', async () => {
+    const context = await run('Deux tournois\nPokemon dimanche');
+    expect(context.extractedFields.eventType).toBe('Tournoi');
+    expect(context.extractedFields.subjects).toEqual(['Pokémon']);
+    expect(context.extractedFields.activity).toBe('Jeux');
+  });
+
+  it('ne signale pas d’ambiguïté quand plusieurs sujets partagent la même activité', async () => {
+    const context = await run('Tournois Magic et Catane');
+    expect(context.extractedFields.subjects).toEqual(['Magic', 'Catane']);
+    expect(context.extractedFields.activity).toBe('Jeux');
+    expect(context.diagnostics.filter((d) => d.level === 'WARNING')).toHaveLength(0);
+  });
+
+  it('avertit quand les sujets relèvent d’activités différentes', async () => {
+    const context = await run('Soirée Magic puis concert Rock');
+    expect(context.extractedFields.activity).toBe('Jeux');
+    expect(context.diagnostics).toContainEqual(
+      expect.objectContaining({ level: 'WARNING', field: 'activity' }),
+    );
+  });
+
+  it('n’écrase jamais une activité littéralement présente dans le texte', async () => {
+    const context = await run('Soirée Jeux : concert Rock en fond sonore');
+    expect(context.extractedFields.activity).toBe('Jeux');
+    expect(context.confidenceByField.activity).toBe(0.95);
+  });
+
+  it('ne déduit rien sans sujet reconnu', async () => {
+    const context = await run('Grande brocante du village');
+    expect(context.extractedFields.activity).toBeUndefined();
   });
 });

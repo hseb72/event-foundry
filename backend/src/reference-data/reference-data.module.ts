@@ -108,6 +108,13 @@ import { ModalityDimensionsService } from './modality-dimensions/modality-dimens
     GeoImportService,
   ],
   exports: [
+    // Services exposés pour l'acceptation d'une proposition d'ajout (Case REFERENCE_SUGGESTION) :
+    // la création passe par le domaine propriétaire du référentiel, avec ses contrôles.
+    ActivitiesService,
+    EventTypesService,
+    SubjectsService,
+    OrganizersService,
+    VenuesService,
     DomainRepository,
     ActivityRepository,
     EventTypeRepository,

@@ -14,6 +14,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { CASE_DOMAINS, CASE_TYPES } from '../case-catalog';
+import { REFERENCE_KINDS, type ReferenceKind } from '../reference-suggestion';
 
 export class OpenCaseDto {
   @ApiProperty({ enum: CASE_TYPES })
@@ -138,4 +139,55 @@ export class EscalateDto {
   @IsString()
   @MaxLength(1000)
   reason?: string;
+}
+
+/** Proposition d'ajout au référentiel, ouverte depuis le formulaire de qualification (§4). */
+export class OpenReferenceSuggestionDto {
+  @ApiProperty({ enum: REFERENCE_KINDS })
+  @IsIn(REFERENCE_KINDS as unknown as string[])
+  kind!: ReferenceKind;
+
+  @ApiProperty({ description: 'Libellé proposé, tel qu’extrait du document.' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  label!: string;
+
+  @ApiPropertyOptional({ description: 'Titre de l’événement en cours, ou extrait du document.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  context?: string;
+
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
+}
+
+/**
+ * Décision d'acceptation de la modération. Le libellé et le parent sont **modifiables** ici : la
+ * proposition est un point de départ, pas un ordre de création.
+ */
+export class AcceptReferenceSuggestionDto {
+  @ApiProperty({ enum: REFERENCE_KINDS })
+  @IsIn(REFERENCE_KINDS as unknown as string[])
+  kind!: ReferenceKind;
+
+  @ApiProperty({ description: 'Libellé retenu (corrigé si besoin).' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(160)
+  name!: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Domaine (Activité) ou Famille (Sujet).' })
+  @IsOptional()
+  @IsUUID()
+  parentId?: string;
+
+  @ApiPropertyOptional({ description: 'Motif de la décision, joint à l’historique.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  comment?: string;
 }

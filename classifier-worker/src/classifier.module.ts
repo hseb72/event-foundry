@@ -5,6 +5,7 @@ import { CLASSIFICATION_RULES, RulePipelineEngine } from './engine/rule-pipeline
 import { ResultPublisher } from './publisher/result-publisher';
 import { HttpReferenceDataProvider } from './reference/http-reference-data-provider';
 import { REFERENCE_DATA_PROVIDER } from './reference/reference-data-provider.interface';
+import { ActivityFromSubjectRule } from './rules/activity-from-subject.rule';
 import { ActivityRule } from './rules/activity.rule';
 import { CapacityRule } from './rules/capacity.rule';
 import { DateRule } from './rules/date.rule';
@@ -27,6 +28,8 @@ const RULE_CLASSES = [
   ActivityRule,
   EventTypeRule,
   SubjectRule,
+  // Après SubjectRule : ne complète l'activité que si elle n'a pas été reconnue littéralement.
+  ActivityFromSubjectRule,
   ModalityRule,
   OrganizerRule,
   VenueRule,

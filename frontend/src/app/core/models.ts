@@ -223,6 +223,13 @@ export interface ReferentialItem {
   name: string;
 }
 
+/** Famille (Axe A — DATA.01 v2.0) : maillon `Activity → Family → Subject`. */
+export interface FamilyDto {
+  id: string;
+  name: string;
+  activityId: string;
+}
+
 /** Commune résolue par pays + code postal, région dérivée (Localisation V3, chantier §8.1). */
 export interface MunicipalityGeo {
   id: string;

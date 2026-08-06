@@ -4,6 +4,7 @@ import type { ReferenceDataProvider } from './reference-data-provider.interface'
 import {
   EMPTY_SNAPSHOT,
   type ReferenceActivity,
+  type ReferenceFamily,
   type ReferenceModality,
   type ReferenceNamed,
   type ReferenceOrganizer,
@@ -27,6 +28,16 @@ interface NamedDto {
 interface SimpleRefDto {
   id: string;
   name: string;
+}
+interface FamilyDto {
+  id: string;
+  name: string;
+  activityId: string;
+}
+interface SubjectDto {
+  id: string;
+  name: string;
+  familyId: string;
 }
 interface OrganizerDto {
   id: string;
@@ -75,10 +86,12 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
 
   private async load(): Promise<ReferenceSnapshot> {
     const token = await this.login();
-    const [activities, eventTypes, subjects, modalities, organizers, venues] = await Promise.all([
+    const [activities, eventTypes, families, subjects, modalities, organizers, venues] = await Promise.all([
       this.getJson<ActivityDto[]>('/activities', token),
       this.getJson<NamedDto[]>('/event-types', token),
-      this.getJson<SimpleRefDto[]>('/subjects', token),
+      // Les familles ne sont pas reconnues dans le texte : elles portent le chemin sujet → activité.
+      this.getJson<FamilyDto[]>('/activity-families', token),
+      this.getJson<SubjectDto[]>('/subjects', token),
       this.getJson<SimpleRefDto[]>('/modalities', token),
       this.getJson<OrganizerDto[]>('/organizers', token),
       this.getJson<VenueDto[]>('/venues', token),
@@ -101,7 +114,16 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
 
     const named = (items: NamedDto[]): ReferenceNamed[] =>
       items.map((item) => ({ id: item.id, name: item.name }));
-    const subs: ReferenceSubject[] = subjects.map((s) => ({ id: s.id, name: s.name }));
+    const fams: ReferenceFamily[] = families.map((f) => ({
+      id: f.id,
+      name: f.name,
+      activityId: f.activityId,
+    }));
+    const subs: ReferenceSubject[] = subjects.map((s) => ({
+      id: s.id,
+      name: s.name,
+      familyId: s.familyId,
+    }));
     const mods: ReferenceModality[] = modalities.map((m) => ({ id: m.id, name: m.name }));
     const orgs: ReferenceOrganizer[] = organizers.map((o) => ({ id: o.id, name: o.name }));
     const places: ReferenceVenue[] = venues.map((v) => ({ id: v.id, name: v.name, city: v.city }));
@@ -109,6 +131,7 @@ export class HttpReferenceDataProvider implements ReferenceDataProvider {
     return {
       activities: activitiesWithAliases,
       eventTypes: named(eventTypes),
+      families: fams,
       subjects: subs,
       modalities: mods,
       organizers: orgs,

@@ -16,6 +16,7 @@ export const CASE_TYPES = [
   'ORGANIZATION_VERIFICATION',
   'DATA_CORRECTION',
   'AI_REVIEW',
+  'REFERENCE_SUGGESTION',
   'BILLING_REQUEST',
   'GDPR_REQUEST',
   'OTHER',
@@ -56,6 +57,9 @@ const ROUTING: Record<CaseType, RoutingTarget> = {
   ORGANIZATION_VERIFICATION: { domain: 'PLATFORM_ADMIN', priority: CasePriority.MEDIUM },
   DATA_CORRECTION: { domain: 'BACKEND_SUPPORT', priority: CasePriority.MEDIUM },
   AI_REVIEW: { domain: 'AI_OPERATIONS', priority: CasePriority.MEDIUM },
+  // Proposition d'ajout au référentiel : curation du catalogue, donc modération. Priorité normale —
+  // la soumission qui l'a motivée n'est pas bloquée, elle se poursuit sans la référence manquante.
+  REFERENCE_SUGGESTION: { domain: 'MODERATION', priority: CasePriority.MEDIUM },
   BILLING_REQUEST: { domain: 'FINANCE', priority: CasePriority.MEDIUM },
   GDPR_REQUEST: { domain: 'COMPLIANCE', priority: CasePriority.HIGH },
   OTHER: { domain: 'PLATFORM_ADMIN', priority: CasePriority.MEDIUM },

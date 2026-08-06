@@ -379,6 +379,16 @@ export class CasesService {
     return this.getOrThrow(id);
   }
 
+  /**
+   * Complète les métadonnées d'une Case sans écraser les clés existantes : une décision consignée
+   * (référence créée…) s'ajoute au contexte d'ouverture, elle ne le remplace pas.
+   */
+  async mergeMetadata(id: string, patch: Record<string, unknown>): Promise<void> {
+    const current = await this.getOrThrow(id);
+    const existing = (current.metadata ?? {}) as Record<string, unknown>;
+    await this.repository.update(id, { metadata: { ...existing, ...patch } as never });
+  }
+
   /** Ajoute un commentaire à l'historique (§13). `internal=false` = échange visible du demandeur. */
   async addComment(id: string, actorId: string, body: string, internal: boolean): Promise<void> {
     await this.getOrThrow(id);

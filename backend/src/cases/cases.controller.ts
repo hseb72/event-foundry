@@ -27,13 +27,16 @@ import {
 import { CASE_SORT_FIELDS, type CaseSortField } from './cases.repository';
 import { CasesService } from './cases.service';
 import type { CaseRoutingRule } from '@prisma/client';
+import { ReferenceSuggestionService } from './reference-suggestion.service';
 import {
+  AcceptReferenceSuggestionDto,
   AssignCaseDto,
   ChangePriorityDto,
   ChangeStatusDto,
   CommentDto,
   EscalateDto,
   OpenCaseDto,
+  OpenReferenceSuggestionDto,
   RequesterReplyDto,
   RerouteCaseDto,
   RoutingRuleDto,
@@ -48,7 +51,10 @@ import {
 @ApiBearerAuth()
 @Controller('cases')
 export class CasesController {
-  constructor(private readonly service: CasesService) {}
+  constructor(
+    private readonly service: CasesService,
+    private readonly suggestions: ReferenceSuggestionService,
+  ) {}
 
   @Post()
   @ApiOkResponse({ description: 'Demande créée et orientée automatiquement.' })
@@ -115,6 +121,26 @@ export class CasesController {
   ): Promise<{ added: boolean }> {
     await this.service.addRequesterComment(id, user.userId, dto.body);
     return { added: true };
+  }
+
+  /**
+   * Propose l'ajout d'une référence manquante (§4). Ouvert à tout utilisateur authentifié : proposer
+   * n'écrit **rien** au référentiel, cela ouvre une Case vers la modération. L'utilisateur poursuit
+   * sa qualification sans attendre la décision.
+   */
+  @Post('reference-suggestions')
+  @ApiOkResponse({ description: 'Proposition transmise à la modération.' })
+  proposeReference(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: OpenReferenceSuggestionDto,
+  ): Promise<Case> {
+    return this.suggestions.open({
+      suggestion: { kind: dto.kind, label: dto.label, context: dto.context },
+      requesterId: user.userId,
+      origin: user.activeExperience ?? 'EXPLORER',
+      eventId: dto.eventId ?? null,
+      organizationId: user.activeOrganizationId ?? null,
+    });
   }
 
   // --- Console Operator (case.manage) ---
@@ -195,6 +221,27 @@ export class CasesController {
   async deleteRule(@Param('ruleId', ParseUUIDPipe) ruleId: string): Promise<{ deleted: boolean }> {
     await this.service.deleteRoutingRule(ruleId);
     return { deleted: true };
+  }
+
+  /**
+   * Accepte une proposition d'ajout : crée l'entrée du référentiel — libellé et parent tels que
+   * tranchés par la modération, pas nécessairement tels que proposés — puis résout la Case. Un
+   * refus passe par le changement de statut ordinaire, motif à l'appui.
+   */
+  @Post(':id/reference-suggestion/accept')
+  @RequirePermissions('case.manage')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ description: 'Référence créée, Case résolue.' })
+  acceptSuggestion(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AcceptReferenceSuggestionDto,
+  ): Promise<Case> {
+    return this.suggestions.accept(
+      id,
+      { kind: dto.kind, name: dto.name, parentId: dto.parentId, comment: dto.comment },
+      user.userId,
+    );
   }
 
   @Get(':id')

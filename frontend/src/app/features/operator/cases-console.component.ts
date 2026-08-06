@@ -7,9 +7,15 @@ import {
   CaseDetail,
   CaseSummary,
   CasesApi,
+  REFERENCE_KIND_LABELS,
+  ReferenceKind,
+  ReferenceSuggestion,
   RoutingRule,
 } from '../../core/api/cases.service';
 import { ModerationApi } from '../../core/api/moderation.service';
+import { ReferenceDataApi } from '../../core/api/reference-data.service';
+import { ActivityDto, FamilyDto, ReferentialItem } from '../../core/models';
+import { ToastService } from '../../core/toast.service';
 
 /**
  * Console Operator du Case Management (FSPEC.21) : file filtrable, tableau de bord opérationnel, et
@@ -38,6 +44,7 @@ import { ModerationApi } from '../../core/api/moderation.service';
       tr.sel { background: var(--exp-weak); }
       .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
       .crit { background: rgba(239, 68, 68, 0.16); color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
+      .suggestion { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
       .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; margin-bottom: 0.4rem; }
       textarea.input { min-height: 60px; }
       /* Édition d'une règle de routage : un bloc par critère, valeurs proposées (jamais saisies). */
@@ -258,6 +265,52 @@ import { ModerationApi } from '../../core/api/moderation.service';
             </div>
           </div>
 
+          <!-- Proposition d'ajout au référentiel : accepter (en corrigeant si besoin) ou refuser. -->
+          @if (suggestionOf(d); as sg) {
+            <div class="suggestion">
+              <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Proposition d'ajout au référentiel</h3>
+              <p class="muted" style="margin:0 0 0.5rem">
+                Proposé : <strong>{{ kindLabel(sg.kind) }}</strong> « {{ sg.label }} »
+                @if (sg.context) { <span>· constaté sur « {{ sg.context }} »</span> }
+              </p>
+              @if (createdReferenceOf(d)) {
+                <p class="muted" style="margin:0">✅ Référence déjà créée pour cette demande.</p>
+              } @else {
+                <p class="muted" style="margin:0 0 0.5rem">
+                  Le libellé est <strong>modifiable</strong> avant validation : la proposition est un
+                  point de départ, pas un ordre de création. Un refus passe par « Changer l'état »,
+                  motif à l'appui.
+                </p>
+                <div class="row">
+                  <input class="input" [(ngModel)]="suggestionName" placeholder="Libellé retenu"
+                         style="flex:1;min-width:180px" />
+                  @if (parentKindOf(sg.kind) === 'DOMAIN') {
+                    <select [(ngModel)]="suggestionParentId">
+                      <option value="">Domaine de rattachement…</option>
+                      @for (dom of domains(); track dom.id) { <option [value]="dom.id">{{ dom.name }}</option> }
+                    </select>
+                  }
+                  @if (parentKindOf(sg.kind) === 'FAMILY') {
+                    <select [(ngModel)]="suggestionParentId">
+                      <option value="">Famille de rattachement…</option>
+                      @for (f of families(); track f.id) {
+                        <option [value]="f.id">{{ activityName(f.activityId) }} › {{ f.name }}</option>
+                      }
+                    </select>
+                  }
+                </div>
+                <textarea class="input" [(ngModel)]="suggestionComment" style="margin-top:0.4rem"
+                          placeholder="Motif de la décision (facultatif)…"></textarea>
+                <div class="row" style="margin-top:0.4rem">
+                  <button class="btn btn-sm btn-primary" (click)="acceptSuggestion(d, sg)"
+                          [disabled]="!canAcceptSuggestion(sg)">
+                    Accepter et créer la référence
+                  </button>
+                </div>
+              }
+            </div>
+          }
+
           @if (isModeration(d)) {
             <div style="margin-top:0.6rem;border-top:1px solid var(--border);padding-top:0.6rem">
               <h3 style="font-size:0.85rem;margin:0 0 0.4rem">Décision de modération</h3>
@@ -299,6 +352,7 @@ import { ModerationApi } from '../../core/api/moderation.service';
 })
 export class CasesConsoleComponent implements OnInit {
   private readonly api = inject(CasesApi);
+  private readonly toast = inject(ToastService);
   readonly cases = signal<CaseSummary[]>([]);
   readonly detail = signal<CaseDetail | null>(null);
   readonly catalog = signal<CaseCatalog | null>(null);
@@ -332,6 +386,72 @@ export class CasesConsoleComponent implements OnInit {
   /** Avertissement non bloquant à la création (ex. règle sans aucun critère). */
   readonly ruleMsg = signal('');
 
+  // --- Propositions d'ajout au référentiel (Case REFERENCE_SUGGESTION) ---
+  private readonly refData = inject(ReferenceDataApi);
+  readonly domains = signal<ReferentialItem[]>([]);
+  readonly families = signal<FamilyDto[]>([]);
+  readonly activities = signal<ActivityDto[]>([]);
+  suggestionName = '';
+  suggestionParentId = '';
+  suggestionComment = '';
+
+  /** Proposition portée par la Case, si c'en est une. Lue dans les métadonnées d'ouverture. */
+  suggestionOf(d: CaseDetail): ReferenceSuggestion | null {
+    if (d.type !== 'REFERENCE_SUGGESTION') {
+      return null;
+    }
+    const suggestion = (d.metadata as { suggestion?: ReferenceSuggestion } | null)?.suggestion;
+    return suggestion ?? null;
+  }
+
+  /** Référence déjà créée pour cette demande : la décision ne se rejoue pas. */
+  createdReferenceOf(d: CaseDetail): string | null {
+    return ((d.metadata as { createdReferenceId?: string } | null)?.createdReferenceId) ?? null;
+  }
+
+  kindLabel(kind: ReferenceKind): string {
+    return REFERENCE_KIND_LABELS[kind] ?? kind;
+  }
+
+  /** Référentiels dont la création exige un parent : Activité → Domain, Sujet → Family. */
+  parentKindOf(kind: ReferenceKind): 'DOMAIN' | 'FAMILY' | null {
+    if (kind === 'ACTIVITY') return 'DOMAIN';
+    if (kind === 'SUBJECT') return 'FAMILY';
+    return null;
+  }
+
+  activityName(activityId: string): string {
+    return this.activities().find((a) => a.id === activityId)?.name ?? '—';
+  }
+
+  canAcceptSuggestion(sg: ReferenceSuggestion): boolean {
+    const name = (this.suggestionName || sg.label).trim();
+    return name.length > 0 && (!this.parentKindOf(sg.kind) || !!this.suggestionParentId);
+  }
+
+  acceptSuggestion(d: CaseDetail, sg: ReferenceSuggestion): void {
+    const name = (this.suggestionName || sg.label).trim();
+    this.api
+      .acceptReferenceSuggestion(d.id, {
+        kind: sg.kind,
+        name,
+        parentId: this.suggestionParentId || undefined,
+        comment: this.suggestionComment.trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.toast.success('Référence créée', `« ${name} » ajoutée au référentiel ; demande résolue.`);
+          this.suggestionName = '';
+          this.suggestionParentId = '';
+          this.suggestionComment = '';
+          this.after();
+        },
+        // La Case reste ouverte en cas de refus du référentiel (doublon, terme interdit) : corriger
+        // le libellé puis réessayer suffit.
+        error: (err: unknown) => this.toast.fromHttp('Création refusée', err),
+      });
+  }
+
   // Modération (FSPEC.20)
   private readonly moderation = inject(ModerationApi);
   readonly modMsg = signal('');
@@ -358,6 +478,10 @@ export class CasesConsoleComponent implements OnInit {
     this.api.catalog().subscribe((c) => this.catalog.set(c));
     this.load();
     this.refreshDash();
+    // Parents proposables à l'acceptation d'une proposition d'ajout (Domain / Family).
+    this.refData.domains().subscribe((list) => this.domains.set(list));
+    this.refData.families().subscribe((list) => this.families.set(list));
+    this.refData.activities().subscribe((list) => this.activities.set(list));
   }
 
   load(): void {

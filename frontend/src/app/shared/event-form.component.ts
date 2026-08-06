@@ -12,6 +12,7 @@ import {
   OrganizationAddress,
   ReferentialItem,
 } from '../core/models';
+import { CasesApi, REFERENCE_KIND_LABELS, type ReferenceKind } from '../core/api/cases.service';
 import { ToastService } from '../core/toast.service';
 
 /**
@@ -113,6 +114,10 @@ import { ToastService } from '../core/toast.service';
         font-size: 0.82rem;
         padding: 0.3rem 0.55rem;
       }
+      .propose .done {
+        color: var(--green, #16a34a);
+        font-weight: 600;
+      }
       @media (max-width: 560px) {
         .row {
           grid-template-columns: 1fr;
@@ -162,7 +167,16 @@ import { ToastService } from '../core/toast.service';
                   </select>
                 </div>
               } @else {
-                <span class="muted">Demandez à un administrateur de l'ajouter au référentiel.</span>
+                <div class="propose-actions">
+                  @if (proposed.ACTIVITY) {
+                    <span class="done">✅ Proposition transmise à la modération.</span>
+                  } @else {
+                    <button type="button" class="btn" [disabled]="proposing"
+                            (click)="proposeRef('ACTIVITY', unresolved.activity!)">
+                      Proposer l'ajout au référentiel
+                    </button>
+                  }
+                </div>
               }
             </div>
           }
@@ -178,13 +192,20 @@ import { ToastService } from '../core/toast.service';
           @if (unresolved.eventType) {
             <div class="propose">
               <span>Type « <strong>{{ unresolved.eventType }}</strong> » non reconnu.</span>
-              @if (canManageRef) {
-                <div class="propose-actions">
+              <div class="propose-actions">
+                @if (canManageRef) {
                   <button type="button" class="btn" [disabled]="busy" (click)="createEventTypeRef()">
                     Créer ce type
                   </button>
-                </div>
-              }
+                } @else if (proposed.EVENT_TYPE) {
+                  <span class="done">✅ Proposition transmise à la modération.</span>
+                } @else {
+                  <button type="button" class="btn" [disabled]="proposing"
+                          (click)="proposeRef('EVENT_TYPE', unresolved.eventType!)">
+                    Proposer l'ajout au référentiel
+                  </button>
+                }
+              </div>
             </div>
           }
         </div>
@@ -202,13 +223,20 @@ import { ToastService } from '../core/toast.service';
           @if (unresolved.organizer) {
             <div class="propose">
               <span>Organisateur « <strong>{{ unresolved.organizer }}</strong> » non reconnu.</span>
-              @if (canManageRef) {
-                <div class="propose-actions">
+              <div class="propose-actions">
+                @if (canManageRef) {
                   <button type="button" class="btn" [disabled]="busy" (click)="createOrganizerRef()">
                     Créer cet organisateur
                   </button>
-                </div>
-              }
+                } @else if (proposed.ORGANIZER) {
+                  <span class="done">✅ Proposition transmise à la modération.</span>
+                } @else {
+                  <button type="button" class="btn" [disabled]="proposing"
+                          (click)="proposeRef('ORGANIZER', unresolved.organizer!)">
+                    Proposer l'ajout au référentiel
+                  </button>
+                }
+              </div>
             </div>
           }
         </div>
@@ -223,13 +251,20 @@ import { ToastService } from '../core/toast.service';
           @if (unresolved.venue) {
             <div class="propose">
               <span>Lieu « <strong>{{ unresolved.venue }}</strong> » non reconnu.</span>
-              @if (canManageRef) {
-                <div class="propose-actions">
+              <div class="propose-actions">
+                @if (canManageRef) {
                   <button type="button" class="btn" [disabled]="busy" (click)="createVenueRef()">
                     Créer ce lieu
                   </button>
-                </div>
-              }
+                } @else if (proposed.VENUE) {
+                  <span class="done">✅ Proposition transmise à la modération.</span>
+                } @else {
+                  <button type="button" class="btn" [disabled]="proposing"
+                          (click)="proposeRef('VENUE', unresolved.venue!)">
+                    Proposer l'ajout au référentiel
+                  </button>
+                }
+              </div>
             </div>
           }
         </div>
@@ -243,6 +278,26 @@ import { ToastService } from '../core/toast.service';
               <option [value]="s.id">{{ s.name }}</option>
             }
           </select>
+          @if (unresolved.subjects.length) {
+            <div class="propose">
+              <span>
+                Sujet(s) détecté(s) mais absent(s) du référentiel :
+                <strong>{{ unresolved.subjects.join(', ') }}</strong>.
+              </span>
+              <div class="propose-actions">
+                @for (label of unresolved.subjects; track label) {
+                  @if (proposedSubjects.includes(label)) {
+                    <span class="done">✅ « {{ label }} » proposé.</span>
+                  } @else {
+                    <button type="button" class="btn" [disabled]="proposing"
+                            (click)="proposeRef('SUBJECT', label)">
+                      Proposer « {{ label }} »
+                    </button>
+                  }
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -417,14 +472,22 @@ export class EventFormComponent implements OnInit {
 
   error = '';
   private readonly toast = inject(ToastService);
+  private readonly cases = inject(CasesApi);
 
   // Levier 1 : libellés extraits mais absents des référentiels (présents-mais-non-résolus).
+  /** Proposition transmise, par référentiel : évite un doublon de Case sur un même écran. */
+  proposed: Partial<Record<ReferenceKind, boolean>> = {};
+  proposedSubjects: string[] = [];
+  proposing = false;
+
   unresolved: {
     activity?: string;
     eventType?: string;
     organizer?: string;
     venue?: string;
-  } = {};
+    /** Sujets extraits du document mais absents du référentiel (Axe A — 0..N). */
+    subjects: string[];
+  } = { subjects: [] };
   // Levier 2 : création / association à la volée (nécessite reference.manage).
   domains: ReferentialItem[] = [];
   canManageRef = false;
@@ -705,10 +768,17 @@ export class EventFormComponent implements OnInit {
   /** Sujets détectés (noms) → sélection par identifiants (résolus une fois les sujets chargés). */
   private applyDraftSubjects(): void {
     if (!this.draft?.subjectNames?.length) return;
+    // Un sujet extrait mais introuvable n'est plus perdu en silence : il devient proposable. C'est
+    // l'axe le plus exposé aux manques, le référentiel des sujets étant par nature ouvert.
+    this.unresolved.subjects = [];
     for (const name of this.draft.subjectNames) {
       const match = byName(this.subjects, name);
-      if (match && !this.model.subjectIds.includes(match.id)) {
-        this.model.subjectIds = [...this.model.subjectIds, match.id];
+      if (match) {
+        if (!this.model.subjectIds.includes(match.id)) {
+          this.model.subjectIds = [...this.model.subjectIds, match.id];
+        }
+      } else if (!this.unresolved.subjects.includes(name)) {
+        this.unresolved.subjects.push(name);
       }
     }
   }
@@ -737,6 +807,45 @@ export class EventFormComponent implements OnInit {
     const match = byName(this.venues, this.draft.venueName);
     if (match) this.model.venueId = match.id;
     else this.unresolved.venue = this.draft.venueName;
+  }
+
+  /**
+   * Propose l'ajout d'une référence manquante à la modération, **sans quitter le formulaire** :
+   * une Case part vers l'équipe, la qualification en cours se poursuit. Rien n'est écrit au
+   * référentiel — la décision appartient à la modération, qui peut corriger le libellé.
+   */
+  proposeRef(kind: ReferenceKind, label: string): void {
+    const value = label?.trim();
+    if (!value || this.proposing) {
+      return;
+    }
+    this.proposing = true;
+    this.cases
+      .proposeReference({
+        kind,
+        label: value,
+        // Le titre en cours situe la proposition : la modération juge sur pièces.
+        context: this.model.title.trim() || undefined,
+      })
+      .subscribe({
+        next: (opened) => {
+          this.proposing = false;
+          if (kind === 'SUBJECT') {
+            this.proposedSubjects = [...this.proposedSubjects, value];
+          } else {
+            this.proposed = { ...this.proposed, [kind]: true };
+          }
+          this.toast.success(
+            'Proposition transmise',
+            `${REFERENCE_KIND_LABELS[kind]} « ${value} » — demande ${opened.reference}. ` +
+              'Vous pouvez poursuivre votre saisie.',
+          );
+        },
+        error: (err: unknown) => {
+          this.proposing = false;
+          this.toast.fromHttp('Proposition impossible', err);
+        },
+      });
   }
 
   // --- Levier 2 : création / association d'un référentiel manquant, sans quitter la validation ---

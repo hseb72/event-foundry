@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import {
   ActivityDto,
+  FamilyDto,
   ModalityDimensionDto,
   MunicipalityGeo,
   ProvisionalEntry,
@@ -82,6 +83,13 @@ export class ReferenceDataApi {
   /** Sujets (Axe A — DATA.01 v2.0), filtrables par activité (via la Family parente). */
   subjects(activityId?: string): Observable<ReferentialItem[]> {
     return this.http.get<ReferentialItem[]>(`${API_BASE}/subjects`, {
+      params: activityId ? { activityId } : {},
+    });
+  }
+
+  /** Familles (Axe A — DATA.01 v2.0) : maillon Activity → Family → Subject. */
+  families(activityId?: string): Observable<FamilyDto[]> {
+    return this.http.get<FamilyDto[]>(`${API_BASE}/activity-families`, {
       params: activityId ? { activityId } : {},
     });
   }
