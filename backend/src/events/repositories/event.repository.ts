@@ -250,7 +250,8 @@ export class EventRepository extends BaseRepository<Event> {
       municipalityId: filter.municipalityId,
       createdById: filter.createdById,
       // Périmètre organisation : soit les événements de l'organisation, soit (mode autonome) les
-      // événements personnels sans organisation du créateur.
+      // événements sans organisation du créateur. Les événements privés sont déjà écartés par le
+      // `visibility: PUBLIC` ci-dessus, qui vaut pour toute la recherche.
       ...(filter.organizationId ? { organizationId: filter.organizationId } : {}),
       ...(filter.autonomousCreatorId
         ? { organizationId: null, createdById: filter.autonomousCreatorId }

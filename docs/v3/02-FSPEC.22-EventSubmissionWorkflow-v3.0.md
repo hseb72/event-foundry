@@ -273,10 +273,25 @@ L'événement n'est pas publié dans le catalogue public.
 
 Un événement **retient son origine** de façon durable :
 
-- **événement privé personnel** (validation Explorer) : `visibility = PRIVATE`, `organizationId = null` ;
-- **événement d'une organisation** (création / validation par un Organizer avec organisation active) :
-  `visibility = PUBLIC`, `organizationId` renseigné ;
+- **événement privé personnel** (soumission personnelle, expérience Explorer) : `visibility = PRIVATE`,
+  `organizationId = null` ;
+- **événement d'une organisation** (création dans l'expérience Organizer, ou validation d'un brouillon
+  issu d'une soumission d'organisation) : `visibility = PUBLIC`, `organizationId` renseigné ;
 - **organisateur autonome** (sans organisation) : `visibility = PUBLIC`, `organizationId = null`.
+
+### L'inventaire de destination suit l'origine, jamais les droits du valideur (ESUB-018)
+
+À la validation d'un brouillon, `visibility` et `organizationId` sont déduits de **l'origine de
+l'ImportJob**, figée à la soumission — jamais du droit `event.publish` de celui qui qualifie.
+
+Un agent d'organisation dépourvu de ce droit (« Responsable d'événements ») qualifie tout de même les
+brouillons **de son organisation** : il produit un événement d'organisation **en brouillon**, qu'un
+Owner ou un Administrateur publiera ensuite. Publier reste une transition distincte et gardée — un
+brouillon public n'est pas un événement publié.
+
+Fonder cette décision sur la permission faisait basculer un brouillon d'organisation en **événement
+privé personnel** du valideur : l'organisation perdait sa soumission, qui réapparaissait dans
+« Mes événements privés ». Aucun passage d'un inventaire à l'autre ne doit se produire.
 
 Conséquence UX (expérience Explorer) : une **seule** entrée de menu « Mes événements privés »,
 **homogène** avec l'entrée Organizer « Nos événements ». Elle regroupe la soumission (box « Nouvelle
@@ -421,6 +436,7 @@ Les éléments suivants sont historisés :
 | ESUB-015 | Dans l'expérience Organizer, chaque inventaire affiche le pseudo de l'auteur ; cette information n'est jamais exposée en Explorer ni en découverte publique. |
 | ESUB-016 | Un événement issu d'un import **image** reprend ce document comme **première image** de sa galerie. Si le document décrit plusieurs événements, **chacun** en reçoit sa propre copie ; l'original de l'import et les autres événements ne sont jamais affectés par le retrait de l'une d'elles. |
 | ESUB-017 | L'illustration d'un événement **privé** (ajout / retrait d'images) est autorisée par la **propriété**, non par le droit `event.update` réservé à la curation du catalogue. |
+| ESUB-018 | À la validation, `visibility` et `organizationId` découlent de **l'origine de la soumission**, jamais des droits du valideur. Un événement ne passe **jamais** de « Nos événements » à « Mes événements privés », ni l'inverse. |
 
 ---
 

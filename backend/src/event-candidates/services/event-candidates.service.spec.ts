@@ -31,6 +31,7 @@ describe('EventCandidatesService', () => {
       findById: jest.fn(),
       reject: jest.fn(),
       createEventAndValidate: jest.fn(),
+      // Provenance par défaut : soumission **personnelle** (Explorer), sans organisation.
       provenance: jest.fn().mockResolvedValue({ createdById: 'user-1', organizationId: null }),
       importSource: jest.fn().mockResolvedValue(null),
     };
@@ -66,23 +67,24 @@ describe('EventCandidatesService', () => {
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e1' });
 
-    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, true);
+    const event = await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator);
 
     expect(event.id).toBe('e1');
-    // Valideur Organizer (canPublish) : Event PUBLIC en DRAFT, rattaché au valideur (createdById).
+    // Soumission personnelle : Event PRIVATE en DRAFT, rattaché au valideur (createdById).
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
       'c1',
       expect.objectContaining({
         source: 'IMPORT',
         status: 'DRAFT',
-        visibility: 'PUBLIC',
+        visibility: 'PRIVATE',
+        organizationId: null,
         createdById: 'user-1',
       }),
       'user-1',
     );
   });
 
-  it('validation Organizer avec organisation active → Event rattaché à l\'organisation (origine durable)', async () => {
+  it("soumission d'organisation → Event PUBLIC rattaché à cette organisation (origine durable)", async () => {
     repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
     eventsService.buildValidatedEventData.mockResolvedValue({
       source: 'IMPORT',
@@ -91,18 +93,69 @@ describe('EventCandidatesService', () => {
       startsAt: '2024-07-12T00:00:00.000Z',
     });
     repo.createEventAndValidate.mockResolvedValue({ id: 'e3' });
+    repo.provenance.mockResolvedValue({ createdById: 'org-user', organizationId: 'org-9' });
 
-    await service.validate(
-      'c1',
-      { activityId: 'a1' } as CreateEventDto,
-      { userId: 'org-user', isOperator: true, activeOrganizationId: 'org-9' },
-      true,
-    );
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, {
+      userId: 'org-user',
+      isOperator: true,
+      activeOrganizationId: 'org-9',
+    });
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
       'c1',
       expect.objectContaining({ visibility: 'PUBLIC', organizationId: 'org-9' }),
       'org-user',
+    );
+  });
+
+  it("l'origine prime sur les droits du valideur : un agent sans publication garde l'événement dans son organisation", async () => {
+    // Régression : la destination se décidait sur `event.publish`. Un agent « Responsable
+    // d'événements » qualifiant un brouillon de son organisation produisait un événement **privé
+    // personnel** — l'organisation perdait sa soumission au profit de l'espace personnel de l'agent.
+    repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
+    eventsService.buildValidatedEventData.mockResolvedValue({
+      source: 'IMPORT',
+      activityId: 'a1',
+      title: 'T',
+      startsAt: '2024-07-12T00:00:00.000Z',
+    });
+    repo.createEventAndValidate.mockResolvedValue({ id: 'e4' });
+    repo.provenance.mockResolvedValue({ createdById: 'agent', organizationId: 'org-9' });
+
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, {
+      userId: 'agent',
+      isOperator: false,
+      activeOrganizationId: 'org-9',
+    });
+
+    expect(repo.createEventAndValidate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ visibility: 'PUBLIC', organizationId: 'org-9' }),
+      'agent',
+    );
+  });
+
+  it("une soumission personnelle reste privée, même faite par un utilisateur ayant une organisation active", async () => {
+    repo.findById.mockResolvedValue({ id: 'c1', status: 'PENDING' });
+    eventsService.buildValidatedEventData.mockResolvedValue({
+      source: 'IMPORT',
+      activityId: 'a1',
+      title: 'T',
+      startsAt: '2024-07-12T00:00:00.000Z',
+    });
+    repo.createEventAndValidate.mockResolvedValue({ id: 'e5' });
+    repo.provenance.mockResolvedValue({ createdById: 'user-1', organizationId: null });
+
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, {
+      userId: 'user-1',
+      isOperator: true,
+      activeOrganizationId: 'org-9',
+    });
+
+    expect(repo.createEventAndValidate).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ visibility: 'PRIVATE', organizationId: null }),
+      'user-1',
     );
   });
 
@@ -117,7 +170,7 @@ describe('EventCandidatesService', () => {
     repo.createEventAndValidate.mockResolvedValue({ id: 'e2' });
 
     repo.provenance.mockResolvedValue({ createdById: 'user-2', organizationId: null });
-    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false, activeOrganizationId: null }, false);
+    await service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'user-2', isOperator: false, activeOrganizationId: null });
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
       'c1',
@@ -143,7 +196,6 @@ describe('EventCandidatesService', () => {
       'c1',
       { activityId: 'a1' } as CreateEventDto,
       { userId: 'user-B', isOperator: false, activeOrganizationId: 'org-9' },
-      true,
     );
 
     expect(repo.createEventAndValidate).toHaveBeenCalledWith(
@@ -179,7 +231,7 @@ describe('EventCandidatesService', () => {
       });
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(
@@ -188,7 +240,7 @@ describe('EventCandidatesService', () => {
       expect(repo.createEventAndValidate).not.toHaveBeenCalled();
     });
 
-    it('doublon public (chemin publiable) → Case CONTENT_REPORT + validation retenue', async () => {
+    it("doublon public (soumission d'organisation) → Case CONTENT_REPORT + validation retenue", async () => {
       eventsService.buildValidatedEventData.mockResolvedValue({
         source: 'IMPORT',
         activityId: 'a1',
@@ -196,9 +248,14 @@ describe('EventCandidatesService', () => {
         startsAt: '2024-07-12T18:00:00.000Z',
       });
       eventsService.hasPublicDuplicate.mockResolvedValue(true);
+      repo.provenance.mockResolvedValue({ createdById: 'org-1', organizationId: 'org-9' });
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, { userId: 'org-1', isOperator: true, activeOrganizationId: null }, true),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, {
+          userId: 'org-1',
+          isOperator: true,
+          activeOrganizationId: 'org-9',
+        }),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(
@@ -217,7 +274,7 @@ describe('EventCandidatesService', () => {
       moderationTerms.firstMatch.mockResolvedValue({ term: 'arnaque', kind: 'BANNED' });
 
       await expect(
-        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false),
+        service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator),
       ).rejects.toBeInstanceOf(SubmissionHeldForReviewException);
 
       expect(cases.open).toHaveBeenCalledWith(expect.objectContaining({ type: 'ABUSE_REPORT' }));
@@ -233,9 +290,9 @@ describe('EventCandidatesService', () => {
       });
       eventsService.hasPublicDuplicate.mockResolvedValue(true);
 
-      await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator, false);
+      await service.validate('c1', { activityId: 'a1' } as CreateEventDto, operator);
 
-      // Le contrôle de doublon n'est pas exécuté pour un Explorer : pas de Case, Event privé créé.
+      // Le doublon n'est pas contrôlé pour une soumission personnelle : pas de Case, Event privé créé.
       expect(eventsService.hasPublicDuplicate).not.toHaveBeenCalled();
       expect(cases.open).not.toHaveBeenCalled();
       expect(repo.createEventAndValidate).toHaveBeenCalled();

@@ -128,8 +128,8 @@ export class EventCandidatesController {
     @Body() dto: CreateEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<EventResponseDto> {
-    const canPublish = user.permissions.includes('event.publish');
-    return EventMapper.toResponse(await this.service.validate(id, dto, actorOf(user), canPublish));
+    // L'inventaire de destination découle de l'origine de la soumission, pas des droits du valideur.
+    return EventMapper.toResponse(await this.service.validate(id, dto, actorOf(user)));
   }
 
   @Post('event-candidates/:id/reject')

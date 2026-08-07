@@ -93,39 +93,45 @@ export class EventCandidatesService {
     return this.repository.correct(id, dto.payload as Prisma.InputJsonValue, actor.userId);
   }
 
-  /** Validation : crée l'Event (source = IMPORT) et fige le candidate (transaction). */
   /**
-   * Valide un candidate → crée l'Event (source = IMPORT). L'issue dépend du **rôle du valideur**
-   * (FSPEC.22 §15-17) :
-   * - **Organizer** (`canPublish`) : Event **PUBLIC** en **DRAFT**, il entre dans l'espace Organizer
-   *   et pourra y être publié au catalogue.
-   * - **Explorer** (sans droit de publication) : Event **PRIVATE** — événement personnel visible de
-   *   son seul créateur, jamais diffusé au catalogue (ESUB-008/009). Il reste utilisable
-   *   immédiatement (intérêt, réservation, planning).
+   * Valide un candidate → crée l'Event (source = IMPORT) et fige le candidate (transaction).
+   *
+   * L'issue dépend de **l'origine de la soumission**, figée à sa création (FSPEC.22 §15) — jamais
+   * des droits de celui qui qualifie :
+   * - soumission **d'organisation** : Event **PUBLIC** en **DRAFT**, rattaché à cette organisation ;
+   *   il apparaît dans « Nos événements » et pourra y être publié au catalogue ;
+   * - soumission **personnelle** (Explorer) : Event **PRIVATE**, sans organisation — événement
+   *   personnel visible de son seul créateur, jamais diffusé (ESUB-008/009), utilisable
+   *   immédiatement (intérêt, réservation, planning). Il apparaît dans « Mes événements privés ».
+   *
+   * Fonder la décision sur le droit `event.publish` du valideur faisait basculer en événement privé
+   * personnel un brouillon d'organisation qualifié par un agent sans droit de publication :
+   * l'organisation perdait sa soumission au profit de l'espace personnel de l'agent. Publier reste
+   * une action distincte, gardée par `event.publish` — un brouillon public n'est pas un événement
+   * publié.
    *
    * Dans les deux cas l'Event est **rattaché au valideur** (`createdById`).
    */
-  async validate(
-    id: string,
-    dto: CreateEventDto,
-    actor: CandidateActor,
-    canPublish: boolean,
-  ): Promise<EventWithRefs> {
+  async validate(id: string, dto: CreateEventDto, actor: CandidateActor): Promise<EventWithRefs> {
     await this.assertMutable(id);
     await this.assertOwnership(id, actor);
     const base = await this.eventsService.buildValidatedEventData(dto, EventSource.IMPORT);
 
+    const origin = await this.repository.provenance(id);
+    const organizationId = origin?.organizationId ?? null;
+    // Une soumission d'organisation alimente le catalogue : les contrôles qui n'ont de sens que
+    // pour un contenu diffusable (doublon public) s'y appliquent, pas à une copie personnelle.
+    const forOrganization = organizationId !== null;
+
     // Contrôles automatiques (§13) : toute anomalie retient la validation et ouvre une Case.
-    await this.runSubmissionControls(id, base, actor.userId, canPublish);
+    await this.runSubmissionControls(id, base, actor.userId, forOrganization);
 
     const eventData: Prisma.EventUncheckedCreateInput = {
       ...base,
       status: EventStatus.DRAFT,
-      visibility: canPublish ? EventVisibility.PUBLIC : EventVisibility.PRIVATE,
+      visibility: forOrganization ? EventVisibility.PUBLIC : EventVisibility.PRIVATE,
       createdById: actor.userId,
-      // Origine durable (FSPEC.22) : un événement publiable est rattaché à l'organisation active de
-      // l'acteur ; un événement privé personnel (Explorer) reste sans organisation.
-      organizationId: canPublish ? actor.activeOrganizationId : null,
+      organizationId,
     };
     const event = await this.repository.createEventAndValidate(id, eventData, actor.userId);
 
@@ -142,20 +148,20 @@ export class EventCandidatesService {
    * Exécute les contrôles automatiques déterministes (§13) sur le Draft. En cas d'anomalie, ouvre une
    * Case (file appropriée) puis lève une exception 422 : la validation est retenue, le Draft reste
    * modifiable (l'auteur corrige puis re-valide) et les autres Drafts ne sont pas affectés
-   * (ESUB-004/006). Le doublon n'est contrôlé que pour le chemin publiable (un événement privé est
-   * une copie personnelle légitime).
+   * (ESUB-004/006). Le doublon n'est contrôlé que pour une soumission d'organisation (un événement
+   * privé est une copie personnelle légitime).
    */
   private async runSubmissionControls(
     candidateId: string,
     base: Prisma.EventUncheckedCreateInput,
     userId: string,
-    canPublish: boolean,
+    forOrganization: boolean,
   ): Promise<void> {
     const startsAt = new Date(base.startsAt as string | Date);
     const endsAt = base.endsAt ? new Date(base.endsAt as string | Date) : null;
     const title = base.title;
     const hasPublicDuplicate =
-      canPublish && (await this.eventsService.hasPublicDuplicate(title, startsAt));
+      forOrganization && (await this.eventsService.hasPublicDuplicate(title, startsAt));
     // Contenu interdit / spam (§13) : contrôle déterministe sur le référentiel de modération.
     const prohibited = await this.moderationTerms.firstMatch(`${title} ${base.description ?? ''}`);
 
@@ -164,7 +170,7 @@ export class EventCandidatesService {
       startsAt,
       endsAt,
       hasPublicDuplicate,
-      checkDuplicate: canPublish,
+      checkDuplicate: forOrganization,
       prohibited,
     });
     if (anomalies.length === 0) {
@@ -181,7 +187,7 @@ export class EventCandidatesService {
       type: caseType,
       subject: `Soumission à vérifier : ${title}`,
       description: anomalies.map((a) => a.message).join(' '),
-      origin: canPublish ? 'ORGANIZER' : 'EXPLORER',
+      origin: forOrganization ? 'ORGANIZER' : 'EXPLORER',
       requesterId: userId,
       metadata: {
         candidateId,
