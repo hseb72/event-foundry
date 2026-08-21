@@ -1,0 +1,255 @@
+<h1>Nos événements</h1>
+<p class="intro">
+  Soumettez (document, texte, URL, fichier structuré) ou créez un événement, suivez les analyses en
+  cours, validez les brouillons, et gérez le cycle de publication — au nom de votre organisation.
+  Toute l'équipe partage la même vue : le créateur de chaque élément est indiqué.
+</p>
+
+@if (message()) { <div class="ok">✅ {{ message() }}</div> }
+
+<div class="grid">
+  <!-- Box « Nouvelle soumission » repliable -->
+  <section class="card">
+    <div class="box-head">
+      <h2>Nouvelle soumission</h2>
+      <button class="btn btn-sm" (click)="submitOpen.set(!submitOpen())" [attr.aria-expanded]="submitOpen()">
+        {{ submitOpen() ? '▲ Réduire' : '▼ Étendre' }}
+      </button>
+    </div>
+
+    @if (submitOpen()) {
+      <div class="tabs">
+        <button [class.on]="tab() === 'document'" (click)="tab.set('document')">Documents</button>
+        <button [class.on]="tab() === 'text'" (click)="tab.set('text')">Texte</button>
+        <button [class.on]="tab() === 'url'" (click)="tab.set('url')">URL</button>
+        <button [class.on]="tab() === 'structured'" (click)="tab.set('structured')">Fichiers structurés</button>
+        <button [class.on]="tab() === 'create'" (click)="tab.set('create')">Création</button>
+      </div>
+
+      @if (tab() === 'document') {
+        <app-file-drop accept="image/png,image/jpeg,application/pdf"
+          hint="JPG, PNG ou PDF — glisser-déposer, parcourir ou coller" (fileSelected)="file = $event" />
+        <label class="ai"><input type="checkbox" [(ngModel)]="fileUseAi" [disabled]="isPdf()" />
+          Extraction assistée par IA <span class="muted">(image, si configurée)</span></label>
+        <div class="row">
+          <button class="btn btn-primary" [disabled]="!file || busy()" (click)="submitDocument()">Analyser le document</button>
+        </div>
+      } @else if (tab() === 'text') {
+        <textarea [(ngModel)]="text" placeholder="Collez l'annonce de l'événement…"></textarea>
+        <label class="ai"><input type="checkbox" [(ngModel)]="useAi" /> Extraction assistée par IA <span class="muted">(si configurée)</span></label>
+        <div class="row">
+          <button class="btn btn-primary" [disabled]="busy() || !text.trim()" (click)="submitText()">Analyser le texte</button>
+        </div>
+      } @else if (tab() === 'url') {
+        <input type="url" [(ngModel)]="url" placeholder="https://…" />
+        <div class="disclaimer">
+          ⚠️ Les pages nécessitant une authentification (connexion, espace privé) peuvent ne pas
+          donner de bons résultats : la capture ne voit que le contenu public de la page.
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" [disabled]="busy() || !url.trim()" (click)="submitUrl()">Capturer la page</button>
+        </div>
+      } @else if (tab() === 'structured') {
+        <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem">
+          Canal 100 % déterministe (sans OCR ni IA). Colonnes/clés :
+          <code>title, starts_at, activity, event_type, venue, city, price, url…</code> ·
+          requis : <code>title</code>, <code>starts_at</code>. Chaque ligne devient un événement à valider.
+        </p>
+        <app-file-drop accept=".csv,.json,text/csv,application/json"
+          hint="Fichier CSV ou JSON — ou collez le contenu ci-dessous" (fileSelected)="onStructuredFile($event)" />
+        <textarea [(ngModel)]="structured" style="margin-top:0.5rem"
+          placeholder="key,title,starts_at&#10;t1,Tournoi Magic,2026-08-01T18:00:00Z"></textarea>
+        <div class="row">
+          <button class="btn btn-primary" [disabled]="busy() || !structured.trim()" (click)="submitStructured()">Importer le contenu structuré</button>
+        </div>
+      } @else {
+        <app-event-form submitLabel="Créer l'événement" [busy]="createBusy()" (save)="onCreate($event)" />
+        @if (createMsg()) { <p class="muted" style="margin:0.4rem 0 0">{{ createMsg() }}</p> }
+      }
+      @if (error()) { <p class="err">{{ error() }}</p> }
+    }
+  </section>
+
+  <!-- Soumissions en cours d'analyse (de toute l'organisation) -->
+  @if (inAnalysis().length) {
+    <section class="card">
+      <h2>Soumissions <span class="muted">(analyse en cours)</span></h2>
+      @for (s of inAnalysis(); track s.id) {
+        <div class="sub">
+          <span>
+            {{ s.type }} · {{ s.createdAt | date: 'short' }}
+            @if (s.createdByName) { <span class="who">— par <strong>{{ s.createdByName }}</strong></span> }
+          </span>
+          <span class="badge running">{{ statusLabel(s.status) }}</span>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Validation des brouillons issus de l'import (de toute l'organisation) -->
+  @if (drafts().length || selected()) {
+    <section class="card">
+      <h2>Validation <span class="muted">(brouillons à qualifier)</span></h2>
+      @for (d of drafts(); track d.id) {
+        <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
+          <strong>{{ draftTitle(d) }}</strong>
+          <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
+          @if (d.createdByName) { <span class="who"> — par <strong>{{ d.createdByName }}</strong></span> }
+        </div>
+      }
+      @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
+      @if (selected(); as sel) {
+        <div style="margin-top:0.8rem">
+          <h2>Qualifier ce brouillon</h2>
+          <app-event-form [draft]="draft()" submitLabel="Valider l'événement" [showReject]="true"
+            [busy]="busy()" (save)="validate($event)" (reject)="reject(sel.id)" />
+        </div>
+      }
+    </section>
+  }
+
+  <!-- Événements de l'organisation (paginés côté serveur) — vue au choix : cartes ou tableau. -->
+  <section class="card">
+    <div class="events-head">
+      <h2>Nos événements</h2>
+      <div class="view-toggle" role="tablist" aria-label="Affichage de la liste">
+        <button type="button" [class.on]="view() === 'cards'" (click)="setView('cards')" aria-label="Vue cartes">▦ Cartes</button>
+        <button type="button" [class.on]="view() === 'table'" (click)="setView('table')" aria-label="Vue tableau">▤ Tableau</button>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <p class="muted">Chargement…</p>
+    } @else if (!events().length) {
+      <p class="muted">Aucun événement pour l'instant.</p>
+    } @else {
+      @if (view() === 'cards') {
+        <!-- Tri (les en-têtes cliquables du tableau n'existent pas en vue cartes). -->
+        <div class="sort-bar">
+          <span>Trier</span>
+          <select [ngModel]="sortKey()" (ngModelChange)="setSort($event)">
+            <option value="startsAt">Date de début</option>
+            <option value="title">Titre</option>
+            <option value="status">Publication</option>
+          </select>
+          <button class="dir" type="button" (click)="toggleDir()" [title]="sortDir() === 'asc' ? 'Croissant' : 'Décroissant'">
+            {{ sortDir() === 'asc' ? '▲' : '▼' }}
+          </button>
+        </div>
+        <div class="mgrid">
+          @for (e of events(); track e.id) {
+            <article class="mcard" [class.archived]="e.status === 'ARCHIVED'">
+              <div class="cover" [style.background]="coverBg(e)">
+                <span class="chip">{{ e.activity }}</span>
+                <span class="status" [class.pub]="isPublished(e)" [class.arch]="e.status === 'ARCHIVED'"
+                  [class.draft]="!isPublished(e) && e.status !== 'ARCHIVED'">{{ pubStatus(e) }}</span>
+              </div>
+              <div class="mbody">
+                <span class="mtitle"><a [routerLink]="['/events', e.id]">{{ e.title }}</a></span>
+                <span class="mmeta">{{ date(e) }}</span>
+                <span class="mmeta">{{ categoryOf(e) }}</span>
+                <span class="who">par <strong>{{ e.createdByName || '—' }}</strong></span>
+              </div>
+              <div class="mfoot">
+                <label class="pub-toggle" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
+                  <span class="switch">
+                    <input type="checkbox" [checked]="isPublished(e)" [disabled]="e.status === 'ARCHIVED' || busyRow() === e.id"
+                      (change)="togglePublish(e)" />
+                    <span class="slider"></span>
+                  </span>
+                  {{ isPublished(e) ? 'Publié' : (e.status === 'ARCHIVED' ? 'Archivé' : 'Non publié') }}
+                </label>
+                <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                  @if (e.status !== 'ARCHIVED') {
+                    <button class="btn btn-sm btn-icon" [disabled]="busyRow() === e.id"
+                      [title]="editTitle(e)" [attr.aria-label]="editTitle(e)" (click)="editEvent(e)">
+                      <app-icon name="edit" />
+                    </button>
+                  }
+                  <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                    aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                    <app-icon name="duplicate" />
+                  </button>
+                  @if (e.status === 'ARCHIVED') {
+                    <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                      (click)="rowAction(e, 'restore')">
+                      <app-icon name="restore" />
+                    </button>
+                  } @else {
+                    <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                      (click)="rowAction(e, 'archive')">
+                      <app-icon name="archive" />
+                    </button>
+                  }
+                </span>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" (click)="sort('startsAt')">Date début <span class="arr">{{ arrow('startsAt') }}</span></th>
+                <th class="sortable" (click)="sort('title')">Titre <span class="arr">{{ arrow('title') }}</span></th>
+                <th>Sujets</th>
+                <th>Créateur</th>
+                <th class="sortable" (click)="sort('status')">Publication <span class="arr">{{ arrow('status') }}</span></th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (e of events(); track e.id) {
+                <tr>
+                  <td>{{ date(e) }}</td>
+                  <td><a [routerLink]="['/events', e.id]">{{ e.title }}</a></td>
+                  <td>{{ categoryOf(e) }}</td>
+                  <td>{{ e.createdByName || '—' }}</td>
+                  <td>
+                    <label class="switch" [title]="e.status === 'ARCHIVED' ? 'Restaurez d’abord l’événement' : (isPublished(e) ? 'Publié' : 'Non publié')">
+                      <input type="checkbox" [checked]="isPublished(e)" [disabled]="e.status === 'ARCHIVED' || busyRow() === e.id"
+                        (change)="togglePublish(e)" />
+                      <span class="slider"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <span style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                      @if (e.status !== 'ARCHIVED') {
+                        <button class="btn btn-sm btn-icon" [disabled]="busyRow() === e.id"
+                          [title]="editTitle(e)" [attr.aria-label]="editTitle(e)" (click)="editEvent(e)">
+                          <app-icon name="edit" />
+                        </button>
+                      }
+                      <button class="btn btn-sm btn-icon" title="Dupliquer — créer un événement identique"
+                        aria-label="Dupliquer — créer un événement identique" (click)="duplicate(e)">
+                        <app-icon name="duplicate" />
+                      </button>
+                      @if (e.status === 'ARCHIVED') {
+                        <button class="btn btn-sm btn-icon" title="Restaurer" aria-label="Restaurer"
+                          (click)="rowAction(e, 'restore')">
+                          <app-icon name="restore" />
+                        </button>
+                      } @else {
+                        <button class="btn btn-sm btn-icon" title="Archiver" aria-label="Archiver"
+                          (click)="rowAction(e, 'archive')">
+                          <app-icon name="archive" />
+                        </button>
+                      }
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      <div class="pager">
+        <span class="muted">{{ total() }} événement(s) · page {{ page() + 1 }}/{{ pageCount() }}</span>
+        <button class="btn btn-sm" [disabled]="page() === 0" (click)="goTo(page() - 1)">‹</button>
+        <button class="btn btn-sm" [disabled]="page() >= pageCount() - 1" (click)="goTo(page() + 1)">›</button>
+      </div>
+    }
+    @if (error()) { <p class="err">{{ error() }}</p> }
+  </section>
+</div>

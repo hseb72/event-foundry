@@ -11,52 +11,8 @@ import { API_BASE } from '../../core/api.config';
   selector: 'app-verify-email',
   standalone: true,
   imports: [RouterLink],
-  styles: [
-    `
-      .wrap {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, #2a1b3d, #db2777);
-        padding: 1rem;
-      }
-      .box {
-        width: 100%;
-        max-width: 420px;
-        display: grid;
-        gap: 0.9rem;
-        text-align: center;
-      }
-      .brand {
-        font-size: 1.6rem;
-        font-weight: 800;
-      }
-      .error {
-        color: var(--red);
-        font-size: 0.9rem;
-      }
-    `,
-  ],
-  template: `
-    <div class="wrap">
-      <div class="card box">
-        <div class="brand">EventFoundry</div>
-        @switch (state()) {
-          @case ('pending') {
-            <p>Vérification de votre adresse e-mail…</p>
-          }
-          @case ('done') {
-            <p>✅ Adresse vérifiée. Votre compte est maintenant actif.</p>
-            <a class="btn btn-primary" routerLink="/login">Se connecter</a>
-          }
-          @case ('error') {
-            <p class="error">{{ error() }}</p>
-            <a class="btn" routerLink="/login">Retour à la connexion</a>
-          }
-        }
-      </div>
-    </div>
-  `,
+  templateUrl: './verify-email.component.html',
+  styleUrl: './verify-email.component.css',
 })
 export class VerifyEmailComponent implements OnInit {
   readonly state = signal<'pending' | 'done' | 'error'>('pending');

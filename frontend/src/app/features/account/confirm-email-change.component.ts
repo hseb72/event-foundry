@@ -12,52 +12,8 @@ import { API_BASE } from '../../core/api.config';
   selector: 'app-confirm-email-change',
   standalone: true,
   imports: [RouterLink],
-  styles: [
-    `
-      .wrap {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: linear-gradient(135deg, #2a1b3d, #db2777);
-        padding: 1rem;
-      }
-      .box {
-        width: 100%;
-        max-width: 420px;
-        display: grid;
-        gap: 0.9rem;
-        text-align: center;
-      }
-      .brand {
-        font-size: 1.6rem;
-        font-weight: 800;
-      }
-      .error {
-        color: var(--red);
-        font-size: 0.9rem;
-      }
-    `,
-  ],
-  template: `
-    <div class="wrap">
-      <div class="card box">
-        <div class="brand">EventFoundry</div>
-        @switch (state()) {
-          @case ('pending') {
-            <p>Confirmation de votre nouvelle adresse…</p>
-          }
-          @case ('done') {
-            <p>✅ Nouvelle adresse confirmée. Utilisez-la désormais pour vous connecter.</p>
-            <a class="btn btn-primary" routerLink="/login">Se connecter</a>
-          }
-          @case ('error') {
-            <p class="error">{{ error() }}</p>
-            <a class="btn" routerLink="/login">Retour à la connexion</a>
-          }
-        }
-      </div>
-    </div>
-  `,
+  templateUrl: './confirm-email-change.component.html',
+  styleUrl: './confirm-email-change.component.css',
 })
 export class ConfirmEmailChangeComponent implements OnInit {
   readonly state = signal<'pending' | 'done' | 'error'>('pending');

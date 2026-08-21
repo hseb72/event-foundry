@@ -22,77 +22,8 @@ const USER_TYPES: { value: string; label: string }[] = [
   selector: 'app-support',
   standalone: true,
   imports: [FormsModule, DatePipe],
-  styles: [
-    `
-      /* Tokens neutres uniquement (UISPEC.13) : les valeurs en dur restaient sombres en thème
-         clair (fond de carte quasi noir sous un texte foncé), d'où un rendu illisible. */
-      .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
-      .muted { color: var(--muted); font-size: 0.85rem; }
-      .case { padding: 0.6rem 0.8rem; border-radius: 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color 0.15s ease; }
-      .case:hover { border-color: var(--exp); }
-      .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-      .field { display: grid; gap: 0.3rem; }
-      textarea.input { min-height: 90px; }
-      .log { display: grid; gap: 0.4rem; margin-top: 0.6rem; }
-      .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; }
-    `,
-  ],
-  template: `
-    <div class="page">
-      <h1>Aide & demandes</h1>
-
-      <section class="card">
-        <h2>Nouvelle demande</h2>
-        <div class="field"><label class="muted">Type</label>
-          <select [(ngModel)]="type">
-            @for (t of userTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
-          </select>
-        </div>
-        <div class="field" style="margin-top:0.5rem"><label class="muted">Objet</label>
-          <input class="input" [(ngModel)]="subject" maxlength="200" /></div>
-        <div class="field" style="margin-top:0.5rem"><label class="muted">Description</label>
-          <textarea class="input" [(ngModel)]="description"></textarea></div>
-        <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="submit()"
-          [disabled]="subject.trim().length < 3 || description.trim().length < 3">Envoyer</button>
-          @if (sentRef()) { <span class="muted"> Demande {{ sentRef() }} créée.</span> }</div>
-      </section>
-
-      <section class="card">
-        <h2>Mes demandes</h2>
-        @for (c of cases(); track c.id) {
-          <div class="case" (click)="openDetail(c)" style="margin-bottom:0.5rem">
-            <div class="row" style="justify-content:space-between">
-              <strong>{{ c.subject }}</strong>
-              <span class="badge">{{ statusLabel(c.status) }}</span>
-            </div>
-            <div class="muted">{{ c.reference }} · {{ c.createdAt | date: 'dd/MM/yyyy' }}</div>
-            @if (detail()?.id === c.id) {
-              <div class="log" (click)="$event.stopPropagation()">
-                <p class="muted" style="margin:0">{{ detail()!.description }}</p>
-                @for (e of detail()!.events; track e.id) {
-                  <div class="entry"><strong>{{ e.kind }}</strong>
-                    <span class="muted"> · {{ e.occurredAt | date: 'dd/MM HH:mm' }}</span>
-                    @if (e.body) { <div>{{ e.body }}</div> }
-                  </div>
-                } @empty { <span class="muted">Pas encore de réponse.</span> }
-
-                <div style="margin-top:0.5rem">
-                  @if (isWaiting(detail()!)) {
-                    <p style="margin:0 0 0.3rem">⏳ Une information est attendue de votre part — répondez ci-dessous.</p>
-                  }
-                  <textarea class="input" [(ngModel)]="replyBody" placeholder="Apporter un élément complémentaire…"></textarea>
-                  <div class="row" style="margin-top:0.3rem">
-                    <button class="btn btn-sm btn-primary" (click)="reply(c)" [disabled]="!replyBody.trim()">Envoyer</button>
-                  </div>
-                  @if (replyMsg()) { <p class="muted" style="margin:0.3rem 0 0">{{ replyMsg() }}</p> }
-                </div>
-              </div>
-            }
-          </div>
-        } @empty { <p class="muted">Aucune demande pour le moment.</p> }
-      </section>
-    </div>
-  `,
+  templateUrl: './support.component.html',
+  styleUrl: './support.component.css',
 })
 export class SupportComponent implements OnInit {
   private readonly api = inject(CasesApi);

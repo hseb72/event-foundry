@@ -1,0 +1,90 @@
+<div class="bar">
+  <h2 style="margin:0">{{ entity.label }}</h2>
+  @if (!formOpen) {
+    <button class="btn btn-primary" (click)="openCreate()">+ {{ entity.singular }}</button>
+  }
+</div>
+
+@if (loading && !entity.paged) {
+  <p class="muted">Chargement…</p>
+} @else {
+  <app-data-table
+    [columns]="tableColumns"
+    [rows]="rows"
+    [rowActions]="actions"
+    actionsLabel="Actions"
+    [pageSize]="15"
+    [searchPlaceholder]="'Rechercher un ' + entity.singular.toLowerCase() + '…'"
+    [rowClass]="rowClassFn"
+    [serverMode]="!!entity.paged"
+    [serverTotal]="total"
+    [loading]="loading"
+    (query)="onQuery($event)"
+  />
+  <ng-template #actions let-row>
+    <div class="row-actions">
+      <button class="btn" (click)="openEdit(row)">Éditer</button>
+      @if (row.isActive) {
+        <button class="btn" (click)="deactivate(row)">Désactiver</button>
+      }
+    </div>
+  </ng-template>
+}
+
+@if (formOpen) {
+  <form (ngSubmit)="submit()">
+    <h3 style="margin:0">
+      {{ editingId ? 'Éditer' : 'Nouveau' }} — {{ entity.singular }}
+    </h3>
+
+    @for (f of entity.fields; track f.key) {
+      @if (!(editingId && f.immutableOnEdit)) {
+        <div>
+          <label [class.req]="f.required">{{ f.label }}</label>
+          @if (f.type === 'select') {
+            <select
+              class="select"
+              [ngModel]="model[f.key]"
+              (ngModelChange)="model[f.key] = $event"
+              [name]="f.key"
+            >
+              <option value="">— {{ f.required ? 'choisir' : 'aucun' }} —</option>
+              @for (opt of optionsFor(f); track opt.id) {
+                <option [value]="opt.id">{{ opt.name }}</option>
+              }
+            </select>
+          } @else {
+            <input
+              class="input"
+              [type]="f.type === 'number' ? 'number' : 'text'"
+              [ngModel]="model[f.key]"
+              (ngModelChange)="model[f.key] = $event"
+              [name]="f.key"
+            />
+          }
+        </div>
+      } @else {
+        <div>
+          <label>{{ f.label }}</label>
+          <input class="input" [value]="immutableLabel(f)" disabled />
+        </div>
+      }
+    }
+
+    @if (editingId) {
+      <div class="check">
+        <input type="checkbox" id="active" [(ngModel)]="editIsActive" name="isActive" />
+        <label for="active" style="margin:0">Actif</label>
+      </div>
+    }
+
+    @if (error) {
+      <p class="error">{{ error }}</p>
+    }
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="busy">Enregistrer</button>
+      <button type="button" class="btn" [disabled]="busy" (click)="cancel()">Annuler</button>
+    </div>
+  </form>
+}

@@ -16,7 +16,7 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint \"{shared,backend,ocr-worker,classifier-worker}/**/*.ts\"",
-    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format": "prettier --write \"**/*.{ts,html,css,json,md}\"",
     "contracts:build": "npm run build --workspace @event-foundry/contracts",
     "shared:build": "npm run build --workspace @event-foundry/contracts && npm run build --workspace @event-foundry/libraries",
     "infra:up": "docker compose --env-file .env -f docker/docker-compose.yml up -d",

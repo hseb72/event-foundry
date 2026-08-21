@@ -1,0 +1,97 @@
+form {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 640px;
+}
+.row {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: 1fr 1fr;
+}
+label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+.req::after {
+  content: ' *';
+  color: var(--red, #c0392b);
+}
+.error {
+  color: var(--red, #c0392b);
+  font-size: 0.85rem;
+}
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.tag-chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.tag-chip.on {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: #fff;
+}
+/* En-tête d'une section repliable (mêmes codes que la box « Nouvelle soumission »). */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.section-head label {
+  margin-bottom: 0;
+}
+.count {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--exp);
+  color: var(--exp-contrast, #fff);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.propose {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px dashed var(--orange, #d97706);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--orange, #d97706) 8%, transparent);
+  font-size: 0.82rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.propose-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.propose .select,
+.propose .btn {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.55rem;
+}
+.propose .done {
+  color: var(--green, #16a34a);
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,35 @@
+<h1>Référentiels provisoires</h1>
+<p class="muted">
+  Entrées créées automatiquement lors des imports (auto-provisioning, ADR.24). Confirmez celles à
+  conserver ; supprimez les entrées parasites ou en double.
+</p>
+
+@if (error) {
+  <p class="err">{{ error }}</p>
+}
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else if (entries.length === 0) {
+  <p class="empty">Aucun référentiel provisoire. ✓</p>
+} @else {
+  <app-data-table
+    [columns]="columns"
+    [rows]="$any(entries)"
+    [cellTemplates]="{ type: typeCell }"
+    [rowActions]="actions"
+    actionsLabel=""
+    [pageSize]="15"
+    [rowId]="rowId"
+    searchPlaceholder="Rechercher une entrée provisoire…"
+  />
+  <ng-template #typeCell let-e>
+    <span class="type">{{ typeLabel(e.type) }}</span>
+  </ng-template>
+  <ng-template #actions let-e>
+    <div class="actions">
+      <button class="btn" [disabled]="busy" (click)="confirm($any(e))">Confirmer</button>
+      <button class="btn" [disabled]="busy" (click)="remove($any(e))">Supprimer</button>
+    </div>
+  </ng-template>
+}

@@ -8,74 +8,8 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 @Component({
   selector: 'app-file-drop',
   standalone: true,
-  template: `
-    <div
-      class="dz"
-      [class.over]="over()"
-      role="button"
-      tabindex="0"
-      [attr.aria-label]="'Déposer, parcourir ou coller un fichier. ' + hint"
-      (click)="picker.click()"
-      (keydown.enter)="picker.click()"
-      (keydown.space)="$event.preventDefault(); picker.click()"
-      (dragover)="onDragOver($event)"
-      (dragleave)="onDragLeave($event)"
-      (drop)="onDrop($event)"
-      (paste)="onPaste($event)"
-    >
-      <input #picker type="file" [accept]="accept" hidden (change)="onInput($event)" />
-      <p class="dz-lead">
-        <strong>Glissez-déposez</strong> un fichier, <span class="dz-link">cliquez pour parcourir</span>,
-        ou collez-le (Ctrl/Cmd+V)
-      </p>
-      @if (fileName()) {
-        <p class="dz-file">📎 {{ fileName() }}</p>
-      } @else if (hint) {
-        <p class="muted dz-hint">{{ hint }}</p>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      .dz {
-        border: 2px dashed var(--border);
-        border-radius: var(--radius);
-        padding: 1.4rem;
-        text-align: center;
-        color: var(--muted);
-        cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
-      }
-      .dz:hover,
-      .dz:focus-visible {
-        border-color: var(--exp);
-        outline: none;
-      }
-      .dz.over {
-        border-color: var(--exp);
-        background: color-mix(in srgb, var(--exp) 8%, transparent);
-        color: var(--text, inherit);
-      }
-      .dz-lead {
-        margin: 0;
-        font-size: 0.9rem;
-      }
-      .dz-link {
-        color: var(--exp);
-        text-decoration: underline;
-      }
-      .dz-file {
-        margin: 0.5rem 0 0;
-        font-weight: 600;
-        color: var(--text, inherit);
-        word-break: break-all;
-      }
-      .dz-hint {
-        margin: 0.4rem 0 0;
-        font-size: 0.8rem;
-      }
-    `,
-  ],
+  templateUrl: './file-drop.component.html',
+  styleUrl: './file-drop.component.css',
 })
 export class FileDropComponent {
   /** Types acceptés (même syntaxe que l'attribut HTML `accept`, ex. `image/*,.pdf`). */

@@ -1,0 +1,33 @@
+<div class="wrap">
+  <form class="card box" (ngSubmit)="submit()">
+    <div class="brand"><app-logo [size]="34" /></div>
+    <label for="email">E-mail</label>
+    <input id="email" class="input" type="email" name="email" [(ngModel)]="email" required />
+    <label for="password">Mot de passe</label>
+    <input
+      id="password"
+      class="input"
+      type="password"
+      name="password"
+      [(ngModel)]="password"
+      required
+    />
+    @if (mfaRequired) {
+      <label for="mfa">Code d'authentification (2FA)</label>
+      <input id="mfa" class="input" name="mfa" [(ngModel)]="mfaCode" placeholder="123456 ou code de récupération"
+        autocomplete="one-time-code" autofocus />
+    }
+    @if (error) {
+      <div class="error">{{ error }}</div>
+    }
+    <button class="btn btn-brand" type="submit" [disabled]="loading">
+      {{ loading ? 'Connexion…' : mfaRequired ? 'Valider le code' : 'Se connecter' }}
+    </button>
+    <a routerLink="/forgot-password" style="text-align:center; font-size:0.85rem">
+      Mot de passe oublié ?
+    </a>
+    <p style="text-align:center; font-size:0.85rem; margin:0">
+      Pas encore de compte ? <a routerLink="/register">Créer un compte</a>
+    </p>
+  </form>
+</div>

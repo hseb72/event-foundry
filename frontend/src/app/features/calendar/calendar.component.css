@@ -1,0 +1,240 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1.25rem;
+}
+.views {
+  display: flex;
+  gap: 0.3rem;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 0.25rem;
+}
+.views button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 9px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.views button.on {
+  background: var(--exp);
+  color: var(--exp-contrast);
+}
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.period {
+  font-weight: 700;
+  min-width: 12rem;
+  text-align: center;
+  text-transform: capitalize;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.lg.on {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
+}
+.lg.dim {
+  opacity: 0.45;
+}
+.lg .sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.lg .cnt {
+  font-weight: 800;
+  color: var(--muted);
+}
+.lg.clear {
+  color: var(--muted);
+}
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(249, 115, 22, 0.12);
+  color: #9a3412;
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  margin: 0 0 1.25rem;
+  font-size: 0.9rem;
+}
+/* Vue jour */
+.day-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.slot {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  border-left: 5px solid var(--stripe, var(--exp));
+  background: var(--surface);
+}
+.slot .time {
+  font-weight: 700;
+  min-width: 3.2rem;
+  color: var(--text);
+}
+.slot-main {
+  flex: 1;
+  min-width: 0;
+}
+.slot .t {
+  font-weight: 600;
+}
+.remove {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+}
+.remove:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+.warn {
+  color: var(--orange);
+  font-weight: 800;
+  margin: 0 0.2rem;
+}
+.chip.conflict,
+.dot.conflict {
+  outline: 1px solid var(--orange);
+}
+.slot .m {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+/* Vue semaine */
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+.col {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  min-height: 8rem;
+  padding: 0.4rem;
+}
+.col.today {
+  border-color: var(--exp);
+  box-shadow: 0 0 0 1px var(--exp);
+}
+.col h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+  color: var(--muted);
+}
+.chip {
+  display: block;
+  border-left: 4px solid var(--stripe, var(--exp));
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 0.25rem 0.4rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+}
+.chip .ct {
+  font-weight: 600;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Vue mois */
+.month {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+}
+.dow {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.2rem 0;
+}
+.cell {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  min-height: 5.5rem;
+  padding: 0.3rem;
+}
+.cell.out {
+  opacity: 0.4;
+}
+.cell.today {
+  border-color: var(--exp);
+  box-shadow: 0 0 0 1px var(--exp);
+}
+.cell .num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.cell .dot {
+  display: block;
+  border-left: 3px solid var(--stripe, var(--exp));
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.results {
+  display: grid;
+  gap: 0.9rem;
+}
+.more {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}

@@ -1,0 +1,23 @@
+<div class="wrap">
+  <div class="card box">
+    <div class="brand">EventFoundry</div>
+    @switch (state()) {
+      @case ('pending') { <p>Traitement de votre invitation…</p> }
+      @case ('auth') {
+        <p>Connectez-vous ou créez un compte <strong>avec l'adresse invitée</strong> pour rejoindre l'organisation.</p>
+        <div class="row">
+          <a class="btn btn-primary" [routerLink]="['/register']" [queryParams]="{ next: nextUrl }">Créer un compte</a>
+          <a class="btn" [routerLink]="['/login']" [queryParams]="{ next: nextUrl }">Se connecter</a>
+        </div>
+      }
+      @case ('done') {
+        <p>✅ Vous avez rejoint <strong>{{ orgName() }}</strong>.</p>
+        <a class="btn btn-primary" routerLink="/organizer/organizations">Voir mes organisations</a>
+      }
+      @case ('error') {
+        <p class="error">{{ error() }}</p>
+        <a class="btn" routerLink="/welcome">Retour à l'accueil</a>
+      }
+    }
+  </div>
+</div>

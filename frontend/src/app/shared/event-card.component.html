@@ -1,0 +1,60 @@
+<div class="card event" [style.--stripe]="color()">
+  <!-- Couverture (RG-PLN-01) : 1ʳᵉ image si disponible, sinon dégradé festif déterministe. -->
+  <div class="cover" [style.background]="coverBg()">
+    <span class="chip">{{ event.activity }}</span>
+    @if (event.price !== null) {
+      <span class="price">{{ event.price }} {{ event.currency ?? 'EUR' }}</span>
+    }
+  </div>
+  <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
+  <div class="meta">
+    {{ displayDate() }} · {{ event.activity }}
+    @if (event.eventType) {
+      · {{ event.eventType }}
+    }
+  </div>
+  <div class="meta">
+    @if (event.subjects.length) {
+      {{ event.subjects.join(', ') }} ·
+    }
+    @if (event.municipality) {
+      {{ event.municipality }}
+    } @else if (event.venue) {
+      {{ event.venue }}@if (event.city) { — {{ event.city }} }
+    }
+  </div>
+
+  @if (event.tags.length) {
+    <div class="tags">
+      @for (t of event.tags; track t) {
+        <span class="tag-chip">{{ t }}</span>
+      }
+    </div>
+  }
+
+  <div class="actions">
+    <button
+      class="btn"
+      [class.active]="participation.interested"
+      (click)="toggleInterested()"
+    >
+      {{ participation.interested ? 'Intéressé ✓' : "Je suis intéressé" }}
+    </button>
+
+    <select [(ngModel)]="participation.reservationStatus" (ngModelChange)="onReservation($event)">
+      <option value="NONE">Réservation…</option>
+      <option value="RESERVED">Réservé</option>
+      <option value="WAITLIST">Liste d'attente</option>
+      <option value="CANCELLED">Annulé</option>
+    </select>
+
+    <select [(ngModel)]="participation.paymentStatus" (ngModelChange)="onPayment($event)">
+      <option value="NONE">Paiement…</option>
+      <option value="PENDING">En attente</option>
+      <option value="PAID">Payé</option>
+      <option value="REFUNDED">Remboursé</option>
+    </select>
+
+    <span class="state" [style.color]="color()">{{ label() }}</span>
+  </div>
+</div>

@@ -1,0 +1,118 @@
+<div class="hero">
+  <h1>Bonjour{{ firstName() ? ', ' + firstName() : '' }} 👋</h1>
+  <p>Trouvez votre prochain événement et organisez votre planning.</p>
+  <div class="search">
+    <input
+      placeholder="Rechercher un événement, une activité, un lieu…"
+      [(ngModel)]="q"
+      (keyup.enter)="search()"
+    />
+    <button class="btn btn-primary" (click)="search()">Rechercher</button>
+  </div>
+  <div class="quick">
+    <a routerLink="/discover">Découvrir</a>
+    <a routerLink="/search">Recherche avancée</a>
+    <a routerLink="/calendar">Mon planning</a>
+  </div>
+</div>
+
+<section>
+  <div class="section-head">
+    <h2>À venir</h2>
+    <a routerLink="/calendar">Mon planning</a>
+  </div>
+  @if (loadingUpcoming) {
+    <p class="muted">Chargement…</p>
+  } @else if (isEmpty(upcomingBuckets)) {
+    <p class="empty">Aucun événement qualifié à venir. Déclarez votre intérêt depuis « Découvrir ».</p>
+  } @else {
+    <div class="filters">
+      <button type="button" class="filter" [class.on]="filter === 'ALL'" (click)="setFilter('ALL')">
+        Tous ({{ upcomingCount() }})
+      </button>
+      @for (p of palette; track p.kind) {
+        @if (countFor(p.kind)) {
+          <button type="button" class="filter" [class.on]="filter === p.kind" (click)="setFilter(p.kind)">
+            <span class="dot" [style.background]="p.color"></span>{{ p.label }} ({{ countFor(p.kind) }})
+          </button>
+        }
+      }
+    </div>
+    @if (isEmpty(filteredBuckets())) {
+      <p class="empty">Aucun événement pour ce filtre.</p>
+    } @else {
+      @for (s of sections; track s.key) {
+        @if (filteredBuckets()[s.key].length) {
+          <div class="bucket">
+            <h3 class="bucket-title">{{ s.label }}</h3>
+            <div class="grid">
+              @for (event of filteredBuckets()[s.key]; track event.id) {
+                <app-event-card [event]="event" />
+              }
+            </div>
+          </div>
+        }
+      }
+    }
+  }
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>À découvrir</h2>
+    <a routerLink="/discover">Explorer le catalogue</a>
+  </div>
+  @if (loadingDiscover) {
+    <p class="muted">Chargement…</p>
+  } @else if (isEmpty(discoverBuckets)) {
+    <p class="empty">Rien à suggérer pour l'instant.</p>
+  } @else {
+    @for (s of sections; track s.key) {
+      @if (discoverBuckets[s.key].length) {
+        <div class="bucket">
+          <h3 class="bucket-title">{{ s.label }}</h3>
+          <div class="grid">
+            @for (event of discoverBuckets[s.key]; track event.id) {
+              <app-event-card [event]="event" />
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Mon planning</h2>
+    <a routerLink="/calendar">Ouvrir le calendrier</a>
+  </div>
+  @if (loadingPlanning) {
+    <p class="muted">Chargement…</p>
+  } @else if (planning.length === 0) {
+    <p class="empty">Votre planning est vide. Ajoutez des événements depuis la découverte.</p>
+  } @else {
+    <div class="planning-list">
+      @for (entry of planning; track entry.event.id) {
+        <a
+          class="planning-row"
+          [routerLink]="['/events', entry.event.id]"
+          [style.--stripe]="stripe(entry.event)"
+        >
+          <div>
+            <div class="title">{{ entry.event.title }}</div>
+            <div class="date">{{ date(entry.event) }} · {{ entry.event.activity }}</div>
+          </div>
+          @if (statusLabel(entry.event); as sl) {
+            <span class="pill" [style.color]="stripe(entry.event)">
+              <span class="dot" [style.background]="stripe(entry.event)"></span>{{ sl }}
+            </span>
+          }
+          @if (entry.conflictsWith.length) {
+            <span class="conflict">⚠ Conflit d'horaire</span>
+          }
+        </a>
+      }
+    </div>
+  }
+</section>

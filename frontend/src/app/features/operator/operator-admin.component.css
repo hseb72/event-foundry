@@ -1,0 +1,87 @@
+h1 {
+  margin-bottom: 1.25rem;
+}
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.card h2 {
+  font-size: 1rem;
+  margin: 0 0 0.85rem;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.row-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: end;
+  margin-bottom: 0.9rem;
+}
+.row-form .field {
+  display: grid;
+  gap: 0.2rem;
+}
+.row-form label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.row-form .input,
+.row-form .select {
+  min-width: 140px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.45rem;
+  margin: 0.1rem 0.15rem 0.1rem 0;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.chip button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  line-height: 1;
+  font-size: 0.9rem;
+}
+.chip button:hover {
+  color: var(--red);
+}
+.msg {
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+.msg.err {
+  color: var(--red);
+}
+.msg.ok {
+  color: var(--green);
+}
+.btn-sm {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}

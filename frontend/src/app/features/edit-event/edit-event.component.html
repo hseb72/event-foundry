@@ -1,0 +1,23 @@
+<h1>Modifier l'événement</h1>
+
+@if (loadError) {
+  <p style="color: var(--red, #c0392b)">{{ loadError }}</p>
+  <a class="btn" routerLink="/organizer/events">Retour à mes événements</a>
+} @else if (initial && !initial.editable) {
+  <div class="card" style="border-left: 4px solid var(--organizer); max-width: 640px">
+    <p style="font-weight: 600">Cet événement n'est pas modifiable dans son état actuel ({{ initial.status }}).</p>
+    <p class="muted">Dépubliez-le (ou restaurez-le) depuis « Mes événements » pour pouvoir le corriger.</p>
+    <a class="btn" routerLink="/organizer/events">Retour à mes événements</a>
+  </div>
+} @else if (initial) {
+  <p class="muted">Corrigez les informations puis enregistrez. Le domaine reste déduit de l'activité.</p>
+  @if (error) {
+    <p style="color: var(--red, #c0392b)">{{ error }}</p>
+  }
+  <app-event-form
+    submitLabel="Enregistrer les modifications"
+    [initial]="initial"
+    [busy]="busy"
+    (save)="onSave($event)"
+  />
+}

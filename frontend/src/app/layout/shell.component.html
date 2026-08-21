@@ -1,0 +1,78 @@
+<div class="layout" [attr.data-exp]="activeExperience()">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/home" aria-label="EventFoundry — accueil">
+      <app-logo [size]="30" [onDark]="true" />
+    </a>
+
+    @if (visibleExperiences().length > 1) {
+      <div class="switcher" role="tablist" aria-label="Expérience active">
+        @for (exp of visibleExperiences(); track exp.key) {
+          <button
+            type="button"
+            [class.on]="activeExperience() === exp.key"
+            [style.--exp]="exp.color"
+            (click)="switchExperience(exp.key)"
+          >
+            {{ exp.label }}
+          </button>
+        }
+      </div>
+    }
+
+    @if (activeExperience() === 'ORGANIZER' && organizations().length) {
+      <div class="ctx">
+        <label for="org">Organisation active</label>
+        <select id="org" [value]="me()?.activeOrganizationId ?? ''" (change)="onOrgChange($event)">
+          @for (org of organizations(); track org.id) {
+            <option [value]="org.id">{{ org.name }}</option>
+          }
+        </select>
+      </div>
+    }
+
+    <nav>
+      @for (item of visibleNav(); track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active">
+          <span>{{ item.label }}</span>
+          @if (item.path === '/notifications' && unreadNotifications() > 0) {
+            <span class="badge">{{ unreadNotifications() }}</span>
+          }
+        </a>
+      }
+      @if (!visibleNav().length) {
+        <div class="empty">Aucun écran disponible dans ce contexte.</div>
+      }
+    </nav>
+
+    <!-- Menu profil unifié (FSPEC.11) : pastille avatar + nickname, toujours visible
+         (sidebar sticky), point d'entrée unique vers la gestion du profil. -->
+    <div class="profile">
+      <a class="profile-link" routerLink="/me" routerLinkActive="on" aria-label="Mon profil">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="profile-info">
+          <span class="profile-name">{{ me()?.displayName || me()?.email }}</span>
+          @if (me()?.subscription; as sub) {
+            <span class="profile-sub">{{ sub }}</span>
+          }
+        </span>
+      </a>
+      <button class="logout-icon" (click)="logout()" title="Se déconnecter" aria-label="Se déconnecter">⎋</button>
+    </div>
+  </aside>
+  <main class="main">
+    @if (onboarding(); as ob) {
+      @if (!ob.completed) {
+        <div class="onboarding">
+          <span>👋 Finalisez votre inscription :</span>
+          @for (s of ob.steps; track s.key) {
+            <span class="ob-step" [class.ok]="s.done">{{ s.done ? '✓' : '○' }} {{ s.label }}</span>
+          }
+          @if (!termsDone()) {
+            <button class="btn btn-sm" (click)="acceptTerms()">Accepter les conditions</button>
+          }
+        </div>
+      }
+    }
+    <router-outlet />
+  </main>
+</div>

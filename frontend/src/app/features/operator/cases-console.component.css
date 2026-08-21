@@ -1,0 +1,25 @@
+/* Tokens neutres uniquement (UISPEC.13) : surfaces, bordures et textes suivent le thème —
+   les valeurs en dur restaient sombres en thème clair, d'où un rendu illisible. */
+.row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.muted { color: var(--muted); font-size: 0.85rem; }
+.kpis { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.kpi { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 1rem; box-shadow: var(--shadow-sm); }
+.kpi b { font-size: 1.4rem; display: block; color: var(--text); }
+table { width: 100%; border-collapse: collapse; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th .arr { color: var(--exp); font-size: 0.8em; }
+.pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
+th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+th { color: var(--muted); font-weight: 600; }
+tr.sel { background: var(--exp-weak); }
+.badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.crit { background: rgba(239, 68, 68, 0.16); color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
+.suggestion { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
+.entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; margin-bottom: 0.4rem; }
+textarea.input { min-height: 60px; }
+/* Édition d'une règle de routage : un bloc par critère, valeurs proposées (jamais saisies). */
+.rule-crit { display: grid; gap: 0.35rem; margin-bottom: 0.6rem; }
+.rule-crit-label { font-size: 0.8rem; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.8rem; cursor: pointer; }
+.chip.on { background: var(--exp); border-color: var(--exp); color: var(--exp-contrast, #fff); }

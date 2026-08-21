@@ -1,0 +1,62 @@
+<h1>Utilisateurs</h1>
+<p class="muted">Gérez les rôles et l'activation des comptes.</p>
+
+@if (error) {
+  <p class="error">{{ error }}</p>
+}
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else {
+  <div class="card">
+    <app-data-table
+      [columns]="columns"
+      [rows]="$any(users)"
+      [cellTemplates]="{ user: userCell, roles: rolesCell, state: stateCell }"
+      [rowActions]="actions"
+      actionsLabel=""
+      [pageSize]="15"
+      searchPlaceholder="Rechercher un utilisateur…"
+      [rowClass]="rowClassFn"
+    />
+    <ng-template #userCell let-user>
+      <div>
+        {{ user.displayName }}
+        @if (user.id === currentId) {
+          <span class="me">(vous)</span>
+        }
+      </div>
+      <small class="muted">{{ user.email }}</small>
+    </ng-template>
+    <ng-template #rolesCell let-user>
+      <div class="roles">
+        @for (role of allRoles; track role) {
+          <label>
+            <input
+              type="checkbox"
+              [checked]="user.roles.includes(role)"
+              [disabled]="busyId === user.id"
+              (change)="toggleRole($any(user), role, isChecked($event))"
+            />
+            {{ role }}
+          </label>
+        }
+      </div>
+    </ng-template>
+    <ng-template #stateCell let-user>
+      <span class="pill" [class.on]="user.isActive" [class.off]="!user.isActive">
+        {{ user.isActive ? 'Actif' : 'Suspendu' }}
+      </span>
+    </ng-template>
+    <ng-template #actions let-user>
+      <button
+        class="btn"
+        [disabled]="busyId === user.id || user.id === currentId"
+        [title]="user.isActive ? 'Bloque la connexion ; les données sont conservées' : 'Restaure l’accès au compte'"
+        (click)="toggleActive($any(user))"
+      >
+        {{ user.isActive ? 'Suspendre' : 'Réactiver' }}
+      </button>
+    </ng-template>
+  </div>
+}

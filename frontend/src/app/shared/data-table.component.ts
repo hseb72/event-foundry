@@ -47,79 +47,8 @@ export interface DataTableQuery {
   selector: 'app-data-table',
   standalone: true,
   imports: [FormsModule, NgClass, NgTemplateOutlet],
-  styles: [
-    `
-      .dt-search { margin-bottom: 0.6rem; }
-      .dt-search input { border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.7rem; font: inherit; background: var(--bg); color: var(--text); min-width: 220px; }
-      .dt-wrap { overflow-x: auto; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-      th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-      th .arr { color: var(--exp); font-size: 0.8em; }
-      tbody tr.clickable { cursor: pointer; }
-      .pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
-      .muted { color: var(--muted); }
-    `,
-  ],
-  template: `
-    @if (searchable) {
-      <div class="dt-search">
-        <input [(ngModel)]="search" (ngModelChange)="onSearch()" [placeholder]="searchPlaceholder" />
-      </div>
-    }
-    <div class="dt-wrap">
-      <table>
-        <thead>
-          <tr>
-            @for (col of columns; track col.key) {
-              <th [class.sortable]="col.sortable" (click)="sortBy(col)">
-                {{ col.label }}
-                @if (col.sortable) { <span class="arr">{{ arrow(col) }}</span> }
-              </th>
-            }
-            @if (rowActions) { <th>{{ actionsLabel }}</th> }
-          </tr>
-        </thead>
-        <tbody>
-          @if (loading) {
-            <tr><td [attr.colspan]="colspan" class="muted">Chargement…</td></tr>
-          } @else {
-          @for (row of paged; track rowId(row)) {
-            <tr [ngClass]="rowClass(row)" [class.clickable]="rowClickable"
-                (click)="rowClickable ? rowClick.emit(row) : null">
-              @for (col of columns; track col.key) {
-                <td>
-                  @if (col.cellTemplate && cellTemplates[col.cellTemplate]) {
-                    <ng-container
-                      [ngTemplateOutlet]="cellTemplates[col.cellTemplate]"
-                      [ngTemplateOutletContext]="{ $implicit: row, value: col.value(row) }"
-                    />
-                  } @else {
-                    {{ col.value(row) }}
-                  }
-                </td>
-              }
-              @if (rowActions) {
-                <td (click)="$event.stopPropagation()">
-                  <ng-container [ngTemplateOutlet]="rowActions" [ngTemplateOutletContext]="{ $implicit: row }" />
-                </td>
-              }
-            </tr>
-          } @empty {
-            <tr><td [attr.colspan]="colspan" class="muted">{{ emptyLabel }}</td></tr>
-          }
-          }
-        </tbody>
-      </table>
-    </div>
-    @if (pageCount > 1) {
-      <div class="pager">
-        <span class="muted">{{ total }} entrée(s) · page {{ clampedPage + 1 }}/{{ pageCount }}</span>
-        <button type="button" class="btn btn-sm" [disabled]="clampedPage === 0" (click)="go(-1)">‹</button>
-        <button type="button" class="btn btn-sm" [disabled]="clampedPage >= pageCount - 1" (click)="go(1)">›</button>
-      </div>
-    }
-  `,
+  templateUrl: './data-table.component.html',
+  styleUrl: './data-table.component.css',
 })
 export class DataTableComponent {
   @Input({ required: true }) columns: DataColumn[] = [];

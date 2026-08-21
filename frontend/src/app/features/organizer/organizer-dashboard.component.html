@@ -1,0 +1,63 @@
+<div class="head">
+  <div>
+    <h1>Tableau de bord</h1>
+    <p class="muted" style="margin:0">Bonjour {{ orgName() }} — voici l'activité de vos événements.</p>
+  </div>
+  <div class="actions">
+    <a class="btn btn-primary" routerLink="/organizer/events">Créer / importer un événement</a>
+  </div>
+</div>
+
+@if (loading()) {
+  <p class="muted">Chargement…</p>
+} @else {
+  <div class="cards">
+    @for (stat of statCards; track stat.key) {
+      <div class="card-stat" [style.--c]="stat.color">
+        <div class="n">{{ count(stat.key) }}</div>
+        <div class="l">{{ stat.label }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="columns">
+    <div>
+      <h2>Actions en attente</h2>
+      @if (pending().length === 0) {
+        <p class="empty">Rien à traiter. Tout est publié 🎉</p>
+      } @else {
+        @for (event of pending(); track event.id) {
+          <div class="row">
+            <div>
+              <div class="title">{{ event.title }}</div>
+              <div class="date">{{ date(event) }} · <span class="badge">{{ statusLabel(event.status) }}</span></div>
+            </div>
+            <div class="cta">
+              <a class="btn btn-sm" [routerLink]="['/events', event.id, 'edit']">Modifier</a>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    <div>
+      <h2>Publiés à venir</h2>
+      @if (publishedUpcoming().length === 0) {
+        <p class="empty">Aucun événement publié à venir.</p>
+      } @else {
+        @for (event of publishedUpcoming(); track event.id) {
+          <div class="row">
+            <div>
+              <a class="title" [routerLink]="['/events', event.id]">{{ event.title }}</a>
+              <div class="date">{{ date(event) }} · {{ event.activity }}</div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+
+  <p style="margin-top:1.5rem">
+    <a routerLink="/organizer/events">Voir tous mes événements →</a>
+  </p>
+}

@@ -1,0 +1,313 @@
+<form (ngSubmit)="submit()">
+  <div>
+    <label class="req">Titre</label>
+    <input class="input" [(ngModel)]="model.title" name="title" required maxlength="200" />
+  </div>
+
+  <div>
+    <label>Description</label>
+    <textarea class="input" [(ngModel)]="model.description" name="description" rows="3"></textarea>
+  </div>
+
+  <div class="row">
+    <div>
+      <label class="req">Activité</label>
+      <select class="select" [(ngModel)]="model.activityId" name="activityId"
+              (ngModelChange)="onActivityChange()" required>
+        <option value="">— choisir —</option>
+        @for (a of activities; track a.id) {
+          <option [value]="a.id">{{ a.name }}</option>
+        }
+      </select>
+      @if (unresolved.activity) {
+        <div class="propose">
+          <span>Activité « <strong>{{ unresolved.activity }}</strong> » non reconnue.</span>
+          @if (canManageRef) {
+            <div class="propose-actions">
+              @if (domains.length > 1) {
+                <select class="select" [(ngModel)]="newActivityDomainId" name="newActivityDomainId">
+                  <option value="">Domaine…</option>
+                  @for (d of domains; track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+                </select>
+              }
+              <button type="button" class="btn" [disabled]="!newActivityDomainId || busy"
+                      (click)="createActivityRef()">Créer l'activité</button>
+              <select class="select" [(ngModel)]="associateActivityId" name="associateActivityId"
+                      (ngModelChange)="associateActivityRef()">
+                <option value="">Associer à une existante…</option>
+                @for (a of activities; track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+              </select>
+            </div>
+          } @else {
+            <div class="propose-actions">
+              @if (proposed.ACTIVITY) {
+                <span class="done">✅ Proposition transmise à la modération.</span>
+              } @else {
+                <button type="button" class="btn" [disabled]="proposing"
+                        (click)="proposeRef('ACTIVITY', unresolved.activity!)">
+                  Proposer l'ajout au référentiel
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+    <div>
+      <label>Type d'événement <span class="muted">(nature du rassemblement)</span></label>
+      <select class="select" [(ngModel)]="model.eventTypeId" name="eventTypeId">
+        <option value="">— aucun —</option>
+        @for (t of eventTypes; track t.id) {
+          <option [value]="t.id">{{ t.name }}</option>
+        }
+      </select>
+      @if (unresolved.eventType) {
+        <div class="propose">
+          <span>Type « <strong>{{ unresolved.eventType }}</strong> » non reconnu.</span>
+          <div class="propose-actions">
+            @if (canManageRef) {
+              <button type="button" class="btn" [disabled]="busy" (click)="createEventTypeRef()">
+                Créer ce type
+              </button>
+            } @else if (proposed.EVENT_TYPE) {
+              <span class="done">✅ Proposition transmise à la modération.</span>
+            } @else {
+              <button type="button" class="btn" [disabled]="proposing"
+                      (click)="proposeRef('EVENT_TYPE', unresolved.eventType!)">
+                Proposer l'ajout au référentiel
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Organisateur</label>
+      <select class="select" [(ngModel)]="model.organizerId" name="organizerId">
+        <option value="">— aucun —</option>
+        @for (o of organizers; track o.id) {
+          <option [value]="o.id">{{ o.name }}</option>
+        }
+      </select>
+      @if (unresolved.organizer) {
+        <div class="propose">
+          <span>Organisateur « <strong>{{ unresolved.organizer }}</strong> » non reconnu.</span>
+          <div class="propose-actions">
+            @if (canManageRef) {
+              <button type="button" class="btn" [disabled]="busy" (click)="createOrganizerRef()">
+                Créer cet organisateur
+              </button>
+            } @else if (proposed.ORGANIZER) {
+              <span class="done">✅ Proposition transmise à la modération.</span>
+            } @else {
+              <button type="button" class="btn" [disabled]="proposing"
+                      (click)="proposeRef('ORGANIZER', unresolved.organizer!)">
+                Proposer l'ajout au référentiel
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+    <div>
+      <label>Lieu</label>
+      <select class="select" [(ngModel)]="model.venueId" name="venueId">
+        <option value="">— aucun —</option>
+        @for (v of venues; track v.id) {
+          <option [value]="v.id">{{ v.name }}</option>
+        }
+      </select>
+      @if (unresolved.venue) {
+        <div class="propose">
+          <span>Lieu « <strong>{{ unresolved.venue }}</strong> » non reconnu.</span>
+          <div class="propose-actions">
+            @if (canManageRef) {
+              <button type="button" class="btn" [disabled]="busy" (click)="createVenueRef()">
+                Créer ce lieu
+              </button>
+            } @else if (proposed.VENUE) {
+              <span class="done">✅ Proposition transmise à la modération.</span>
+            } @else {
+              <button type="button" class="btn" [disabled]="proposing"
+                      (click)="proposeRef('VENUE', unresolved.venue!)">
+                Proposer l'ajout au référentiel
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (model.activityId && subjects.length) {
+    <div>
+      <label>Sujets <span class="muted">(le jeu / le genre / la discipline — plusieurs possibles)</span></label>
+      <select class="select" multiple [(ngModel)]="model.subjectIds" name="subjectIds">
+        @for (s of subjects; track s.id) {
+          <option [value]="s.id">{{ s.name }}</option>
+        }
+      </select>
+      @if (unresolved.subjects.length) {
+        <div class="propose">
+          <span>
+            Sujet(s) détecté(s) mais absent(s) du référentiel :
+            <strong>{{ unresolved.subjects.join(', ') }}</strong>.
+          </span>
+          <div class="propose-actions">
+            @for (label of unresolved.subjects; track label) {
+              @if (proposedSubjects.includes(label)) {
+                <span class="done">✅ « {{ label }} » proposé.</span>
+              } @else {
+                <button type="button" class="btn" [disabled]="proposing"
+                        (click)="proposeRef('SUBJECT', label)">
+                  Proposer « {{ label }} »
+                </button>
+              }
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Modalités : facultatives et volumineuses (plusieurs dimensions) → section repliable,
+       repliée par défaut. Le compteur reste visible pour ne pas masquer une sélection. -->
+  @if (modalityDimensions.length) {
+    <div>
+      <div class="section-head">
+        <label>
+          Modalités <span class="muted">(par dimension, facultatif)</span>
+          @if (model.modalityIds.length) {
+            <span class="count">{{ model.modalityIds.length }}</span>
+          }
+        </label>
+        <button type="button" class="btn btn-sm" (click)="modalitiesOpen = !modalitiesOpen"
+                [attr.aria-expanded]="modalitiesOpen">
+          {{ modalitiesOpen ? '▲ Réduire' : '▼ Étendre' }}
+        </button>
+      </div>
+      @if (modalitiesOpen) {
+        <div style="margin-top:0.5rem">
+          @for (dim of modalityDimensions; track dim.id) {
+            @if (dim.modalities.length) {
+              <div style="margin-bottom:0.4rem">
+                <span class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
+                <div class="tags">
+                  @for (m of dim.modalities; track m.id) {
+                    <button type="button" class="tag-chip" [class.on]="model.modalityIds.includes(m.id)"
+                            (click)="toggleModality(m.id)">
+                      {{ m.name }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (orgAddresses.length) {
+    <div>
+      <label>Adresses de l'organisation</label>
+      <div class="tags">
+        @for (a of orgAddresses; track a.id) {
+          <button type="button" class="tag-chip" (click)="useOrgAddress(a)">
+            📍 {{ a.label }}@if (a.municipalityName) { — {{ a.municipalityName }} }
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div>
+    <label>Localisation (pays + code postal)</label>
+    <div class="row" style="grid-template-columns:1fr 1fr">
+      <select class="select" [(ngModel)]="model.countryId" name="countryId"
+              (ngModelChange)="onCountryChange()">
+        <option value="">Pays…</option>
+        @for (c of countries; track c.id) {
+          <option [value]="c.id">{{ c.name }}</option>
+        }
+      </select>
+      <div style="display:flex;gap:0.4rem">
+        <input class="input" [(ngModel)]="postalCode" name="postalCode" placeholder="Code postal"
+               [disabled]="!model.countryId" (keyup.enter)="searchPostal()" />
+        <button type="button" class="btn" [disabled]="!model.countryId || !postalCode.trim()"
+                (click)="searchPostal()">Rechercher</button>
+      </div>
+    </div>
+    @if (resolvedMunicipalities.length) {
+      <div class="row" style="grid-template-columns:1fr 1fr;margin-top:0.5rem">
+        <select class="select" [(ngModel)]="model.municipalityId" name="municipalityId"
+                (ngModelChange)="onMunicipalitySelect()">
+          <option value="">Commune…</option>
+          @for (m of resolvedMunicipalities; track m.id) {
+            <option [value]="m.id">{{ m.name }}</option>
+          }
+        </select>
+        <div style="align-self:center;font-size:0.85rem" class="muted">
+          Région : <strong style="color:var(--text)">{{ selectedRegionName || '—' }}</strong> (dérivée)
+        </div>
+      </div>
+    } @else if (postalSearched) {
+      <p class="muted" style="font-size:0.8rem;margin-top:0.35rem">
+        Aucune commune trouvée pour ce code postal dans ce pays.
+      </p>
+    }
+  </div>
+
+  @if (tags.length) {
+    <div>
+      <label>Tags</label>
+      <div class="tags">
+        @for (t of tags; track t.id) {
+          <button type="button" class="tag-chip" [class.on]="model.tagIds.includes(t.id)"
+                  (click)="toggleTag(t.id)">
+            {{ t.name }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="row">
+    <div>
+      <label class="req">Début</label>
+      <input class="input" type="datetime-local" [(ngModel)]="model.startsAt" name="startsAt" required />
+    </div>
+    <div>
+      <label>Fin</label>
+      <input class="input" type="datetime-local" [(ngModel)]="model.endsAt" name="endsAt" />
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>Prix</label>
+      <input class="input" type="number" min="0" step="0.01" [(ngModel)]="model.price" name="price" />
+    </div>
+    <div>
+      <label>Devise</label>
+      <input class="input" maxlength="3" placeholder="EUR" [(ngModel)]="model.currency" name="currency" />
+    </div>
+  </div>
+
+  @if (refError) {
+    <p class="error">{{ refError }}</p>
+  }
+  @if (error) {
+    <p class="error">{{ error }}</p>
+  }
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary" [disabled]="busy">{{ submitLabel }}</button>
+    @if (showReject) {
+      <button type="button" class="btn" [disabled]="busy" (click)="reject.emit()">Rejeter</button>
+    }
+  </div>
+</form>

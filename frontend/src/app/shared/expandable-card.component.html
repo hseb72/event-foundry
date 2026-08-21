@@ -1,0 +1,30 @@
+<section class="xcard">
+  <header class="xhead">
+    <h2>{{ cardTitle }}</h2>
+    <ng-content select="[card-actions]"></ng-content>
+  </header>
+  <div
+    #body
+    class="xbody"
+    [style.max-height]="expanded() || !overflowing() ? 'none' : compactHeight + 'px'"
+  >
+    <ng-content></ng-content>
+    @if (!expanded() && overflowing()) {
+      <div class="fade"></div>
+    }
+  </div>
+  <!-- §7 : aucun bouton si le contenu tient déjà dans la hauteur compacte. -->
+  @if (overflowing()) {
+    <footer class="xfoot">
+      <button
+        type="button"
+        class="toggle"
+        [attr.aria-expanded]="expanded()"
+        [attr.aria-label]="(expanded() ? 'Réduire la carte ' : 'Développer la carte ') + cardTitle"
+        (click)="toggle()"
+      >
+        {{ expanded() ? '▲ Réduire' : '▼ Développer' }}
+      </button>
+    </footer>
+  }
+</section>

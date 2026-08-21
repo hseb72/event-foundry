@@ -1,0 +1,28 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.word {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  font-size: var(--logo-word-size, 1.3rem);
+}
+.word .a {
+  color: var(--logo-word-color, var(--text));
+}
+.word.on-dark .a {
+  color: #fff;
+}
+.word .b {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

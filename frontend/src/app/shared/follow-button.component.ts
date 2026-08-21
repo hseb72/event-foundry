@@ -9,33 +9,8 @@ import { FollowTargetType } from '../core/models';
 @Component({
   selector: 'app-follow-button',
   standalone: true,
-  styles: [
-    `
-      button {
-        border: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--muted);
-        border-radius: 999px;
-        padding: 0.2rem 0.65rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-        transition: all 0.15s ease;
-      }
-      button:hover {
-        border-color: var(--exp);
-      }
-      button.on {
-        background: var(--exp);
-        border-color: var(--exp);
-        color: var(--exp-contrast);
-      }
-    `,
-  ],
-  template: `
-    <button type="button" [class.on]="following()" (click)="toggle($event)">
-      {{ following() ? '★ Suivi' : '☆ Suivre' }}
-    </button>
-  `,
+  templateUrl: './follow-button.component.html',
+  styleUrl: './follow-button.component.css',
 })
 export class FollowButtonComponent implements OnInit {
   @Input({ required: true }) targetType!: FollowTargetType;

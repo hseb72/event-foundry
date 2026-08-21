@@ -1,0 +1,67 @@
+.searchbar {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1rem 0 1.25rem;
+}
+.searchbar .input {
+  flex: 1 1 auto;
+  font-size: 1.05rem;
+  padding: 0.7rem 0.9rem;
+}
+.searchbar .select {
+  flex: 0 0 200px;
+}
+.facet-group {
+  margin-bottom: 0.9rem;
+}
+.facet-group h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.chip.on {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: #fff;
+}
+.chip .n {
+  opacity: 0.6;
+  font-weight: 700;
+  margin-left: 0.3rem;
+}
+.summary {
+  color: var(--muted);
+  margin: 1rem 0 0.75rem;
+  font-size: 0.9rem;
+}
+.results {
+  display: grid;
+  gap: 0.9rem;
+}
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+}
+.reset {
+  background: transparent;
+  border: 0;
+  color: var(--exp);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+}

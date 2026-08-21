@@ -1,0 +1,62 @@
+<div class="head">
+  <h1>Notifications</h1>
+  <div style="display:flex;gap:0.5rem">
+    <button class="btn" (click)="showPrefs = !showPrefs">Préférences</button>
+    @if (notifications.length && unreadCount() > 0) {
+      <button class="btn" (click)="readAll()">Tout marquer comme lu</button>
+    }
+  </div>
+</div>
+
+@if (showPrefs && prefs) {
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="margin-top:0">Préférences de diffusion</h3>
+    <p class="muted" style="font-size:0.82rem">
+      L'historique reste toujours consultable ici (canal interne). Choisissez, pour chaque
+      fréquence, comment être averti à l'extérieur.
+    </p>
+    @for (t of tracks; track t.key) {
+      <div style="display:grid;grid-template-columns:1fr auto;gap:0.6rem;align-items:center;margin:0.4rem 0">
+        <label>{{ t.label }}</label>
+        <select class="select" [ngModel]="prefs[t.key]" (ngModelChange)="setTrack(t.key, $event)"
+                style="max-width:180px">
+          <option value="none">Aucun</option>
+          <option value="email">E-mail</option>
+          <option value="push">Push</option>
+        </select>
+      </div>
+    }
+    <div style="margin-top:0.6rem;display:flex;gap:0.6rem;align-items:center">
+      <button class="btn btn-primary" (click)="savePrefs()">Enregistrer</button>
+      @if (prefsSaved) { <span class="muted" style="font-size:0.82rem">✓ Enregistré</span> }
+    </div>
+  </div>
+}
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else if (notifications.length === 0) {
+  <p class="empty">Aucune notification pour le moment.</p>
+} @else {
+  <div class="list">
+    @for (notif of notifications; track notif.id) {
+      <div class="notif" [class.unread]="notif.status === 'UNREAD'" [class.read]="notif.status === 'READ'">
+        <span class="dot"></span>
+        <div class="body">
+          <div class="title">{{ notif.title }}</div>
+          <div class="text">{{ notif.body }}</div>
+          <div class="meta">{{ date(notif) }}</div>
+        </div>
+        <div class="actions">
+          @if (notif.eventId) {
+            <a class="btn btn-sm" [routerLink]="['/events', notif.eventId]">Voir</a>
+          }
+          @if (notif.status === 'UNREAD') {
+            <button class="btn btn-sm" (click)="read(notif)">Lu</button>
+          }
+          <button class="btn btn-sm" (click)="remove(notif)">Supprimer</button>
+        </div>
+      </div>
+    }
+  </div>
+}

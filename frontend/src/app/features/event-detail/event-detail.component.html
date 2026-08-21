@@ -1,0 +1,233 @@
+<a class="back" routerLink="/discover">← Retour</a>
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else if (!event) {
+  <p class="muted">Événement introuvable.</p>
+} @else {
+  <div class="head card" [style.--stripe]="color()">
+    <!-- Bandeau de couverture festif : 1ʳᵉ image de l'événement, sinon dégradé de repli. -->
+    <div class="cover" [style.background]="coverBg()">
+      <div class="top">
+        <span class="badge">{{ event.source === 'IMPORT' ? 'Importé' : 'Manuel' }}</span>
+        <span class="badge" [class.archived]="event.status === 'ARCHIVED'">{{ statusLabel() }}</span>
+        @if (event.visibility === 'PRIVATE') {
+          <span class="badge private" title="Événement personnel, visible de vous seul">🔒 Privé</span>
+        }
+      </div>
+      <div class="bottom">
+        <h1>{{ event.title }}</h1>
+        <div class="sub">{{ coverSub() }}</div>
+      </div>
+    </div>
+    <div class="filet"></div>
+    <div class="body">
+
+    @if (event.visibility === 'PRIVATE' && event.canNotifyOrganizer) {
+      <div class="notify-org">
+        <span>
+          Cet événement mentionne un organisateur enregistré. Vous pouvez l'informer qu'un
+          événement le concernant existe (sans lui céder cet événement privé).
+        </span>
+        @if (notifyDone) {
+          <span class="done">✓ Organisateur notifié{{ notifyOrgName ? ' — ' + notifyOrgName : '' }}</span>
+        } @else {
+          <button class="btn" [disabled]="notifyBusy" (click)="notifyOrganizer()">
+            {{ notifyBusy ? 'Envoi…' : "Notifier l'organisateur" }}
+          </button>
+        }
+      </div>
+    }
+
+    <dl>
+      <dt>Date</dt>
+      <dd>{{ dateRange() }}</dd>
+
+      <dt>Activité</dt>
+      <dd>
+        <span class="loc-line">
+          <span>
+            {{ event.activity }}
+            @if (event.eventType) {
+              · {{ event.eventType }}
+            }
+            @if (event.modalities.length) {
+              · {{ event.modalities.join(' · ') }}
+            }
+          </span>
+          <app-follow-button targetType="ACTIVITY" [targetId]="event.activityId" />
+        </span>
+      </dd>
+
+      @if (event.subjects.length) {
+        <dt>Sujets</dt>
+        <dd>
+          @for (subject of event.subjects; track subject; let i = $index) {
+            <span class="loc-line">
+              <span>{{ subject }}</span>
+              @if (event.subjectIds[i]) {
+                <app-follow-button targetType="SUBJECT" [targetId]="event.subjectIds[i]" />
+              }
+            </span>
+          }
+        </dd>
+      }
+      @if (event.modalities.length) {
+        <dt>Modalités</dt>
+        <dd>
+          @for (m of event.modalities; track m) {
+            <span class="chip">{{ m }}</span>
+          }
+        </dd>
+      }
+      @if (event.organizer) {
+        <dt>Organisateur</dt>
+        <dd>
+          <span class="loc-line">
+            <span>{{ event.organizer }}</span>
+            @if (event.organizerId) {
+              <app-follow-button targetType="ORGANIZER" [targetId]="event.organizerId" />
+            }
+          </span>
+        </dd>
+      }
+      @if (event.venue || event.city) {
+        <dt>Lieu</dt>
+        <dd>
+          <span class="loc-line">
+            <span>{{ event.venue }}{{ event.venue && event.city ? ' — ' : '' }}{{ event.city }}</span>
+            @if (event.venueId) {
+              <app-follow-button targetType="VENUE" [targetId]="event.venueId" />
+            }
+          </span>
+        </dd>
+      }
+      @if (event.municipality) {
+        <dt>Commune</dt>
+        <dd>{{ event.municipality }}{{ event.region ? ', ' + event.region : '' }}{{ event.country ? ' (' + event.country + ')' : '' }}</dd>
+      }
+      @if (event.price !== null) {
+        <dt>Prix</dt>
+        <dd>{{ event.price }} {{ event.currency ?? 'EUR' }}</dd>
+      }
+      @if (event.tags.length) {
+        <dt>Tags</dt>
+        <dd>
+          @for (t of event.tags; track t) {
+            <span class="chip">{{ t }}</span>
+          }
+        </dd>
+      }
+    </dl>
+
+    @if (event.description) {
+      <p class="desc">{{ event.description }}</p>
+      @if (canTranslate() || canSummarize()) {
+        <div class="ai-tools">
+          @if (canTranslate()) {
+            <button class="btn" [disabled]="aiBusy()" (click)="assist('TRANSLATE', event.description!)">🌐 Traduire</button>
+          }
+          @if (canSummarize()) {
+            <button class="btn" [disabled]="aiBusy()" (click)="assist('SUMMARIZE', event.description!)">✂️ Résumer</button>
+          }
+          @if (aiBusy()) { <span class="muted">Assistance IA…</span> }
+        </div>
+        @if (aiResult(); as r) {
+          <div class="ai-out">
+            <div class="ai-out-head">
+              <span>{{ r.label }}</span>
+              @if (r.provider) { <span class="muted">· {{ r.provider }}</span> }
+              <button class="ai-close" (click)="aiResult.set(null)" title="Fermer">✕</button>
+            </div>
+            <p class="desc" style="margin:0">{{ r.text }}</p>
+          </div>
+        }
+        @if (aiEmpty()) {
+          <p class="muted" style="font-size:0.82rem">
+            Aucune IA activée pour ce cas d'usage — configurez-la dans votre profil.
+          </p>
+        }
+      }
+    }
+
+    @if (event.media.length || canManageMedia()) {
+      <div class="gallery">
+        @for (m of event.media; track m.id) {
+          <figure class="shot">
+            <img [src]="m.url" [alt]="event.title" />
+            @if (canManageMedia()) {
+              <button class="rm" title="Supprimer" (click)="removeMedia(m.id)">×</button>
+            }
+          </figure>
+        }
+        @if (canManageMedia()) {
+          <label class="upload">
+            <input type="file" accept="image/*" hidden (change)="onFile($event)" />
+            <span>+ Ajouter une image</span>
+          </label>
+        }
+      </div>
+    }
+
+    <div class="admin-actions">
+      <!-- Duplication : ouvre le formulaire de création prérempli (nouvel événement au final). -->
+      @if (canEditHere()) {
+        <button class="btn" [disabled]="actionBusy" title="Corriger cet événement" (click)="edit()">✏️ Modifier</button>
+      }
+      <button class="btn" [disabled]="actionBusy" title="Créer une copie puis la modifier" (click)="duplicate()">📄 Dupliquer</button>
+      @if (event.status !== 'ARCHIVED' && canArchive()) {
+        <button class="btn" (click)="archive()">Archiver</button>
+      }
+      @if (event.status === 'ARCHIVED' && canRestore()) {
+        <button class="btn btn-primary" (click)="restore()">Restaurer</button>
+      }
+    </div>
+
+    <div class="actions">
+      <button class="btn" [class.active]="participation.interested" (click)="toggleInterested()">
+        {{ participation.interested ? 'Intéressé ✓' : 'Je suis intéressé' }}
+      </button>
+
+      <select [(ngModel)]="participation.reservationStatus" (ngModelChange)="onReservation($event)">
+        <option value="NONE">Réservation…</option>
+        <option value="RESERVED">Réservé</option>
+        <option value="WAITLIST">Liste d'attente</option>
+        <option value="CANCELLED">Annulé</option>
+      </select>
+
+      <select [(ngModel)]="participation.paymentStatus" (ngModelChange)="onPayment($event)">
+        <option value="NONE">Paiement…</option>
+        <option value="PENDING">En attente</option>
+        <option value="PAID">Payé</option>
+        <option value="REFUNDED">Remboursé</option>
+      </select>
+
+      <span class="state" [style.color]="color()">{{ label() }}</span>
+    </div>
+
+    <div style="margin-top:0.8rem">
+      @if (!reportOpen()) {
+        <button class="btn" style="font-size:0.82rem" (click)="reportOpen.set(true)">⚑ Signaler</button>
+      } @else if (reportRef()) {
+        <p class="muted" style="font-size:0.85rem">Merci — signalement {{ reportRef() }} transmis à la modération.</p>
+      } @else {
+        <div style="display:grid;gap:0.4rem;max-width:340px">
+          <select [(ngModel)]="reportReason">
+            <option value="INCORRECT_INFO">Information incorrecte</option>
+            <option value="OFFENSIVE">Contenu offensant</option>
+            <option value="DUPLICATE">Doublon</option>
+            <option value="SPAM">Spam</option>
+            <option value="FRAUD">Fraude</option>
+            <option value="OTHER">Autre</option>
+          </select>
+          <textarea class="input" [(ngModel)]="reportDetails" placeholder="Détails (facultatif)"></textarea>
+          <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-primary" style="font-size:0.82rem" (click)="submitReport()">Envoyer le signalement</button>
+            <button class="btn" style="font-size:0.82rem" (click)="reportOpen.set(false)">Annuler</button>
+          </div>
+        </div>
+      }
+    </div>
+    </div>
+  </div>
+}

@@ -306,6 +306,11 @@ Attention à deux notions post-V1 à ne pas confondre avec la V1 :
 
 - **Langue** : documentation et libellés produit en français ; code et identifiants
   techniques en anglais (conforme aux specs).
+- **Composants Angular** : gabarit et styles dans des **fichiers séparés**
+  (`x.component.ts` + `x.component.html` + `x.component.css`, via `templateUrl` / `styleUrl`).
+  Jamais de `template:` ni de `styles: []` en ligne : un gabarit inline échappe au formatage et
+  à l'analyse statique du HTML et du CSS. `angular.json` configure les schematics en ce sens —
+  `ng g c` produit la bonne structure sans option.
 - **Branche de développement** : `claude/event-foundry-documentation-jd17uo` (sauf
   indication contraire explicite).
 - **Commits** : messages clairs et descriptifs, périmètre cohérent.

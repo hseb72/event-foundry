@@ -1,0 +1,10 @@
+.dt-search { margin-bottom: 0.6rem; }
+.dt-search input { border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.7rem; font: inherit; background: var(--bg); color: var(--text); min-width: 220px; }
+.dt-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th .arr { color: var(--exp); font-size: 0.8em; }
+tbody tr.clickable { cursor: pointer; }
+.pager { display: flex; gap: 0.6rem; align-items: center; justify-content: flex-end; margin-top: 0.6rem; }
+.muted { color: var(--muted); }

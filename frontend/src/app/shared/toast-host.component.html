@@ -1,0 +1,25 @@
+<div class="stack">
+  @for (t of toasts(); track t.id) {
+    <div
+      class="toast"
+      [class.success]="t.kind === 'success'"
+      [class.error]="t.kind === 'error'"
+      [class.info]="t.kind === 'info'"
+      [attr.role]="t.kind === 'error' ? 'alert' : 'status'"
+      [attr.aria-live]="t.kind === 'error' ? 'assertive' : 'polite'"
+      (mouseenter)="toastService.hold(t.id)"
+      (mouseleave)="toastService.resume(t.id)"
+    >
+      <span class="ico" aria-hidden="true">
+        {{ t.kind === 'success' ? '✅' : t.kind === 'error' ? '⛔' : 'ℹ️' }}
+      </span>
+      <div class="body">
+        <div class="title">{{ t.title }}</div>
+        @if (t.detail) {
+          <div class="detail">{{ t.detail }}</div>
+        }
+      </div>
+      <button class="close" type="button" aria-label="Fermer" (click)="toastService.dismiss(t.id)">×</button>
+    </div>
+  }
+</div>

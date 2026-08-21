@@ -1,0 +1,44 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 1rem 0 1.5rem;
+}
+.tab {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-weight: 500;
+}
+.tab.active {
+  background: var(--exp);
+  color: #fff;
+  border-color: var(--exp);
+}
+.geo {
+  margin: 1rem 0 0.5rem;
+}
+.geo h2 {
+  font-size: 1rem;
+  margin: 0 0 0.3rem;
+}
+.geo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.6rem 0;
+}
+.geo-row .input {
+  max-width: 90px;
+  text-transform: uppercase;
+}
+.counts {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.err {
+  color: var(--red, #c0392b);
+}

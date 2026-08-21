@@ -1,0 +1,115 @@
+.alerts {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1.5rem;
+}
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+}
+.alert.warn {
+  border-left: 4px solid #e08600;
+  background: rgba(224, 134, 0, 0.06);
+}
+.alert.ok {
+  border-left: 4px solid var(--green, #2e7d32);
+  background: rgba(46, 125, 50, 0.05);
+}
+.alert a {
+  margin-left: auto;
+  color: var(--exp);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.section-title {
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.25rem;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.9rem;
+  margin: 1rem 0 1.5rem;
+}
+.tile {
+  padding: 1rem;
+}
+.tile .value {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+.tile .caption {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+h3 {
+  margin: 0 0 0.75rem;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 40px;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+.track {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  background: var(--exp);
+  border-radius: 999px;
+  min-width: 2px;
+}
+.count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.muted {
+  color: var(--muted);
+}
+table.stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+table.stats th,
+table.stats td {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+table.stats td.num,
+table.stats th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.fail {
+  color: #d33;
+  font-weight: 600;
+}
+.refresh {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0.25rem;
+}
+.refresh h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}

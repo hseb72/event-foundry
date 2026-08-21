@@ -1,0 +1,202 @@
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--exp);
+  color: var(--exp-contrast);
+  font-weight: 800;
+  font-size: 1rem;
+}
+.theme-opts {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.switch {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.theme-opt {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.theme-opt.on {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: var(--exp-contrast);
+}
+.soon {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--exp-weak);
+  color: var(--exp);
+  margin-left: 0.4rem;
+}
+.vecteurs {
+  display: grid;
+  gap: 0.5rem;
+}
+.vec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.vec-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.pill {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.pill.on {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: var(--exp-contrast);
+}
+.pill.locked {
+  cursor: default;
+  opacity: 0.85;
+}
+.head h1 {
+  margin: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+.card h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.chip {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.chip.exp {
+  color: #fff;
+  border: 0;
+}
+.chip.exp.off {
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px dashed var(--border);
+}
+.perm-group {
+  margin-bottom: 0.7rem;
+}
+.perm-group .g {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+.perm {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.org {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+.org.active {
+  border-color: var(--organizer);
+  box-shadow: 0 0 0 1px var(--organizer);
+}
+.org-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.org-name {
+  font-weight: 700;
+}
+.sub {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.badge {
+  color: #fff;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.active-tag {
+  font-size: 0.72rem;
+  color: var(--organizer);
+  font-weight: 700;
+}
+
+/* Onglets de configuration (mêmes codes que les autres barres d'onglets de l'app). */
+.tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; background: var(--surface-2); border-radius: 12px; padding: 0.25rem; width: fit-content; margin-bottom: 1rem; }
+.tabs button { border: 0; background: transparent; color: var(--muted); border-radius: 9px; padding: 0.4rem 0.9rem; font-weight: 600; }
+.tabs button.on { background: var(--exp); color: var(--exp-contrast, #fff); }
+/* Fiche descriptive (libellé / valeur) des données personnelles. */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 0.9rem; margin: 0 0 0.8rem; font-size: 0.88rem; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.facts-inline { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+/* Fonctionnalité annoncée mais non encore disponible : signalée, jamais simulée. */
+.todo { font-size: 0.72rem; font-weight: 700; color: var(--orange, #b45309); }
+.todo-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.8rem; font-size: 0.8rem; margin: 0.8rem 0 0; color: var(--muted); }
+.prefs { width: 100%; border-collapse: collapse; }
+.prefs th, .prefs td { text-align: left; padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); font-size: 0.86rem; }
+.prefs th { color: var(--muted); font-weight: 600; }
+.dt-wrap { overflow-x: auto; }
+/* Carte d'organisation : cerclée de vert si active, d'orange sinon. */
+.org-card { border: 2px solid var(--orange, #f97316); border-radius: 12px; padding: 0.8rem 0.9rem; background: var(--surface); }
+.org-card.active { border-color: var(--green, #16a34a); }
+.inactive-tag { color: var(--orange, #b45309); font-size: 0.82rem; font-weight: 600; }

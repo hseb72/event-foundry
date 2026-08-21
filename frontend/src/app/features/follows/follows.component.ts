@@ -22,69 +22,8 @@ interface FollowGroup {
 @Component({
   selector: 'app-follows',
   standalone: true,
-  styles: [
-    `
-      .group {
-        margin-bottom: 1.5rem;
-      }
-      .group h2 {
-        font-size: 1rem;
-        margin: 0 0 0.6rem;
-      }
-      .row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding: 0.55rem 0.8rem;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        margin-bottom: 0.4rem;
-        border-left: 4px solid var(--exp);
-      }
-      .name {
-        font-weight: 600;
-      }
-      .row-actions {
-        display: flex;
-        gap: 0.4rem;
-        flex-shrink: 0;
-      }
-      .empty {
-        color: var(--muted);
-        padding: 2rem 0;
-      }
-    `,
-  ],
-  template: `
-    <h1>Mes suivis</h1>
-    <p class="muted">Organisateurs, lieux, activités et catégories que vous suivez.</p>
-
-    @if (groups().length === 0) {
-      <p class="empty">Vous ne suivez encore rien. Suivez une catégorie depuis « Découvrir ».</p>
-    } @else {
-      @for (group of groups(); track group.type) {
-        <section class="group">
-          <h2>{{ group.label }}</h2>
-          @for (item of group.items; track item.id) {
-            <div class="row">
-              <span class="name">{{ name(item) }}</span>
-              <span class="row-actions">
-                <button
-                  class="btn"
-                  [title]="item.notify ? 'Couper les notifications' : 'Activer les notifications'"
-                  (click)="toggleNotify(item)"
-                >
-                  {{ item.notify ? '🔔 Notifs' : '🔕 Muet' }}
-                </button>
-                <button class="btn" (click)="unfollow(item)">Ne plus suivre</button>
-              </span>
-            </div>
-          }
-        </section>
-      }
-    }
-  `,
+  templateUrl: './follows.component.html',
+  styleUrl: './follows.component.css',
 })
 export class FollowsComponent implements OnInit {
   private readonly followApi = inject(FollowApi);

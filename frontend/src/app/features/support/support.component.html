@@ -1,0 +1,54 @@
+<div class="page">
+  <h1>Aide & demandes</h1>
+
+  <section class="card">
+    <h2>Nouvelle demande</h2>
+    <div class="field"><label class="muted">Type</label>
+      <select [(ngModel)]="type">
+        @for (t of userTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+      </select>
+    </div>
+    <div class="field" style="margin-top:0.5rem"><label class="muted">Objet</label>
+      <input class="input" [(ngModel)]="subject" maxlength="200" /></div>
+    <div class="field" style="margin-top:0.5rem"><label class="muted">Description</label>
+      <textarea class="input" [(ngModel)]="description"></textarea></div>
+    <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="submit()"
+      [disabled]="subject.trim().length < 3 || description.trim().length < 3">Envoyer</button>
+      @if (sentRef()) { <span class="muted"> Demande {{ sentRef() }} créée.</span> }</div>
+  </section>
+
+  <section class="card">
+    <h2>Mes demandes</h2>
+    @for (c of cases(); track c.id) {
+      <div class="case" (click)="openDetail(c)" style="margin-bottom:0.5rem">
+        <div class="row" style="justify-content:space-between">
+          <strong>{{ c.subject }}</strong>
+          <span class="badge">{{ statusLabel(c.status) }}</span>
+        </div>
+        <div class="muted">{{ c.reference }} · {{ c.createdAt | date: 'dd/MM/yyyy' }}</div>
+        @if (detail()?.id === c.id) {
+          <div class="log" (click)="$event.stopPropagation()">
+            <p class="muted" style="margin:0">{{ detail()!.description }}</p>
+            @for (e of detail()!.events; track e.id) {
+              <div class="entry"><strong>{{ e.kind }}</strong>
+                <span class="muted"> · {{ e.occurredAt | date: 'dd/MM HH:mm' }}</span>
+                @if (e.body) { <div>{{ e.body }}</div> }
+              </div>
+            } @empty { <span class="muted">Pas encore de réponse.</span> }
+
+            <div style="margin-top:0.5rem">
+              @if (isWaiting(detail()!)) {
+                <p style="margin:0 0 0.3rem">⏳ Une information est attendue de votre part — répondez ci-dessous.</p>
+              }
+              <textarea class="input" [(ngModel)]="replyBody" placeholder="Apporter un élément complémentaire…"></textarea>
+              <div class="row" style="margin-top:0.3rem">
+                <button class="btn btn-sm btn-primary" (click)="reply(c)" [disabled]="!replyBody.trim()">Envoyer</button>
+              </div>
+              @if (replyMsg()) { <p class="muted" style="margin:0.3rem 0 0">{{ replyMsg() }}</p> }
+            </div>
+          </div>
+        }
+      </div>
+    } @empty { <p class="muted">Aucune demande pour le moment.</p> }
+  </section>
+</div>

@@ -1,0 +1,183 @@
+<h1>Supervision</h1>
+<p class="muted">Vision globale de l'état de la plateforme.</p>
+
+@if (overview) {
+  <div class="alerts">
+    @if (overview.pendingValidations > 0) {
+      <div class="alert warn">
+        <span>⚠ {{ overview.pendingValidations }} candidat(s) d'import en attente de validation.</span>
+        <a routerLink="/validation">Traiter</a>
+      </div>
+    }
+    @if (overview.failedImports > 0) {
+      <div class="alert warn">
+        <span>⚠ {{ overview.failedImports }} import(s) en échec.</span>
+        <a routerLink="/admin/jobs">Voir les imports</a>
+      </div>
+    }
+    @if (overview.pendingValidations === 0 && overview.failedImports === 0) {
+      <div class="alert ok"><span>✓ Aucune alerte : le pipeline est sain.</span></div>
+    }
+  </div>
+
+  <div class="tiles">
+    <div class="card tile">
+      <div class="value">{{ overview.totalUsers }}</div>
+      <div class="caption">Utilisateurs ({{ overview.activeUsers }} actifs · {{ overview.suspendedUsers }} suspendus)</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ overview.organizations }}</div>
+      <div class="caption">Organisations</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ overview.totalEvents }}</div>
+      <div class="caption">Événements</div>
+    </div>
+    @for (row of eventRows; track row.label) {
+      <div class="card tile">
+        <div class="value">{{ row.value }}</div>
+        <div class="caption">{{ row.label }}</div>
+      </div>
+    }
+  </div>
+}
+
+<h2 class="section-title">Pipeline d'import</h2>
+<p class="muted">Volumes, passages entre états et durées.</p>
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else if (!stats) {
+  <p class="muted">Statistiques indisponibles.</p>
+} @else {
+  <div class="tiles">
+    <div class="card tile">
+      <div class="value">{{ stats.totalImports }}</div>
+      <div class="caption">Imports</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ stats.totalCandidates }}</div>
+      <div class="caption">Candidats</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ stats.totalEvents }}</div>
+      <div class="caption">Événements</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ formatMs(stats.durations.avgOcrProcessingMs) }}</div>
+      <div class="caption">Durée OCR moyenne</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ formatMs(stats.durations.avgTotalMs) }}</div>
+      <div class="caption">Durée totale moyenne ({{ stats.durations.sampleCount }})</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Imports par état</h3>
+      @for (row of importRows; track row.label) {
+        <div class="bar-row">
+          <span>{{ row.label }}</span>
+          <span class="track"><span class="fill" [style.width.%]="pct(row.value, importMax)"></span></span>
+          <span class="count">{{ row.value }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card">
+      <h3>Passages entre états <span class="muted">(cumul)</span></h3>
+      @for (row of transitionRows; track row.label) {
+        <div class="bar-row">
+          <span>{{ row.label }}</span>
+          <span class="track"><span class="fill" [style.width.%]="pct(row.value, transitionMax)"></span></span>
+          <span class="count">{{ row.value }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card">
+      <h3>Candidats par état</h3>
+      @for (row of candidateRows; track row.label) {
+        <div class="bar-row">
+          <span>{{ row.label }}</span>
+          <span class="track"><span class="fill" [style.width.%]="pct(row.value, candidateMax)"></span></span>
+          <span class="count">{{ row.value }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card">
+      <h3>Événements par provenance</h3>
+      @for (row of sourceRows; track row.label) {
+        <div class="bar-row">
+          <span>{{ row.label }}</span>
+          <span class="track"><span class="fill" [style.width.%]="pct(row.value, sourceMax)"></span></span>
+          <span class="count">{{ row.value }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<div class="refresh">
+  <h2>Appels IA <span class="muted">(observabilité)</span></h2>
+  <button class="btn" (click)="loadAiStats()">Rafraîchir</button>
+</div>
+<p class="muted">Métadonnées uniquement (volumes, durées, échecs). Aucun contenu ni clé (RG-AI-04).</p>
+
+@if (aiStats; as s) {
+  <div class="tiles">
+    <div class="card tile">
+      <div class="value">{{ s.total }}</div>
+      <div class="caption">Appels tracés</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ s.failures }}</div>
+      <div class="caption">Échecs</div>
+    </div>
+    <div class="card tile">
+      <div class="value">{{ (s.failureRate * 100).toFixed(1) }}%</div>
+      <div class="caption">Taux d'échec</div>
+    </div>
+  </div>
+  @if (s.total > 0) {
+    <div class="grid">
+      <div class="card">
+        <h3>Par fournisseur</h3>
+        <table class="stats">
+          <thead><tr><th>Fournisseur</th><th class="num">Appels</th><th class="num">Échecs</th><th class="num">Durée moy.</th></tr></thead>
+          <tbody>
+            @for (p of s.byProvider; track p.provider) {
+              <tr>
+                <td>{{ p.provider }}</td>
+                <td class="num">{{ p.total }}</td>
+                <td class="num" [class.fail]="p.failures > 0">{{ p.failures }}</td>
+                <td class="num">{{ p.avgDurationMs }} ms</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Par cas d'usage</h3>
+        <table class="stats">
+          <thead><tr><th>Cas d'usage</th><th class="num">Appels</th><th class="num">Échecs</th></tr></thead>
+          <tbody>
+            @for (u of s.byUseCase; track u.useCase) {
+              <tr>
+                <td>{{ u.useCase }}</td>
+                <td class="num">{{ u.total }}</td>
+                <td class="num" [class.fail]="u.failures > 0">{{ u.failures }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  } @else {
+    <p class="muted" style="font-size:0.82rem">Aucun appel IA tracé pour l'instant.</p>
+  }
+} @else {
+  <p class="muted" style="font-size:0.82rem">Chargement…</p>
+}

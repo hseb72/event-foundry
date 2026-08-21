@@ -1,0 +1,25 @@
+<div
+  class="dz"
+  [class.over]="over()"
+  role="button"
+  tabindex="0"
+  [attr.aria-label]="'Déposer, parcourir ou coller un fichier. ' + hint"
+  (click)="picker.click()"
+  (keydown.enter)="picker.click()"
+  (keydown.space)="$event.preventDefault(); picker.click()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+  (paste)="onPaste($event)"
+>
+  <input #picker type="file" [accept]="accept" hidden (change)="onInput($event)" />
+  <p class="dz-lead">
+    <strong>Glissez-déposez</strong> un fichier, <span class="dz-link">cliquez pour parcourir</span>,
+    ou collez-le (Ctrl/Cmd+V)
+  </p>
+  @if (fileName()) {
+    <p class="dz-file">📎 {{ fileName() }}</p>
+  } @else if (hint) {
+    <p class="muted dz-hint">{{ hint }}</p>
+  }
+</div>

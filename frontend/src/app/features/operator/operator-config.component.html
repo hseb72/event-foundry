@@ -1,0 +1,145 @@
+<h1>Configuration</h1>
+<p class="muted">Paramètres de la plateforme : mail et intelligence artificielle.</p>
+
+<div class="grid">
+  <app-expandable-card cardTitle="Informations générales">
+    <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">Identité publique de la plateforme.</p>
+    <div class="two">
+      <div class="field"><label class="muted">Nom de la plateforme</label><input class="input" [(ngModel)]="general.platformName" /></div>
+      <div class="field"><label class="muted">E-mail de contact</label><input class="input" [(ngModel)]="general.contactEmail" /></div>
+      <div class="field"><label class="muted">E-mail support</label><input class="input" [(ngModel)]="general.supportEmail" /></div>
+      <div class="field"><label class="muted">E-mail recrutement</label><input class="input" [(ngModel)]="general.recruitmentEmail" placeholder="(facultatif)" /></div>
+    </div>
+    <div class="field" style="margin-top:0.6rem"><label class="muted">Informations publiques</label>
+      <input class="input" [(ngModel)]="general.publicInfo" placeholder="Données institutionnelles (facultatif)" /></div>
+    <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="saveGeneral()">Enregistrer</button>
+      @if (generalSaved()) { <span class="status">Enregistré</span> }</div>
+  </app-expandable-card>
+
+  <app-expandable-card cardTitle="Configuration mail (SMTP)">
+    <div class="two">
+      <div class="field"><label class="muted">Hôte</label><input class="input" [(ngModel)]="mail.host" placeholder="smtp.example.com" /></div>
+      <div class="field"><label class="muted">Port</label><input class="input" type="number" [(ngModel)]="mail.port" /></div>
+    </div>
+    <label class="switch"><input type="checkbox" [(ngModel)]="mail.secure" /> Connexion sécurisée (TLS)</label>
+    <div class="field" style="margin-top:0.6rem"><label class="muted">Expéditeur</label><input class="input" [(ngModel)]="mail.from" placeholder="no-reply@eventfoundry.app" /></div>
+    <div class="two">
+      <div class="field"><label class="muted">Identifiant</label><input class="input" [(ngModel)]="mail.username" /></div>
+      <div class="field"><label class="muted">Mot de passe</label>
+        <input class="input" type="password" [(ngModel)]="mailPassword"
+               [placeholder]="mail.passwordMasked ? 'Enregistré (' + mail.passwordMasked + ') — vide = inchangé' : 'Mot de passe SMTP'" />
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" (click)="saveMail()">Enregistrer</button>
+      <button class="btn" (click)="testMail()" [disabled]="!mail.passwordMasked">Tester l'envoi</button>
+      @if (mailStatus()) { <span class="status">{{ statusLabel(mailStatus()) }}</span> }
+    </div>
+  </app-expandable-card>
+
+  <app-expandable-card cardTitle="IA plateforme">
+    <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">
+      IA par défaut (repli quand aucune IA d'organisation/utilisateur). Décocher « Activer » coupe
+      l'IA plateforme (repli déterministe).
+    </p>
+    <label class="switch"><input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA plateforme</label>
+    <div class="two" style="margin-top:0.6rem">
+      <div class="field"><label class="muted">Fournisseur</label>
+        <select class="select" [(ngModel)]="ai.provider">
+          <option value="">Fournisseur…</option>
+          @for (p of providers; track p.id) {
+            <option [value]="p.id">{{ p.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="field"><label class="muted">Modèle</label>
+        <input class="input" [(ngModel)]="ai.model" list="ope-ai-models" placeholder="Modèle (vision)" />
+        <datalist id="ope-ai-models">
+          @for (m of modelsFor(ai.provider); track m) {
+            <option [value]="m"></option>
+          }
+        </datalist>
+      </div>
+    </div>
+    <div class="field"><label class="muted">Clé API</label>
+      <input class="input" type="password" [(ngModel)]="aiKey"
+             [placeholder]="ai.secretMasked ? 'Enregistrée (' + ai.secretMasked + ') — vide = inchangée' : 'Clé API'" />
+      @if (providerInfo(ai.provider); as pi) {
+        <span class="muted" style="font-size:0.76rem">
+          @if (pi.requiresKey) {
+            Clé {{ pi.keyHint }}
+            @if (pi.keyUrl) { · <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a> }
+          } @else { {{ pi.keyHint }} }
+        </span>
+      }
+    </div>
+    <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Cas d'usage</div>
+    <div class="chips">
+      @for (uc of useCases; track uc) {
+        <button type="button" class="uc" [class.on]="ai.useCases[uc]" (click)="toggleUseCase(uc)">{{ uc }}</button>
+      }
+    </div>
+    <div class="row">
+      <button class="btn btn-primary" (click)="saveAi()">Enregistrer</button>
+      <button class="btn" (click)="testAi()" [disabled]="!ai.secretMasked">Tester</button>
+      @if (aiStatus()) { <span class="status">{{ statusLabel(aiStatus()) }}</span> }
+    </div>
+  </app-expandable-card>
+
+  <app-expandable-card cardTitle="Limites techniques">
+    <p class="muted" style="font-size:0.78rem;margin:0 0 0.8rem">
+      Bornes appliquées à l'acquisition. La taille d'upload ne peut dépasser le plafond dur
+      ({{ techHardMax() }} Mo).
+    </p>
+    <div class="field">
+      <label class="muted">Taille maximale d'un document (Mo)</label>
+      <input class="input" type="number" min="1" [max]="techHardMax()" [(ngModel)]="techMaxUploadMb" />
+    </div>
+    <div class="field">
+      <label class="muted">Plafond quotidien d'imports (0 = illimité)</label>
+      <input class="input" type="number" min="0" [(ngModel)]="techMaxImportsPerDay" />
+    </div>
+
+    <hr style="border:0;border-top:1px solid var(--border);margin:0.8rem 0" />
+    <label class="switch"><input type="checkbox" [(ngModel)]="techAutoProvision" /> Auto-création des référentiels manquants</label>
+    <p class="muted" style="font-size:0.76rem;margin:0.35rem 0 0.6rem">
+      À l'import, un libellé inconnu (activité, type, lieu…) crée automatiquement le référentiel en
+      état <em>provisoire</em>, à curer ensuite. Décoché : les libellés inconnus sont proposés à la
+      création en validation (ADR.24).
+    </p>
+    @if (techAutoProvision) {
+      <div class="field">
+        <label class="muted">Domaine par défaut (pour les activités auto-créées)</label>
+        <select class="select" [(ngModel)]="techDefaultDomainId">
+          <option value="">— aucun (les activités inconnues ne seront pas auto-créées) —</option>
+          @for (d of domains; track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+        </select>
+      </div>
+    }
+    <div class="row">
+      <button class="btn btn-primary" (click)="saveTechnical()">Enregistrer</button>
+      @if (techStatus()) { <span class="status">{{ techStatus() }}</span> }
+    </div>
+  </app-expandable-card>
+
+  @if (notifSettings) {
+    <app-expandable-card cardTitle="Notifications">
+      <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">
+        Active/désactive globalement les vecteurs et les pistes de fréquence. Le canal interne
+        (in-app) reste toujours actif (historique). Le plus restrictif l'emporte : un vecteur
+        désactivé ici n'est jamais proposé aux utilisateurs.
+      </p>
+      <div class="muted" style="font-size:0.76rem;margin-bottom:0.3rem">Vecteurs sortants</div>
+      <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.vectors.email" /> E-mail</label>
+      <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.vectors.push" /> Push</label>
+      <div class="muted" style="font-size:0.76rem;margin:0.7rem 0 0.3rem">Pistes de fréquence</div>
+      <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.immediate" /> Immédiate</label>
+      <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.daily" /> Récap quotidien</label>
+      <label class="switch"><input type="checkbox" [(ngModel)]="notifSettings.frequencies.weekly" /> Récap hebdomadaire</label>
+      <div class="row">
+        <button class="btn btn-primary" (click)="saveNotifSettings()">Enregistrer</button>
+        @if (notifStatus()) { <span class="status">{{ notifStatus() }}</span> }
+      </div>
+    </app-expandable-card>
+  }
+</div>

@@ -6,8 +6,6 @@ import { ToastHostComponent } from './shared/toast-host.component';
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet, ToastHostComponent],
-  // La pile de toasts est montée une seule fois, hors du routeur : un message survit ainsi à la
-  // navigation déclenchée par l'action qui l'a produit (création suivie d'une redirection).
-  template: '<router-outlet /><app-toast-host />',
+  templateUrl: './app.component.html',
 })
 export class AppComponent {}

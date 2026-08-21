@@ -1,0 +1,148 @@
+.hero {
+  background: linear-gradient(135deg, #2a1b3d 0%, #3d2560 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  margin-bottom: 1.75rem;
+}
+.hero h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.7rem;
+}
+.hero p {
+  margin: 0 0 1.1rem;
+  color: #d9d5e6;
+}
+.search {
+  display: flex;
+  gap: 0.6rem;
+  max-width: 620px;
+}
+.search input {
+  flex: 1 1 auto;
+  font-size: 1.05rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  border: 0;
+}
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.quick a {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.quick a:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+section {
+  margin-bottom: 2rem;
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.section-head a {
+  color: var(--exp);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.grid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.bucket {
+  margin-bottom: 1.1rem;
+}
+.bucket-title {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 0.55rem;
+}
+.planning-list {
+  display: grid;
+  gap: 0.5rem;
+}
+.planning-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  border-left: 5px solid var(--stripe, var(--exp));
+}
+.planning-row .title {
+  font-weight: 600;
+}
+.planning-row .date {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.planning-row .conflict {
+  margin-left: auto;
+  color: #e08600;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.empty {
+  color: var(--muted);
+  padding: 0.5rem 0 1rem;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter.on {
+  border-color: var(--exp);
+  background: var(--exp-weak, var(--surface-2));
+}
+.filter .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.pill {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.pill .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}

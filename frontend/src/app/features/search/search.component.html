@@ -1,0 +1,94 @@
+<h1>Rechercher</h1>
+<p class="muted">Recherche plein texte sur les événements publiés, classée par pertinence.</p>
+
+<div class="searchbar">
+  <input
+    class="input"
+    placeholder="Titre, activité, organisateur, lieu…"
+    [(ngModel)]="q"
+    (keyup.enter)="runSearch()"
+  />
+  <select class="select" [(ngModel)]="sort" (change)="runSearch()">
+    <option value="relevance">Pertinence</option>
+    <option value="upcoming">À venir</option>
+    <option value="newest">Nouveautés</option>
+    <option value="title">A → Z</option>
+  </select>
+  <button class="btn btn-primary" (click)="runSearch()">Rechercher</button>
+</div>
+
+@if (facets) {
+  @if (hasAnyFacet()) {
+    <div class="facets">
+      @if (facets.activities.length) {
+        <div class="facet-group">
+          <h3>Activités</h3>
+          <div class="chips">
+            @for (f of facets.activities; track f.id) {
+              <button class="chip" [class.on]="activityId === f.id" (click)="toggle('activityId', f.id)">
+                {{ f.name }}<span class="n">{{ f.count }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (facets.subjects.length) {
+        <div class="facet-group">
+          <h3>Sujets</h3>
+          <div class="chips">
+            @for (f of facets.subjects; track f.id) {
+              <button class="chip" [class.on]="subjectId === f.id" (click)="toggle('subjectId', f.id)">
+                {{ f.name }}<span class="n">{{ f.count }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (facets.municipalities.length) {
+        <div class="facet-group">
+          <h3>Communes</h3>
+          <div class="chips">
+            @for (f of facets.municipalities; track f.id) {
+              <button class="chip" [class.on]="municipalityId === f.id" (click)="toggle('municipalityId', f.id)">
+                {{ f.name }}<span class="n">{{ f.count }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+      @if (facets.tags.length) {
+        <div class="facet-group">
+          <h3>Tags</h3>
+          <div class="chips">
+            @for (f of facets.tags; track f.id) {
+              <button class="chip" [class.on]="tagId === f.id" (click)="toggle('tagId', f.id)">
+                {{ f.name }}<span class="n">{{ f.count }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+}
+
+@if (!loading) {
+  <p class="summary">
+    {{ total }} résultat{{ total > 1 ? 's' : '' }}
+    @if (hasFilters()) {
+      · <button class="reset" (click)="reset()">Réinitialiser les filtres</button>
+    }
+  </p>
+}
+
+@if (loading) {
+  <p class="muted">Recherche…</p>
+} @else if (results.length === 0) {
+  <p class="empty">Aucun événement ne correspond à cette recherche.</p>
+} @else {
+  <div class="results">
+    @for (event of results; track event.id) {
+      <app-event-card [event]="event" />
+    }
+  </div>
+}

@@ -1,0 +1,37 @@
+.inactive td {
+  opacity: 0.5;
+}
+.roles {
+  display: flex;
+  gap: 0.8rem;
+}
+.roles label {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+.me {
+  font-size: 0.72rem;
+  color: var(--exp);
+  font-weight: 700;
+}
+.pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+.pill.on {
+  background: rgba(22, 163, 74, 0.14);
+  color: #157f3b;
+}
+.pill.off {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--muted);
+}
+.error {
+  color: var(--red);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}

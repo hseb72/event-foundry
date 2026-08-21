@@ -1,0 +1,46 @@
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1rem 0 1.5rem;
+}
+.filters > * {
+  flex: 1 1 160px;
+}
+.results {
+  display: grid;
+  gap: 0.9rem;
+}
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+}
+.facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+.facet-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.facet {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.facet.on {
+  background: var(--exp);
+  border-color: var(--exp);
+  color: #fff;
+}
+.facet .n {
+  opacity: 0.6;
+  font-weight: 700;
+  margin-left: 0.25rem;
+}

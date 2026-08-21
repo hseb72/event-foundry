@@ -1,0 +1,36 @@
+<div class="head">
+  <div>
+    <h1>Pour vous</h1>
+    <p class="muted" style="margin:0">Des suggestions déterministes et expliquées, jamais imposées.</p>
+  </div>
+  <div class="toggle" role="tablist" aria-label="Mode de recommandation">
+    <button [class.on]="!surprise" (click)="setSurprise(false)">Mes affinités</button>
+    <button [class.on]="surprise" (click)="setSurprise(true)">🎲 Surprends-moi</button>
+  </div>
+</div>
+
+@if (loading) {
+  <p class="muted">Calcul des recommandations…</p>
+} @else if (recommendations.length === 0) {
+  <p class="empty">
+    Aucune recommandation pour l'instant. Ajoutez des événements à votre planning pour
+    affiner vos suggestions, ou activez « Surprends-moi ».
+  </p>
+} @else {
+  @for (reco of recommendations; track reco.event.id) {
+    <div class="reco">
+      <app-event-card [event]="reco.event" />
+      <div class="reasons">
+        <span class="score">Pertinence {{ reco.score }}</span>
+        @for (reason of reco.reasons; track reason) {
+          <span class="reason">{{ reason }}</span>
+        }
+      </div>
+      <div class="actions">
+        <button class="btn btn-sm btn-primary" (click)="act(reco, 'ACCEPTED')">Ça m'intéresse</button>
+        <button class="btn btn-sm" (click)="act(reco, 'IGNORED')">Plus tard</button>
+        <button class="btn btn-sm" (click)="act(reco, 'REJECTED')">Non merci</button>
+      </div>
+    </div>
+  }
+}

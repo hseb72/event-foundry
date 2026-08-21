@@ -1,0 +1,57 @@
+<h1>Administration des référentiels</h1>
+<p class="muted">
+  Gérez les domaines, activités, types, formats, organisateurs, lieux, la géographie
+  (pays / régions / communes), les catégories et les tags.
+</p>
+
+<div class="card geo">
+  <h2>Référentiel géographique (GeoNames)</h2>
+  <p class="muted" style="font-size:0.82rem;margin:0">
+    Les communes sont un référentiel <strong>local</strong> alimenté depuis GeoNames : le service
+    n'est jamais impacté par une indisponibilité de GeoNames. L'ingestion est un traitement de fond ;
+    ré-exécutable, elle n'ajoute que les nouveautés et conserve l'existant.
+  </p>
+
+  <div class="geo-row">
+    <label class="muted" style="font-size:0.82rem">Pays (code ISO)</label>
+    <input class="input" [(ngModel)]="country" maxlength="2" placeholder="FR" />
+    <button class="btn btn-primary" [disabled]="running() || country.trim().length !== 2" (click)="startImport()">
+      {{ running() ? 'Ingestion en cours…' : 'Importer depuis GeoNames' }}
+    </button>
+    <button class="btn" (click)="refresh()" [disabled]="running()">Rafraîchir</button>
+  </div>
+
+  @if (status(); as s) {
+    <p class="muted" style="font-size:0.82rem;margin:0.2rem 0">
+      Référentiel local :
+      <span class="counts">{{ s.counts.countries }}</span> pays ·
+      <span class="counts">{{ s.counts.regions }}</span> régions ·
+      <span class="counts">{{ s.counts.municipalities }}</span> communes.
+    </p>
+    @if (s.running) {
+      <p style="font-size:0.82rem;margin:0.2rem 0">⏳ Ingestion de {{ s.country }} en cours…</p>
+    } @else if (s.error) {
+      <p class="err" style="font-size:0.82rem;margin:0.2rem 0">
+        ✗ Dernière ingestion ({{ s.country }}) en échec : {{ s.error }}
+        <span class="muted">— le référentiel existant est conservé.</span>
+      </p>
+    } @else if (s.finishedAt) {
+      <p style="font-size:0.82rem;margin:0.2rem 0">
+        ✓ Dernière ingestion {{ s.country }} : {{ s.regionsUpserted }} régions,
+        {{ s.municipalitiesInserted }} communes ajoutées ({{ s.municipalitiesRead }} lues).
+      </p>
+    }
+  }
+</div>
+
+<div class="tabs">
+  @for (e of entities; track e.segment) {
+    <button class="tab" [class.active]="selected.segment === e.segment" (click)="select(e)">
+      {{ e.label }}
+    </button>
+  }
+</div>
+
+<div class="card">
+  <app-reference-crud [entity]="selected" />
+</div>

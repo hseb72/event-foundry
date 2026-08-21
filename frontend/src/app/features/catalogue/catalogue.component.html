@@ -1,0 +1,69 @@
+<h1>Découvrir</h1>
+<p class="muted">Trouvez les événements autour de vos activités.</p>
+
+<div class="filters">
+  <input class="input" placeholder="Rechercher…" [(ngModel)]="q" (keyup.enter)="search()" />
+  <select class="select" [(ngModel)]="activityId">
+    <option value="">Toutes les activités</option>
+    @for (activity of activities; track activity.id) {
+      <option [value]="activity.id">{{ activity.name }}</option>
+    }
+  </select>
+  <select class="select" [(ngModel)]="subjectId">
+    <option value="">Tous les sujets</option>
+    @for (subject of subjects; track subject.id) {
+      <option [value]="subject.id">{{ subject.name }}</option>
+    }
+  </select>
+  <select class="select" [(ngModel)]="tagId">
+    <option value="">Tous les tags</option>
+    @for (tag of tags; track tag.id) {
+      <option [value]="tag.id">{{ tag.name }}</option>
+    }
+  </select>
+  <select class="select" [(ngModel)]="period">
+    <option value="">Toutes les dates</option>
+    <option value="today">Aujourd'hui</option>
+    <option value="this-week">Cette semaine</option>
+    <option value="this-month">Ce mois</option>
+    <option value="next-7-days">7 prochains jours</option>
+    <option value="next-30-days">30 prochains jours</option>
+  </select>
+  <select class="select" [(ngModel)]="participation">
+    <option value="">Tous les événements</option>
+    <option value="mine">Mes événements</option>
+    <option value="none">Sans participation</option>
+  </select>
+  <select class="select" [(ngModel)]="sort">
+    <option value="">À venir</option>
+    <option value="newest">Nouveautés</option>
+    <option value="title">A → Z</option>
+  </select>
+  <button class="btn btn-primary" (click)="search()">Rechercher</button>
+  <button class="btn" (click)="surprise()">🎲 Surprends-moi</button>
+</div>
+
+@if (subjectFacets.length) {
+  <div class="facets">
+    @for (facet of subjectFacets; track facet.id) {
+      <div class="facet-wrap">
+        <button class="facet" [class.on]="subjectId === facet.id" (click)="pickSubject(facet.id)">
+          {{ facet.name }}<span class="n">{{ facet.count }}</span>
+        </button>
+        <app-follow-button targetType="SUBJECT" [targetId]="facet.id" />
+      </div>
+    }
+  </div>
+}
+
+@if (loading) {
+  <p class="muted">Chargement…</p>
+} @else if (events.length === 0) {
+  <p class="empty">Aucun événement pour ces critères.</p>
+} @else {
+  <div class="results">
+    @for (event of events; track event.id) {
+      <app-event-card [event]="event" />
+    }
+  </div>
+}

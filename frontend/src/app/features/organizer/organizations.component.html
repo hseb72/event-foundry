@@ -1,0 +1,275 @@
+<div class="page">
+  <h1>Mes organisations</h1>
+  <p class="muted">Créez une organisation pour publier en équipe, ou gérez vos collaborateurs.</p>
+
+  <section class="card">
+    <h2>Créer une organisation</h2>
+    <div class="row">
+      <input class="input" [(ngModel)]="newName" placeholder="Nom de l'organisation" />
+      <button class="btn btn-primary" (click)="create()" [disabled]="newName.trim().length < 2 || busy()">
+        Créer
+      </button>
+    </div>
+    <p class="muted" style="margin:0.4rem 0 0">Vous en deviendrez automatiquement le Owner.</p>
+  </section>
+
+  @for (org of orgs(); track org.id) {
+    <section class="card grid">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong>{{ org.name }}</strong>
+          @for (fn of org.functions; track fn) { <span class="fn">{{ fnLabel(fn) }}</span> }
+        </div>
+        <div class="row">
+          <button class="btn btn-sm" (click)="toggleConfig(org)">
+            {{ configOrg() === org.id ? 'Masquer' : 'Configuration' }}
+          </button>
+          @if (canManage(org)) {
+            <button class="btn btn-sm" (click)="toggleMembers(org.id)">
+              {{ expanded() === org.id ? 'Masquer' : 'Collaborateurs' }}
+            </button>
+          }
+          <button class="btn btn-sm danger" (click)="leave(org)">Quitter</button>
+        </div>
+      </div>
+
+      @if (configOrg() === org.id && info(); as gi) {
+        <div class="grid" style="border-top:1px solid var(--border);padding-top:0.8rem">
+          <h3 style="font-size:0.85rem;margin:0">Informations générales</h3>
+          <div class="row"><label class="muted" style="width:120px">Nom</label>
+            <input class="input" [(ngModel)]="gi.name" [disabled]="!canManage(org)" /></div>
+          <div class="row"><label class="muted" style="width:120px">E-mail contact</label>
+            <input class="input" [(ngModel)]="gi.contactEmail" [disabled]="!canManage(org)" placeholder="contact@..." /></div>
+          <div class="row"><label class="muted" style="width:120px">Site / réseau</label>
+            <input class="input" [(ngModel)]="gi.website" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+          <div class="row"><label class="muted" style="width:120px">Logo (URL)</label>
+            <input class="input" [(ngModel)]="gi.logoUrl" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+          <div class="row"><label class="muted" style="width:120px">Description</label>
+            <input class="input" [(ngModel)]="gi.description" [disabled]="!canManage(org)" /></div>
+          <p class="muted" style="margin:0">Abonnement : {{ gi.subscriptionPlan?.name ?? 'Free' }}</p>
+          @if (canManage(org)) {
+            <div><button class="btn btn-sm" (click)="saveGeneral(org, gi)">Enregistrer les informations</button></div>
+          }
+
+          <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Activités couvertes</h3>
+          <div class="row">
+            @for (a of activities(); track a.id) {
+              <button type="button" class="activity" [class.on]="selected().has(a.id)"
+                [disabled]="!canManage(org)" (click)="toggleActivity(a.id)">{{ a.name }}</button>
+            }
+          </div>
+          @if (canManage(org)) {
+            <div><button class="btn btn-sm" (click)="saveActivities(org)">Enregistrer les activités</button></div>
+          }
+
+          <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Fiche organisateur représentée</h3>
+          <p class="muted" style="margin:0">
+            Déclarez la fiche organisateur du référentiel que représente votre organisation : les
+            utilisateurs qui enregistrent un événement privé vous mentionnant pourront vous en informer (FSPEC.22 §16).
+          </p>
+          <div class="row">
+            <select class="input" [ngModel]="gi.organizerId ?? ''" (ngModelChange)="linkOrganizer(org, $event)" [disabled]="!canManage(org)">
+              <option value="">— Aucune —</option>
+              @for (o of organizers(); track o.id) {
+                <option [value]="o.id">{{ o.name }}</option>
+              }
+            </select>
+          </div>
+
+          <h3 style="font-size:0.85rem;margin:0.6rem 0 0">Adresses de l'organisation</h3>
+          <p class="muted" style="margin:0">
+            Adresses de « {{ org.name }} ». Proposées comme localisation à la création d'un
+            événement. La région est dérivée de la commune.
+          </p>
+          @for (a of addresses(); track a.id) {
+            <div class="addr-item">
+              <div class="row" style="justify-content:space-between">
+                <strong>{{ a.label }}</strong>
+                @if (a.isPrimary) { <span class="fn">● principale</span> }
+              </div>
+              <div class="muted">
+                {{ a.streetLines }} · {{ a.postalCode }}
+                @if (a.municipalityName) { {{ a.municipalityName }} }
+                @if (a.regionName) { ({{ a.regionName }}) }
+                · {{ a.countryName }}
+              </div>
+              @if (canManage(org)) {
+                <div class="row" style="margin-top:0.4rem">
+                  @if (!a.isPrimary) {
+                    <button class="btn btn-sm" (click)="setPrimaryAddress(org.id, a.id)">Définir principale</button>
+                  }
+                  <button class="btn btn-sm danger" (click)="deleteAddress(org.id, a.id)">Supprimer</button>
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="muted" style="margin:0">Aucune adresse enregistrée.</p>
+          }
+          @if (canManage(org)) {
+            <div class="grid" style="gap:0.5rem">
+              <input class="input" [(ngModel)]="addr.label" placeholder="Libellé (ex. Boutique centre-ville)" />
+              <input class="input" [(ngModel)]="addr.streetLines" placeholder="Rue" />
+              <div class="row">
+                <select class="input" [(ngModel)]="addr.countryId" (ngModelChange)="onAddrCountryChange()">
+                  <option value="">Pays…</option>
+                  @for (c of countries; track c.id) {
+                    <option [value]="c.id">{{ c.name }}</option>
+                  }
+                </select>
+                <input class="input" [(ngModel)]="addr.postalCode" placeholder="Code postal"
+                       [disabled]="!addr.countryId" (keyup.enter)="resolveAddr()" />
+                <button type="button" class="btn btn-sm" [disabled]="!addr.countryId || !addr.postalCode.trim()"
+                        (click)="resolveAddr()">Résoudre</button>
+              </div>
+              @if (addrResolved.length) {
+                <select class="input" [(ngModel)]="addr.municipalityId">
+                  <option value="">Commune…</option>
+                  @for (mun of addrResolved; track mun.id) {
+                    <option [value]="mun.id">{{ mun.name }} ({{ mun.regionName }})</option>
+                  }
+                </select>
+              } @else if (addrPostalSearched) {
+                <p class="muted" style="margin:0">Aucune commune trouvée pour ce code postal.</p>
+              }
+              <label class="row" style="font-size:0.85rem">
+                <input type="checkbox" [(ngModel)]="addr.isPrimary" /> Adresse principale
+              </label>
+              <div>
+                <button class="btn btn-sm" [disabled]="!canSubmitAddr()" (click)="addAddress(org.id)">
+                  Ajouter l'adresse
+                </button>
+              </div>
+            </div>
+          }
+
+          <h3 style="font-size:0.85rem;margin:0.6rem 0 0">IA de l'organisation</h3>
+          <p class="muted" style="margin:0">
+            IA appliquée aux imports réalisés au nom de « {{ org.name }} ». Prioritaire sur l'IA
+            personnelle de chaque collaborateur. La clé est stockée comme un secret, jamais réaffichée.
+          </p>
+          <div class="grid" style="gap:0.5rem">
+            <label class="row" style="font-size:0.85rem">
+              <input type="checkbox" [(ngModel)]="orgAi.enabled" [disabled]="!canManage(org)" />
+              Activer l'IA de l'organisation
+            </label>
+            <div class="row">
+              <select class="input" [(ngModel)]="orgAi.provider" [disabled]="!canManage(org)">
+                <option value="">Fournisseur…</option>
+                @for (p of aiProviders; track p.id) {
+                  <option [value]="p.id">{{ p.label }}</option>
+                }
+              </select>
+              <select class="input" [(ngModel)]="orgAi.model" [disabled]="!orgAi.provider || !canManage(org)">
+                <option value="">Modèle…</option>
+                @for (mo of modelsFor(orgAi.provider); track mo) {
+                  <option [value]="mo">{{ mo }}</option>
+                }
+              </select>
+            </div>
+            @if (canManage(org)) {
+              <input class="input" type="password" [(ngModel)]="orgAi.apiKey"
+                     [placeholder]="orgAiSecretMasked() ? 'Clé enregistrée (' + orgAiSecretMasked() + ') — laisser vide pour conserver' : 'Clé API'" />
+              @if (providerInfo(orgAi.provider); as pi) {
+                <p class="muted" style="margin:0">
+                  @if (pi.requiresKey) {
+                    Clé {{ pi.keyHint }}
+                    @if (pi.keyUrl) {
+                      — <a [href]="pi.keyUrl" target="_blank" rel="noopener" style="color:var(--exp)">obtenir une clé ↗</a>
+                    }
+                  } @else {
+                    {{ pi.keyHint }}
+                  }
+                </p>
+              }
+            }
+            <div class="row">
+              @for (uc of aiUseCases; track uc) {
+                <button type="button" class="activity" [class.on]="orgAi.useCases[uc]"
+                        [disabled]="!canManage(org)" (click)="toggleOrgUseCase(uc)">{{ uc }}</button>
+              }
+            </div>
+            @if (canManage(org)) {
+              <div class="row">
+                <button class="btn btn-sm" (click)="saveOrgAi(org.id)">Enregistrer l'IA</button>
+                <button class="btn btn-sm" (click)="testOrgAi(org.id)" [disabled]="!orgAiSecretMasked()">Tester</button>
+                @if (orgAiStatus()) { <span class="muted">{{ aiStatusLabel(orgAiStatus()) }}</span> }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (expanded() === org.id) {
+        @if (members(); as list) {
+          <table class="members">
+            <thead>
+              <tr><th>Collaborateur</th><th>Fonction</th><th></th></tr>
+            </thead>
+            <tbody>
+              @for (m of list; track m.userId) {
+                <tr>
+                  <td>{{ m.displayName }}<br /><span class="muted">{{ m.email }}</span>
+                    @if (m.onboardingLevel < 1) {
+                      <span class="fn" style="background:rgba(234,179,8,0.25)">Onboarding {{ (m.onboardingLevel * 100) | number: '1.0-0' }}%</span>
+                    }
+                  </td>
+                  <td>
+                    <select
+                      [ngModel]="m.functions[0]"
+                      (ngModelChange)="changeFunction(org, m, $event)"
+                    >
+                      <option value="Owner">Owner</option>
+                      <option value="Administrator">Administrateur</option>
+                      <option value="Event Manager">Responsable d'événements</option>
+                    </select>
+                  </td>
+                  <td class="row">
+                    @if (isOwner(org) && !m.functions.includes('Owner')) {
+                      <button class="btn btn-sm" (click)="transfer(org, m)">Faire Owner</button>
+                    }
+                    <button class="btn btn-sm danger" (click)="remove(org, m)">Retirer</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        <h3 style="font-size:0.85rem;margin:1rem 0 0.4rem">Inviter un collaborateur</h3>
+        <div class="row">
+          <input class="input" [(ngModel)]="inviteEmail" placeholder="e-mail" type="email" />
+          <select [(ngModel)]="inviteFunction">
+            <option value="Event Manager">Responsable d'événements</option>
+            <option value="Administrator">Administrateur</option>
+            <option value="Owner">Owner</option>
+          </select>
+          <button class="btn btn-sm" (click)="invite(org)" [disabled]="!inviteEmail">Inviter</button>
+        </div>
+
+        @if (invitations(); as invs) {
+          @if (invs.length) {
+            <table class="members">
+              <thead><tr><th>Invitation en attente</th><th>Fonction</th><th></th></tr></thead>
+              <tbody>
+                @for (inv of invs; track inv.id) {
+                  <tr>
+                    <td>{{ inv.email }}</td>
+                    <td><span class="fn">{{ fnLabel(inv.function) }}</span></td>
+                    <td class="row">
+                      <button class="btn btn-sm" (click)="resend(org, inv)">Renvoyer</button>
+                      <button class="btn btn-sm danger" (click)="cancelInvite(org, inv)">Annuler</button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        }
+      }
+    </section>
+  } @empty {
+    <p class="muted">Vous n'appartenez à aucune organisation pour le moment.</p>
+  }
+
+  @if (message()) { <p style="margin-top:0.6rem">{{ message() }}</p> }
+</div>

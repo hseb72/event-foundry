@@ -16,40 +16,8 @@ export type IconName = 'edit' | 'duplicate' | 'archive' | 'restore';
 @Component({
   selector: 'app-icon',
   standalone: true,
-  styles: [
-    `
-      :host { display: inline-flex; line-height: 0; }
-      svg { width: 1em; height: 1em; display: block; }
-    `,
-  ],
-  template: `
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      @switch (name) {
-        @case ('edit') {
-          <!-- Crayon : corriger les attributs de l'événement existant. -->
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-        }
-        @case ('duplicate') {
-          <!-- Deux feuillets : créer un nouvel événement reprenant les attributs. -->
-          <rect x="9" y="9" width="13" height="13" rx="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        }
-        @case ('archive') {
-          <!-- Carton fermé : retirer de la circulation sans supprimer. -->
-          <rect x="2" y="3" width="20" height="5" rx="1" />
-          <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-          <path d="M10 12h4" />
-        }
-        @case ('restore') {
-          <!-- Flèche circulaire antihoraire : remettre en circulation. -->
-          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-          <path d="M3 3v5h5" />
-        }
-      }
-    </svg>
-  `,
+  templateUrl: './icon.component.html',
+  styleUrl: './icon.component.css',
 })
 export class IconComponent {
   @Input({ required: true }) name!: IconName;

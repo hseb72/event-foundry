@@ -1,0 +1,18 @@
+<div class="wrap">
+  <div class="card box">
+    <div class="brand">EventFoundry</div>
+    @switch (state()) {
+      @case ('pending') {
+        <p>Vérification de votre adresse e-mail…</p>
+      }
+      @case ('done') {
+        <p>✅ Adresse vérifiée. Votre compte est maintenant actif.</p>
+        <a class="btn btn-primary" routerLink="/login">Se connecter</a>
+      }
+      @case ('error') {
+        <p class="error">{{ error() }}</p>
+        <a class="btn" routerLink="/login">Retour à la connexion</a>
+      }
+    }
+  </div>
+</div>

@@ -1,0 +1,11 @@
+.intro { color: var(--muted); margin: 0 0 1rem; }
+.add { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+input, select {
+  border: 1px solid var(--border); border-radius: 8px; padding: 0.45rem 0.6rem;
+  font: inherit; background: var(--bg); color: var(--text);
+}
+.badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; }
+.badge.banned { color: var(--red); background: rgba(220, 38, 38, 0.14); }
+.badge.spam { color: #b45309; background: rgba(234, 179, 8, 0.15); }
+.off { opacity: 0.5; }
+.muted { color: var(--muted); }

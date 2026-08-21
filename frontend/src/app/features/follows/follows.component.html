@@ -1,0 +1,27 @@
+<h1>Mes suivis</h1>
+<p class="muted">Organisateurs, lieux, activités et catégories que vous suivez.</p>
+
+@if (groups().length === 0) {
+  <p class="empty">Vous ne suivez encore rien. Suivez une catégorie depuis « Découvrir ».</p>
+} @else {
+  @for (group of groups(); track group.type) {
+    <section class="group">
+      <h2>{{ group.label }}</h2>
+      @for (item of group.items; track item.id) {
+        <div class="row">
+          <span class="name">{{ name(item) }}</span>
+          <span class="row-actions">
+            <button
+              class="btn"
+              [title]="item.notify ? 'Couper les notifications' : 'Activer les notifications'"
+              (click)="toggleNotify(item)"
+            >
+              {{ item.notify ? '🔔 Notifs' : '🔕 Muet' }}
+            </button>
+            <button class="btn" (click)="unfollow(item)">Ne plus suivre</button>
+          </span>
+        </div>
+      }
+    </section>
+  }
+}

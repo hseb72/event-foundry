@@ -1,0 +1,110 @@
+<h1>Mon planning</h1>
+<p class="muted">Les événements auxquels vous participez — vues jour, semaine, mois.</p>
+
+<div class="toolbar">
+  <div class="views" role="tablist">
+    @for (v of viewOptions; track v.key) {
+      <button [class.on]="view() === v.key" (click)="view.set(v.key)">{{ v.label }}</button>
+    }
+  </div>
+  @if (view() !== 'list') {
+    <div class="nav">
+      <button class="btn" (click)="step(-1)" aria-label="Précédent">‹</button>
+      <button class="btn" (click)="goToday()">Aujourd'hui</button>
+      <button class="btn" (click)="step(1)" aria-label="Suivant">›</button>
+      <span class="period">{{ periodLabel() }}</span>
+    </div>
+  }
+</div>
+
+<!-- Légende + filtre par statut de participation (palette V1, FSPEC.06). -->
+<div class="legend">
+  @for (item of palette; track item.kind) {
+    <button
+      type="button"
+      class="lg"
+      [class.on]="filterKind() === item.kind"
+      [class.dim]="filterKind() && filterKind() !== item.kind"
+      (click)="toggleFilter(item.kind)"
+    >
+      <span class="sw" [style.background]="item.color"></span>{{ item.label }}
+      <span class="cnt">{{ countOf(item.kind) }}</span>
+    </button>
+  }
+  @if (filterKind()) {
+    <button type="button" class="lg clear" (click)="filterKind.set(null)">✕ Tout afficher</button>
+  }
+</div>
+
+@if (conflictCount() > 0) {
+  <div class="banner">⚠️ {{ conflictCount() }} conflit(s) d'horaire dans votre planning.</div>
+}
+
+@if (loading()) {
+  <p class="muted">Chargement…</p>
+} @else if (view() === 'list') {
+  @if (!entries().length) {
+    <p class="empty">Aucun événement dans votre planning. Déclarez votre intérêt depuis « Découvrir ».</p>
+  } @else {
+    @if (!filteredEntries().length) {
+      <p class="empty">Aucun événement pour ce filtre.</p>
+    }
+    <div class="results">
+      @for (entry of filteredEntries(); track entry.event.id) {
+        <app-event-card [event]="entry.event" />
+      }
+    </div>
+  }
+} @else if (view() === 'day') {
+  @if (!eventsOn(anchor()).length) {
+    <p class="empty">Aucun événement ce jour-là.</p>
+  } @else {
+    <div class="day-list">
+      @for (event of eventsOn(anchor()); track event.id) {
+        <div class="slot" [style.--stripe]="stripe(event)">
+          <span class="time">{{ time(event.startsAt) }}</span>
+          <a class="slot-main" [routerLink]="['/events', event.id]">
+            <span class="t">{{ event.title }}</span>
+            @if (hasConflict(event)) {
+              <span class="warn" title="Conflit d'horaire">⚠</span>
+            }
+            <span class="m"> · {{ event.activity }}</span>
+          </a>
+          <button class="remove" title="Retirer de mon planning" (click)="removeFromPlanning(event)">✕</button>
+        </div>
+      }
+    </div>
+  }
+} @else if (view() === 'week') {
+  <div class="week">
+    @for (day of weekDays(); track day.getTime()) {
+      <div class="col" [class.today]="isToday(day)">
+        <h4>{{ dayHeader(day) }}</h4>
+        @for (event of eventsOn(day); track event.id) {
+          <a class="chip" [class.conflict]="hasConflict(event)" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
+            <span class="ct">@if (hasConflict(event)) {⚠ }{{ time(event.startsAt) }} {{ event.title }}</span>
+          </a>
+        }
+      </div>
+    }
+  </div>
+} @else {
+  <div class="month">
+    @for (d of weekdayLabels; track d) {
+      <div class="dow">{{ d }}</div>
+    }
+    @for (day of monthDays(); track day.getTime()) {
+      <div class="cell" [class.out]="!inMonth(day)" [class.today]="isToday(day)">
+        <div class="num">{{ day.getDate() }}</div>
+        @for (event of eventsOn(day).slice(0, 3); track event.id) {
+          <a class="dot" [class.conflict]="hasConflict(event)" [style.--stripe]="stripe(event)" [routerLink]="['/events', event.id]">
+            @if (hasConflict(event)) {⚠ }{{ event.title }}
+          </a>
+        }
+        @if (eventsOn(day).length > 3) {
+          <div class="more">+{{ eventsOn(day).length - 3 }}</div>
+        }
+      </div>
+    }
+  </div>
+}

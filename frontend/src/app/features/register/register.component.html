@@ -1,0 +1,28 @@
+<div class="wrap">
+  <form class="card box" (ngSubmit)="submit()">
+    <div class="brand"><app-logo [size]="34" /></div>
+    <p class="title">Créer un compte</p>
+    <label for="displayName">Nom affiché</label>
+    <input id="displayName" class="input" name="displayName" [(ngModel)]="displayName" required />
+    <label for="email">E-mail</label>
+    <input id="email" class="input" type="email" name="email" [(ngModel)]="email" required />
+    <label for="password">Mot de passe</label>
+    <input
+      id="password"
+      class="input"
+      type="password"
+      name="password"
+      [(ngModel)]="password"
+      minlength="8"
+      autocomplete="new-password"
+      required
+    />
+    @if (error()) {
+      <div class="error">{{ error() }}</div>
+    }
+    <button class="btn btn-brand" type="submit" [disabled]="loading()">
+      {{ loading() ? 'Création…' : 'Créer mon compte' }}
+    </button>
+    <p class="muted">Déjà inscrit ? <a routerLink="/login">Se connecter</a></p>
+  </form>
+</div>

@@ -1,0 +1,26 @@
+.type {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--orange, #d97706) 14%, transparent);
+  color: var(--orange, #b45309);
+}
+.when {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+}
+.err {
+  color: var(--red, #c0392b);
+  font-size: 0.85rem;
+}
