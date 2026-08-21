@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API_BASE } from '../../core/api.config';
 
@@ -16,13 +16,11 @@ import { API_BASE } from '../../core/api.config';
   styleUrl: './confirm-email-change.component.css',
 })
 export class ConfirmEmailChangeComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
+
   readonly state = signal<'pending' | 'done' | 'error'>('pending');
   readonly error = signal('');
-
-  constructor(
-    private readonly http: HttpClient,
-    private readonly route: ActivatedRoute,
-  ) {}
 
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');
@@ -31,12 +29,14 @@ export class ConfirmEmailChangeComponent implements OnInit {
       this.error.set('Lien incomplet : jeton manquant.');
       return;
     }
-    this.http.post<{ confirmed: boolean }>(`${API_BASE}/account/email/confirm`, { token }).subscribe({
-      next: () => this.state.set('done'),
-      error: (err) => {
-        this.state.set('error');
-        this.error.set(err?.error?.message ?? 'Lien invalide ou expiré.');
-      },
-    });
+    this.http
+      .post<{ confirmed: boolean }>(`${API_BASE}/account/email/confirm`, { token })
+      .subscribe({
+        next: () => this.state.set('done'),
+        error: (err) => {
+          this.state.set('error');
+          this.error.set(err?.error?.message ?? 'Lien invalide ou expiré.');
+        },
+      });
   }
 }

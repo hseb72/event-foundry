@@ -90,6 +90,17 @@ describe('UrlImportService (capture URL — ADR.13)', () => {
     expect(persistArg.finalStatus).toBe(ImportJobStatus.READY_FOR_VALIDATION);
   });
 
+  it("conserve l'organisation d'origine de la soumission (FSPEC.22 §15)", async () => {
+    // Régression : l'organisation était reçue puis perdue avant la création de l'ImportJob. Un
+    // import URL fait depuis l'expérience Organizer basculait donc dans l'inventaire personnel de
+    // son auteur — la destination de l'événement validé découlant de ce champ.
+    await service.import('https://ex.org', 'user-1', 'org-9');
+
+    expect(jobs.createWithAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({ createdById: 'user-1', organizationId: 'org-9' }),
+    );
+  });
+
   it('rejette une URL vide sans appeler le réseau', async () => {
     await expect(service.import('  ')).rejects.toThrow(/URL manquante/);
     expect(fetcher.fetch).not.toHaveBeenCalled();

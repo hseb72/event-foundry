@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { ImportStatsDto, PlatformOverviewDto } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class StatsApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   /** Vision globale de l'état de la plateforme (supervision Operator — OPE-001). */
   overview(): Observable<PlatformOverviewDto> {

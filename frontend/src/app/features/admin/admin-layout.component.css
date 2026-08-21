@@ -13,7 +13,7 @@
   font-weight: 600;
 }
 .subnav a:hover {
-  background: rgba(0, 0, 0, 0.05);
+  background: rgb(0, 0, 0, 0.05);
 }
 .subnav a.active {
   background: var(--exp);

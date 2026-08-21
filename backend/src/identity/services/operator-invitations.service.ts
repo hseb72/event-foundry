@@ -13,7 +13,7 @@ import {
   generateAccountToken,
   hashAccountToken,
 } from '../../account/services/account-token.util';
-import { SECURITY_EVENTS, SecurityAuditService } from '../../account/services/security-audit.service';
+import { SecurityAuditService } from '../../account/services/security-audit.service';
 import { MailService } from '../../mail/mail.service';
 import { RoleScopeMismatchException } from '../exceptions/role-scope-mismatch.exception';
 import { RoleNotFoundException } from '../exceptions/role-not-found.exception';

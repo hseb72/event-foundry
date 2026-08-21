@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { PublicApi } from '../../core/api/public.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -23,17 +23,15 @@ import { eventCoverBackground } from '../../shared/event-cover';
   styleUrl: './landing.component.css',
 })
 export class LandingComponent implements OnInit {
+  private readonly api = inject(PublicApi);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
   readonly events = signal<EventDto[]>([]);
   readonly loading = signal(true);
   readonly locating = signal(false);
   readonly located = signal(false);
   readonly year = new Date().getFullYear();
-
-  constructor(
-    private readonly api: PublicApi,
-    private readonly auth: AuthService,
-    private readonly router: Router,
-  ) {}
 
   ngOnInit(): void {
     // Un visiteur déjà connecté n'a pas besoin de la vitrine : direction l'application.
@@ -54,8 +52,17 @@ export class LandingComponent implements OnInit {
     return eventCoverBackground(e);
   }
 
-  scrollTo(id: string): void {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /**
+   * Défilement fluide vers une section. Le lien porte une **vraie ancre** (`href="#id"`) : il reste
+   * donc focusable, activable au clavier et copiable même si ce gestionnaire ne s'exécute pas.
+   */
+  scrollTo(id: string, event?: Event): void {
+    const target = document.getElementById(id);
+    if (!target) {
+      return; // Ancre absente : on laisse le navigateur faire ce qu'il sait faire.
+    }
+    event?.preventDefault();
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   private load(coords?: { latitude: number; longitude: number }): void {

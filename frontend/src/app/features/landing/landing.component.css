@@ -63,6 +63,7 @@ a { color: inherit; }
 }
 .hero h1 .g {
   background: var(--brand-gradient);
+  /* Requis par Safari : sans le préfixe, le dégradé ne s'applique pas au texte. */
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -122,7 +123,7 @@ a { color: inherit; }
 .evt .cover { height: 150px; background-size: cover; background-position: center; position: relative; }
 .evt .cover .chip {
   position: absolute; top: 0.6rem; left: 0.6rem; font-size: 0.72rem; font-weight: 700; color: #fff;
-  padding: 0.15rem 0.6rem; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px);
+  padding: 0.15rem 0.6rem; border-radius: 999px; background: rgb(0, 0, 0, 0.42); backdrop-filter: blur(4px);
 }
 .evt .body { padding: 0.8rem 0.9rem 1rem; display: grid; gap: 0.3rem; }
 .evt .title { font-weight: 700; }

@@ -65,7 +65,7 @@ export function parseNumber(value: string | undefined): number | undefined {
   if (value === undefined) {
     return undefined;
   }
-  const normalized = value.replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const normalized = value.replace(',', '.').replace(/[^0-9.-]/g, '');
   if (normalized === '') {
     return undefined;
   }

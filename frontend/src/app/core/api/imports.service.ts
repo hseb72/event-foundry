@@ -1,12 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { ImportDetailDto, ImportResponse } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class ImportsApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   uploadFile(file: File): Observable<ImportResponse> {
     const form = new FormData();
@@ -42,7 +42,10 @@ export class ImportsApi {
 
   /** Rejeu d'un import depuis ses Raw Events conservés (Operator — RG-IMP-03). */
   replay(id: string): Observable<{ importJobId: string; rawEventCount: number }> {
-    return this.http.post<{ importJobId: string; rawEventCount: number }>(`${API_BASE}/imports/${id}/replay`, {});
+    return this.http.post<{ importJobId: string; rawEventCount: number }>(
+      `${API_BASE}/imports/${id}/replay`,
+      {},
+    );
   }
 
   list(): Observable<ImportResponse[]> {

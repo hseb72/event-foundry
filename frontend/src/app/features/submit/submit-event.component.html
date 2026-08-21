@@ -101,10 +101,10 @@
     <section class="card">
       <h2>Validation <span class="muted">(brouillons à qualifier)</span></h2>
       @for (d of drafts(); track d.id) {
-        <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
+        <button type="button" class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
           <strong>{{ draftTitle(d) }}</strong>
           <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
-        </div>
+        </button>
       }
       @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
       @if (selected(); as sel) {
@@ -157,7 +157,7 @@
                 [class.draft]="e.status !== 'ARCHIVED'">{{ pubStatus(e) }}</span>
             </div>
             <div class="mbody">
-              <span class="mtitle" (click)="openEventById(e.id)">{{ e.title }}</span>
+              <span class="mtitle"><a [routerLink]="['/events', e.id]">{{ e.title }}</a></span>
               <span class="mmeta">{{ date(e) }}</span>
               <span class="mmeta">{{ categoryOf(e) }}</span>
             </div>

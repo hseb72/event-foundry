@@ -1,5 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { EventDto } from '../models';
@@ -16,7 +16,7 @@ export interface VisitorCoords {
  */
 @Injectable({ providedIn: 'root' })
 export class PublicApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   featured(take = 8, coords?: VisitorCoords): Observable<EventDto[]> {
     let params = new HttpParams().set('take', String(take));

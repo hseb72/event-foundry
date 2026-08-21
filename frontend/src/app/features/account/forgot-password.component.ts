@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { API_BASE } from '../../core/api.config';
@@ -16,11 +16,11 @@ import { API_BASE } from '../../core/api.config';
   styleUrl: './forgot-password.component.css',
 })
 export class ForgotPasswordComponent {
+  private readonly http = inject(HttpClient);
+
   email = '';
   readonly loading = signal(false);
   readonly sent = signal(false);
-
-  constructor(private readonly http: HttpClient) {}
 
   submit(): void {
     if (!this.email) {

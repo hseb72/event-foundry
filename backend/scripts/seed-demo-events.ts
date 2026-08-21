@@ -195,17 +195,29 @@ async function resolve(demo: DemoEvent): Promise<{
   const subjectIds: string[] = [];
   for (const name of demo.subjects) {
     const subject = await prisma.subject.findFirst({ where: { name }, select: { id: true } });
-    subject ? subjectIds.push(subject.id) : warnMissing('Sujet', name);
+    if (subject) {
+      subjectIds.push(subject.id);
+    } else {
+      warnMissing('Sujet', name);
+    }
   }
   const modalityIds: string[] = [];
   for (const name of demo.modalities) {
     const modality = await prisma.modality.findFirst({ where: { name }, select: { id: true } });
-    modality ? modalityIds.push(modality.id) : warnMissing('Modalité', name);
+    if (modality) {
+      modalityIds.push(modality.id);
+    } else {
+      warnMissing('Modalité', name);
+    }
   }
   const tagIds: string[] = [];
   for (const name of demo.tags ?? []) {
     const tag = await prisma.tag.findFirst({ where: { name }, select: { id: true } });
-    tag ? tagIds.push(tag.id) : warnMissing('Tag', name);
+    if (tag) {
+      tagIds.push(tag.id);
+    } else {
+      warnMissing('Tag', name);
+    }
   }
   return { activityId: activity.id, eventTypeId: eventType?.id ?? null, subjectIds, modalityIds, tagIds };
 }
@@ -317,7 +329,11 @@ async function main(): Promise<void> {
   let created = 0;
   let skipped = 0;
   for (const demo of DEMO_EVENTS) {
-    (await seedEvent(demo, organizers, venues, owner?.id ?? null, organizationId)) ? created++ : skipped++;
+    if (await seedEvent(demo, organizers, venues, owner?.id ?? null, organizationId)) {
+      created++;
+    } else {
+      skipped++;
+    }
   }
 
   const indexed = await rebuildSearchIndex();

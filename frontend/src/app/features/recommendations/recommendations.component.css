@@ -39,7 +39,7 @@
   margin: 0.6rem 0;
 }
 .reason {
-  background: rgba(124, 58, 237, 0.1);
+  background: rgb(124, 58, 237, 0.1);
   color: var(--exp);
   border-radius: 999px;
   padding: 0.15rem 0.6rem;

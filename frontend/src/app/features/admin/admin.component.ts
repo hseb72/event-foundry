@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReferenceCrudComponent } from './reference-crud.component';
 import { EntityDef, REFERENCE_ENTITIES } from './reference-admin.model';
@@ -13,6 +13,8 @@ import { GeoImportApi, GeoImportStatus } from '../../core/api/geo-import.service
   styleUrl: './admin.component.css',
 })
 export class AdminComponent implements OnInit, OnDestroy {
+  private readonly geoImport = inject(GeoImportApi);
+
   readonly entities = REFERENCE_ENTITIES;
   selected: EntityDef = REFERENCE_ENTITIES[0];
 
@@ -20,8 +22,6 @@ export class AdminComponent implements OnInit, OnDestroy {
   readonly status = signal<GeoImportStatus | null>(null);
   readonly running = signal(false);
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
-
-  constructor(private readonly geoImport: GeoImportApi) {}
 
   ngOnInit(): void {
     this.refresh();

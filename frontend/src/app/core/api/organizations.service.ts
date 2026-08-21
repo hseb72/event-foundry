@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 
@@ -24,10 +24,12 @@ export interface OrganizationMember {
 /** Client du domaine Organisations (FSPEC.19) : création, mes organisations, gestion des membres. */
 @Injectable({ providedIn: 'root' })
 export class OrganizationsApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   create(name: string): Observable<{ id: string; name: string; slug: string }> {
-    return this.http.post<{ id: string; name: string; slug: string }>(`${API_BASE}/organizations`, { name });
+    return this.http.post<{ id: string; name: string; slug: string }>(`${API_BASE}/organizations`, {
+      name,
+    });
   }
 
   mine(): Observable<MyOrganization[]> {
@@ -46,7 +48,9 @@ export class OrganizationsApi {
   }
 
   removeMember(id: string, userId: string): Observable<{ removed: boolean }> {
-    return this.http.delete<{ removed: boolean }>(`${API_BASE}/organizations/${id}/members/${userId}`);
+    return this.http.delete<{ removed: boolean }>(
+      `${API_BASE}/organizations/${id}/members/${userId}`,
+    );
   }
 
   leave(id: string): Observable<{ left: boolean }> {
@@ -54,7 +58,9 @@ export class OrganizationsApi {
   }
 
   transfer(id: string, userId: string): Observable<{ transferred: boolean }> {
-    return this.http.post<{ transferred: boolean }>(`${API_BASE}/organizations/${id}/transfer`, { userId });
+    return this.http.post<{ transferred: boolean }>(`${API_BASE}/organizations/${id}/transfer`, {
+      userId,
+    });
   }
 
   // --- Invitations (FSPEC.19-B) ---
@@ -83,7 +89,9 @@ export class OrganizationsApi {
     );
   }
 
-  acceptInvitation(token: string): Observable<{ organizationId: string; organizationName: string }> {
+  acceptInvitation(
+    token: string,
+  ): Observable<{ organizationId: string; organizationName: string }> {
     return this.http.post<{ organizationId: string; organizationName: string }>(
       `${API_BASE}/invitations/accept`,
       { token },
@@ -96,7 +104,10 @@ export class OrganizationsApi {
     return this.http.get<OrganizationGeneralInfo>(`${API_BASE}/organizations/${id}`);
   }
 
-  updateGeneralInfo(id: string, data: Partial<OrganizationGeneralInfo>): Observable<OrganizationGeneralInfo> {
+  updateGeneralInfo(
+    id: string,
+    data: Partial<OrganizationGeneralInfo>,
+  ): Observable<OrganizationGeneralInfo> {
     return this.http.patch<OrganizationGeneralInfo>(`${API_BASE}/organizations/${id}`, data);
   }
 

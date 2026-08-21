@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ParticipationApi } from '../core/api/participation.service';
@@ -14,12 +14,16 @@ import { eventCoverBackground } from './event-cover';
   templateUrl: './event-card.component.html',
   styleUrl: './event-card.component.css',
 })
-export class EventCardComponent {
+export class EventCardComponent implements OnInit {
+  private readonly participationApi = inject(ParticipationApi);
+
   @Input({ required: true }) event!: EventDto;
 
-  participation: ParticipationState = { interested: false, reservationStatus: 'NONE', paymentStatus: 'NONE' };
-
-  constructor(private readonly participationApi: ParticipationApi) {}
+  participation: ParticipationState = {
+    interested: false,
+    reservationStatus: 'NONE',
+    paymentStatus: 'NONE',
+  };
 
   ngOnInit(): void {
     if (this.event.participation) {
@@ -56,9 +60,11 @@ export class EventCardComponent {
     this.save({ paymentStatus: value });
   }
 
-  private save(
-    body: { interested?: boolean; reservationStatus?: ReservationStatus; paymentStatus?: PaymentStatus },
-  ): void {
+  private save(body: {
+    interested?: boolean;
+    reservationStatus?: ReservationStatus;
+    paymentStatus?: PaymentStatus;
+  }): void {
     this.participationApi.update(this.event.id, body).subscribe((response) => {
       this.participation = {
         interested: response.interested,

@@ -18,17 +18,15 @@ import { AuthService } from '../../core/auth/auth.service';
   styleUrl: './accept-invitation.component.css',
 })
 export class AcceptInvitationComponent implements OnInit {
+  private readonly api = inject(OrganizationsApi);
+  private readonly auth = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
   readonly state = signal<'pending' | 'auth' | 'done' | 'error'>('pending');
   readonly error = signal('');
   readonly orgName = signal('');
   nextUrl = '/accept-invitation';
-
-  constructor(
-    private readonly api: OrganizationsApi,
-    private readonly auth: AuthService,
-    private readonly route: ActivatedRoute,
-    private readonly router: Router,
-  ) {}
 
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token') ?? '';
@@ -66,6 +64,9 @@ export class AcceptInvitationComponent implements OnInit {
 
   private fail(err: unknown): void {
     this.state.set('error');
-    this.error.set((err as { error?: { message?: string } })?.error?.message ?? 'Invitation invalide ou expirée.');
+    this.error.set(
+      (err as { error?: { message?: string } })?.error?.message ??
+        'Invitation invalide ou expirée.',
+    );
   }
 }

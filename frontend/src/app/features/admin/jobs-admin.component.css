@@ -30,7 +30,7 @@
   font-weight: 700;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgb(0, 0, 0, 0.06);
 }
 dl {
   display: grid;
@@ -64,7 +64,7 @@ dt {
   font-size: 0.8rem;
   max-height: 220px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgb(0, 0, 0, 0.04);
   padding: 0.7rem;
   border-radius: 8px;
 }

@@ -13,11 +13,11 @@
 }
 .alert.warn {
   border-left: 4px solid #e08600;
-  background: rgba(224, 134, 0, 0.06);
+  background: rgb(224, 134, 0, 0.06);
 }
 .alert.ok {
   border-left: 4px solid var(--green, #2e7d32);
-  background: rgba(46, 125, 50, 0.05);
+  background: rgb(46, 125, 50, 0.05);
 }
 .alert a {
   margin-left: auto;
@@ -63,7 +63,7 @@ h3 {
   font-size: 0.9rem;
 }
 .track {
-  background: rgba(0, 0, 0, 0.06);
+  background: rgb(0, 0, 0, 0.06);
   border-radius: 999px;
   height: 12px;
   overflow: hidden;

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DiscoveryApi } from '../../core/api/discovery.service';
 import { EventsApi } from '../../core/api/events.service';
@@ -15,6 +15,10 @@ import { FollowButtonComponent } from '../../shared/follow-button.component';
   styleUrl: './catalogue.component.css',
 })
 export class CatalogueComponent implements OnInit {
+  private readonly eventsApi = inject(EventsApi);
+  private readonly referenceDataApi = inject(ReferenceDataApi);
+  private readonly discoveryApi = inject(DiscoveryApi);
+
   activities: ActivityDto[] = [];
   subjects: ReferentialItem[] = [];
   tags: ReferentialItem[] = [];
@@ -28,12 +32,6 @@ export class CatalogueComponent implements OnInit {
   participation = '';
   sort = '';
   loading = false;
-
-  constructor(
-    private readonly eventsApi: EventsApi,
-    private readonly referenceDataApi: ReferenceDataApi,
-    private readonly discoveryApi: DiscoveryApi,
-  ) {}
 
   ngOnInit(): void {
     this.referenceDataApi.activities().subscribe((activities) => (this.activities = activities));

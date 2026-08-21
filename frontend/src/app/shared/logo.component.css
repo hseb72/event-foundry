@@ -22,6 +22,7 @@ svg {
 }
 .word .b {
   background: var(--brand-gradient);
+  /* Requis par Safari : sans le préfixe, le dégradé ne s'applique pas au texte. */
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

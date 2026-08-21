@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ImportsApi } from '../../core/api/imports.service';
 import { ImportDetailDto, ImportResponse } from '../../core/models';
 import { formatDateTime } from '../../shared/date-format';
@@ -29,14 +29,14 @@ const STATUS_LABELS: Record<string, string> = {
   styleUrl: './jobs-admin.component.css',
 })
 export class JobsAdminComponent implements OnInit {
+  private readonly api = inject(ImportsApi);
+
   jobs: ImportResponse[] = [];
   selected: ImportDetailDto | null = null;
   loading = true;
   detailLoading = false;
   replaying = false;
   replayMessage = '';
-
-  constructor(private readonly api: ImportsApi) {}
 
   replay(): void {
     if (!this.selected) {
@@ -102,7 +102,8 @@ export class JobsAdminComponent implements OnInit {
     if (!this.selected?.startedAt || !this.selected?.finishedAt) {
       return '—';
     }
-    const ms = new Date(this.selected.finishedAt).getTime() - new Date(this.selected.startedAt).getTime();
+    const ms =
+      new Date(this.selected.finishedAt).getTime() - new Date(this.selected.startedAt).getTime();
     return ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`;
   }
 }

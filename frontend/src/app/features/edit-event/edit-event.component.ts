@@ -16,6 +16,10 @@ import { EventFormComponent } from '../../shared/event-form.component';
   templateUrl: './edit-event.component.html',
 })
 export class EditEventComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly eventsApi = inject(EventsApi);
+  private readonly router = inject(Router);
+
   initial: EventEditValue | null = null;
   busy = false;
   error = '';
@@ -23,12 +27,6 @@ export class EditEventComponent implements OnInit {
   private id = '';
 
   private readonly toast = inject(ToastService);
-
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly eventsApi: EventsApi,
-    private readonly router: Router,
-  ) {}
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';

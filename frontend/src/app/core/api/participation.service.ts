@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { ParticipationResponse, PaymentStatus, ReservationStatus } from '../models';
@@ -12,7 +12,7 @@ export interface ParticipationUpdate {
 
 @Injectable({ providedIn: 'root' })
 export class ParticipationApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   update(eventId: string, body: ParticipationUpdate): Observable<ParticipationResponse> {
     return this.http.put<ParticipationResponse>(

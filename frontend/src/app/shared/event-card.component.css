@@ -29,7 +29,7 @@
   color: #fff;
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.42);
+  background: rgb(0, 0, 0, 0.42);
   backdrop-filter: blur(4px);
 }
 .cover .price {

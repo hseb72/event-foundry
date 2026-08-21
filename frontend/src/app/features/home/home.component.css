@@ -32,7 +32,7 @@
   margin-top: 1rem;
 }
 .quick a {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(255, 255, 255, 0.12);
   color: #fff;
   border-radius: 999px;
   padding: 0.35rem 0.9rem;
@@ -40,7 +40,7 @@
   font-weight: 500;
 }
 .quick a:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgb(255, 255, 255, 0.22);
 }
 section {
   margin-bottom: 2rem;

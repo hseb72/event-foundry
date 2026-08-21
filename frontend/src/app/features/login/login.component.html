@@ -15,7 +15,7 @@
     @if (mfaRequired) {
       <label for="mfa">Code d'authentification (2FA)</label>
       <input id="mfa" class="input" name="mfa" [(ngModel)]="mfaCode" placeholder="123456 ou code de récupération"
-        autocomplete="one-time-code" autofocus />
+        autocomplete="one-time-code" />
     }
     @if (error) {
       <div class="error">{{ error }}</div>

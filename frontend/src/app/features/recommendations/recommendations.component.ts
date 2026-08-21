@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RecommendationApi } from '../../core/api/recommendation.service';
 import { Recommendation, RecommendationAction } from '../../core/models';
 import { EventCardComponent } from '../../shared/event-card.component';
@@ -16,11 +16,11 @@ import { EventCardComponent } from '../../shared/event-card.component';
   styleUrl: './recommendations.component.css',
 })
 export class RecommendationsComponent implements OnInit {
+  private readonly recommendationApi = inject(RecommendationApi);
+
   recommendations: Recommendation[] = [];
   surprise = false;
   loading = true;
-
-  constructor(private readonly recommendationApi: RecommendationApi) {}
 
   ngOnInit(): void {
     this.load();

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -17,17 +17,15 @@ import { LogoComponent } from '../../shared/logo.component';
   styleUrl: './register.component.css',
 })
 export class RegisterComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
   displayName = '';
   email = '';
   password = '';
   readonly loading = signal(false);
   readonly error = signal('');
-
-  constructor(
-    private readonly auth: AuthService,
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-  ) {}
 
   submit(): void {
     if (!this.displayName || !this.email || this.password.length < 8) {
@@ -37,10 +35,13 @@ export class RegisterComponent {
     this.loading.set(true);
     this.error.set('');
     this.auth.register(this.email, this.password, this.displayName).subscribe({
-      next: () => void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('next') || '/home'),
+      next: () =>
+        void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('next') || '/home'),
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Impossible de créer le compte (e-mail déjà utilisé ?).');
+        this.error.set(
+          err?.error?.message ?? 'Impossible de créer le compte (e-mail déjà utilisé ?).',
+        );
       },
     });
   }

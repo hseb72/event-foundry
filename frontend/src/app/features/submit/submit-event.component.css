@@ -10,18 +10,21 @@ textarea, input[type='url'] { width: 100%; border: 1px solid var(--border); bord
 textarea { min-height: 8rem; resize: vertical; }
 .row { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
 .ai { display: flex; gap: 0.45rem; align-items: center; font-size: 0.85rem; margin: 0.4rem 0; }
-.disclaimer { background: rgba(234, 179, 8, 0.14); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.82rem; margin: 0.5rem 0; }
+.disclaimer { background: rgb(234, 179, 8, 0.14); border: 1px solid rgb(234, 179, 8, 0.4); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.82rem; margin: 0.5rem 0; }
 .sub { display: flex; justify-content: space-between; gap: 0.6rem; border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; align-items: center; }
 .badge { font-size: 0.72rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--surface-2); }
-.badge.running { color: #b45309; background: rgba(234, 179, 8, 0.15); }
-.draft-item { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; cursor: pointer; }
+.badge.running { color: #b45309; background: rgb(234, 179, 8, 0.15); }
+/* Bouton pleine largeur : la ligne reste cliquable, mais devient atteignable au clavier. */
+.draft-item { display: block; width: 100%; text-align: left; font: inherit; color: inherit;
+  background: transparent; border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.5rem 0.75rem; margin-bottom: 0.4rem; cursor: pointer; }
 .draft-item.on { border-color: var(--exp); box-shadow: 0 0 0 1px var(--exp); }
 .muted { color: var(--muted); }
-.ok { background: rgba(22, 163, 74, 0.12); border: 1px solid rgba(22, 163, 74, 0.4); border-radius: 10px; padding: 0.6rem 0.9rem; margin-bottom: 0.8rem; }
-.hold { background: rgba(234, 179, 8, 0.14); border: 1px solid rgba(234, 179, 8, 0.4); border-radius: 8px; padding: 0.6rem 0.9rem; }
+.ok { background: rgb(22, 163, 74, 0.12); border: 1px solid rgb(22, 163, 74, 0.4); border-radius: 10px; padding: 0.6rem 0.9rem; margin-bottom: 0.8rem; }
+.hold { background: rgb(234, 179, 8, 0.14); border: 1px solid rgb(234, 179, 8, 0.4); border-radius: 8px; padding: 0.6rem 0.9rem; }
 .err { color: var(--red); }
 h2 { font-size: 1rem; margin: 0 0 0.6rem; }
-.note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgba(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
+.note { display: flex; align-items: center; gap: 0.5rem; background: var(--exp-weak, rgb(37, 99, 235, 0.1)); border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.9rem; margin: 0.2rem 0 0.6rem; font-size: 0.88rem; }
 .dup-note { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 0.55rem 0.85rem; margin-bottom: 0.8rem; font-size: 0.86rem; }
 
 /* En-tête de la liste : titre + sélecteur de vue (cartes / tableau). */
@@ -40,13 +43,14 @@ h2 { font-size: 1rem; margin: 0 0 0.6rem; }
 .mcard:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .mcard.archived { opacity: 0.72; }
 .mcard .cover { position: relative; height: 130px; background-size: cover; background-position: center; }
-.mcard .cover .chip { position: absolute; top: 0.55rem; left: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0.12rem 0.55rem; border-radius: 999px; background: rgba(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
+.mcard .cover .chip { position: absolute; top: 0.55rem; left: 0.55rem; font-size: 0.7rem; font-weight: 700; color: #fff; padding: 0.12rem 0.55rem; border-radius: 999px; background: rgb(0, 0, 0, 0.42); backdrop-filter: blur(4px); }
 .mcard .cover .status { position: absolute; top: 0.55rem; right: 0.55rem; font-size: 0.66rem; font-weight: 800; padding: 0.12rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
-.status.draft { background: rgba(255, 255, 255, 0.9); color: #1f2333; }
-.status.arch { background: rgba(220, 38, 38, 0.9); color: #fff; }
+.status.draft { background: rgb(255, 255, 255, 0.9); color: #1f2333; }
+.status.arch { background: rgb(220, 38, 38, 0.9); color: #fff; }
 .mcard .mbody { padding: 0.7rem 0.85rem; display: grid; gap: 0.22rem; flex: 1; }
-.mcard .mtitle { font-weight: 700; cursor: pointer; }
-.mcard .mtitle:hover { color: var(--exp); }
+.mcard .mtitle { font-weight: 700; }
+.mcard .mtitle a { color: inherit; }
+.mcard .mtitle a:hover { color: var(--exp); }
 .mcard .mmeta { font-size: 0.8rem; color: var(--muted); }
 .mfoot { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.55rem 0.85rem; border-top: 1px solid var(--border); background: var(--surface-2); }
 .private-tag { display: flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; color: var(--muted); }

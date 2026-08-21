@@ -33,11 +33,11 @@ th {
   border-radius: 999px;
 }
 .pill.on {
-  background: rgba(22, 163, 74, 0.14);
+  background: rgb(22, 163, 74, 0.14);
   color: #157f3b;
 }
 .pill.off {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgb(0, 0, 0, 0.08);
   color: var(--muted);
 }
 form {

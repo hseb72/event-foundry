@@ -13,7 +13,7 @@ th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(
 th { color: var(--muted); font-weight: 600; }
 tr.sel { background: var(--exp-weak); }
 .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-.crit { background: rgba(239, 68, 68, 0.16); color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
+.crit { background: rgb(239, 68, 68, 0.16); color: var(--red); border-color: rgb(239, 68, 68, 0.4); }
 .suggestion { margin-top: 0.6rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
 .entry { font-size: 0.85rem; border-left: 2px solid var(--border); padding-left: 0.6rem; margin-bottom: 0.4rem; }
 textarea.input { min-height: 60px; }

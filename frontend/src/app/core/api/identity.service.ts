@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { Observable, switchMap, tap } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { AuthService } from '../auth/auth.service';
@@ -19,27 +19,21 @@ import {
  */
 @Injectable({ providedIn: 'root' })
 export class IdentityService {
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+
   /** Identité effective courante (profil, rôles, permissions, expériences, organisations). */
   readonly me = signal<IdentityMe | null>(null);
 
-  constructor(
-    private readonly http: HttpClient,
-    private readonly auth: AuthService,
-  ) {}
-
   loadMe(): Observable<IdentityMe> {
-    return this.http
-      .get<IdentityMe>(`${API_BASE}/identity/me`)
-      .pipe(tap((me) => this.me.set(me)));
+    return this.http.get<IdentityMe>(`${API_BASE}/identity/me`).pipe(tap((me) => this.me.set(me)));
   }
 
   changeExperience(experience: Experience): Observable<IdentityMe> {
-    return this.http
-      .patch<AuthTokens>(`${API_BASE}/identity/me/experience`, { experience })
-      .pipe(
-        tap((tokens) => this.auth.applyTokens(tokens)),
-        switchMap(() => this.loadMe()),
-      );
+    return this.http.patch<AuthTokens>(`${API_BASE}/identity/me/experience`, { experience }).pipe(
+      tap((tokens) => this.auth.applyTokens(tokens)),
+      switchMap(() => this.loadMe()),
+    );
   }
 
   switchOrganization(organizationId: string | null): Observable<IdentityMe> {
@@ -53,15 +47,16 @@ export class IdentityService {
 
   /** Se déclarer (ou non) organisateur autonome. Réémet les jetons (permissions + expériences). */
   setOrganizerMode(enabled: boolean): Observable<IdentityMe> {
-    return this.http
-      .patch<AuthTokens>(`${API_BASE}/identity/me/organizer-mode`, { enabled })
-      .pipe(
-        tap((tokens) => this.auth.applyTokens(tokens)),
-        switchMap(() => this.loadMe()),
-      );
+    return this.http.patch<AuthTokens>(`${API_BASE}/identity/me/organizer-mode`, { enabled }).pipe(
+      tap((tokens) => this.auth.applyTokens(tokens)),
+      switchMap(() => this.loadMe()),
+    );
   }
 
-  updateProfile(input: { displayName?: string; preferences?: Record<string, unknown> }): Observable<IdentityMe> {
+  updateProfile(input: {
+    displayName?: string;
+    preferences?: Record<string, unknown>;
+  }): Observable<IdentityMe> {
     return this.http
       .patch<IdentityMe>(`${API_BASE}/identity/me/profile`, input)
       .pipe(tap((me) => this.me.set(me)));
@@ -123,6 +118,8 @@ export class IdentityService {
   }
 
   revokeRole(userId: string, role: string): Observable<void> {
-    return this.http.delete<void>(`${API_BASE}/identity/users/${userId}/roles/${encodeURIComponent(role)}`);
+    return this.http.delete<void>(
+      `${API_BASE}/identity/users/${userId}/roles/${encodeURIComponent(role)}`,
+    );
   }
 }

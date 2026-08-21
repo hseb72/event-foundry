@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges } from '@angular/core';
+import { Component, Input, OnChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AdminReferenceApi, ReferenceRow } from '../../core/api/admin-reference.service';
 import { ReferentialItem } from '../../core/models';
@@ -17,6 +17,8 @@ import { EntityDef, FieldDef } from './reference-admin.model';
   styleUrl: './reference-crud.component.css',
 })
 export class ReferenceCrudComponent implements OnChanges {
+  private readonly api = inject(AdminReferenceApi);
+
   @Input({ required: true }) entity!: EntityDef;
 
   rows: ReferenceRow[] = [];
@@ -32,11 +34,15 @@ export class ReferenceCrudComponent implements OnChanges {
   model: Record<string, string> = {};
 
   /** Dernière requête serveur (mode paginé) — rejouée après une mutation pour rester sur la page. */
-  private lastQuery: DataTableQuery = { search: '', sortKey: '', sortDir: 'asc', page: 0, pageSize: 15 };
+  private lastQuery: DataTableQuery = {
+    search: '',
+    sortKey: '',
+    sortDir: 'asc',
+    page: 0,
+    pageSize: 15,
+  };
 
   private readonly optionsCache: Record<string, ReferentialItem[]> = {};
-
-  constructor(private readonly api: AdminReferenceApi) {}
 
   ngOnChanges(): void {
     this.formOpen = false;

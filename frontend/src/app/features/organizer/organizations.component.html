@@ -36,16 +36,16 @@
       @if (configOrg() === org.id && info(); as gi) {
         <div class="grid" style="border-top:1px solid var(--border);padding-top:0.8rem">
           <h3 style="font-size:0.85rem;margin:0">Informations générales</h3>
-          <div class="row"><label class="muted" style="width:120px">Nom</label>
-            <input class="input" [(ngModel)]="gi.name" [disabled]="!canManage(org)" /></div>
-          <div class="row"><label class="muted" style="width:120px">E-mail contact</label>
-            <input class="input" [(ngModel)]="gi.contactEmail" [disabled]="!canManage(org)" placeholder="contact@..." /></div>
-          <div class="row"><label class="muted" style="width:120px">Site / réseau</label>
-            <input class="input" [(ngModel)]="gi.website" [disabled]="!canManage(org)" placeholder="https://..." /></div>
-          <div class="row"><label class="muted" style="width:120px">Logo (URL)</label>
-            <input class="input" [(ngModel)]="gi.logoUrl" [disabled]="!canManage(org)" placeholder="https://..." /></div>
-          <div class="row"><label class="muted" style="width:120px">Description</label>
-            <input class="input" [(ngModel)]="gi.description" [disabled]="!canManage(org)" /></div>
+          <div class="row"><label for="organizations-gi-name" class="muted" style="width:120px">Nom</label>
+            <input id="organizations-gi-name" class="input" [(ngModel)]="gi.name" [disabled]="!canManage(org)" /></div>
+          <div class="row"><label for="organizations-gi-contactemail" class="muted" style="width:120px">E-mail contact</label>
+            <input id="organizations-gi-contactemail" class="input" [(ngModel)]="gi.contactEmail" [disabled]="!canManage(org)" placeholder="contact@..." /></div>
+          <div class="row"><label for="organizations-gi-website" class="muted" style="width:120px">Site / réseau</label>
+            <input id="organizations-gi-website" class="input" [(ngModel)]="gi.website" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+          <div class="row"><label for="organizations-gi-logourl" class="muted" style="width:120px">Logo (URL)</label>
+            <input id="organizations-gi-logourl" class="input" [(ngModel)]="gi.logoUrl" [disabled]="!canManage(org)" placeholder="https://..." /></div>
+          <div class="row"><label for="organizations-gi-description" class="muted" style="width:120px">Description</label>
+            <input id="organizations-gi-description" class="input" [(ngModel)]="gi.description" [disabled]="!canManage(org)" /></div>
           <p class="muted" style="margin:0">Abonnement : {{ gi.subscriptionPlan?.name ?? 'Free' }}</p>
           @if (canManage(org)) {
             <div><button class="btn btn-sm" (click)="saveGeneral(org, gi)">Enregistrer les informations</button></div>

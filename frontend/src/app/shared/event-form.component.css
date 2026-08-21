@@ -8,7 +8,8 @@ form {
   gap: 0.9rem;
   grid-template-columns: 1fr 1fr;
 }
-label {
+label,
+.group-label {
   display: block;
   font-weight: 600;
   font-size: 0.85rem;
@@ -52,7 +53,8 @@ label {
   justify-content: space-between;
   gap: 0.6rem;
 }
-.section-head label {
+.section-head label,
+.section-head .group-label {
   margin-bottom: 0;
 }
 .count {

@@ -13,8 +13,8 @@
   </p>
 
   <div class="geo-row">
-    <label class="muted" style="font-size:0.82rem">Pays (code ISO)</label>
-    <input class="input" [(ngModel)]="country" maxlength="2" placeholder="FR" />
+    <label for="admin-country" class="muted" style="font-size:0.82rem">Pays (code ISO)</label>
+    <input id="admin-country" class="input" [(ngModel)]="country" maxlength="2" placeholder="FR" />
     <button class="btn btn-primary" [disabled]="running() || country.trim().length !== 2" (click)="startImport()">
       {{ running() ? 'Ingestion en cours…' : 'Importer depuis GeoNames' }}
     </button>

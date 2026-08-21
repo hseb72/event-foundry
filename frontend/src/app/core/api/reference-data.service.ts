@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import {
@@ -14,7 +14,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class ReferenceDataApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   activities(): Observable<ActivityDto[]> {
     return this.http.get<ActivityDto[]>(`${API_BASE}/activities`);
@@ -60,7 +60,9 @@ export class ReferenceDataApi {
   }
 
   removeProvisional(type: ProvisionalType, id: string): Observable<void> {
-    return this.http.delete<void>(`${API_BASE}/admin/reference/provisional`, { body: { type, id } });
+    return this.http.delete<void>(`${API_BASE}/admin/reference/provisional`, {
+      body: { type, id },
+    });
   }
 
   /** Types d'événement : référentiel **transverse** (DATA.01 v2.0), indépendant de l'Activité. */

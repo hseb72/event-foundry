@@ -1,18 +1,18 @@
 <form (ngSubmit)="submit()">
   <div>
-    <label class="req">Titre</label>
-    <input class="input" [(ngModel)]="model.title" name="title" required maxlength="200" />
+    <label for="event-form-model-title" class="req">Titre</label>
+    <input id="event-form-model-title" class="input" [(ngModel)]="model.title" name="title" required maxlength="200" />
   </div>
 
   <div>
-    <label>Description</label>
-    <textarea class="input" [(ngModel)]="model.description" name="description" rows="3"></textarea>
+    <label for="event-form-model-description">Description</label>
+    <textarea id="event-form-model-description" class="input" [(ngModel)]="model.description" name="description" rows="3"></textarea>
   </div>
 
   <div class="row">
     <div>
-      <label class="req">Activité</label>
-      <select class="select" [(ngModel)]="model.activityId" name="activityId"
+      <label for="event-form-model-activityid" class="req">Activité</label>
+      <select id="event-form-model-activityid" class="select" [(ngModel)]="model.activityId" name="activityId"
               (ngModelChange)="onActivityChange()" required>
         <option value="">— choisir —</option>
         @for (a of activities; track a.id) {
@@ -54,8 +54,8 @@
       }
     </div>
     <div>
-      <label>Type d'événement <span class="muted">(nature du rassemblement)</span></label>
-      <select class="select" [(ngModel)]="model.eventTypeId" name="eventTypeId">
+      <label for="event-form-model-eventtypeid">Type d'événement <span class="muted">(nature du rassemblement)</span></label>
+      <select id="event-form-model-eventtypeid" class="select" [(ngModel)]="model.eventTypeId" name="eventTypeId">
         <option value="">— aucun —</option>
         @for (t of eventTypes; track t.id) {
           <option [value]="t.id">{{ t.name }}</option>
@@ -85,8 +85,8 @@
 
   <div class="row">
     <div>
-      <label>Organisateur</label>
-      <select class="select" [(ngModel)]="model.organizerId" name="organizerId">
+      <label for="event-form-model-organizerid">Organisateur</label>
+      <select id="event-form-model-organizerid" class="select" [(ngModel)]="model.organizerId" name="organizerId">
         <option value="">— aucun —</option>
         @for (o of organizers; track o.id) {
           <option [value]="o.id">{{ o.name }}</option>
@@ -113,8 +113,8 @@
       }
     </div>
     <div>
-      <label>Lieu</label>
-      <select class="select" [(ngModel)]="model.venueId" name="venueId">
+      <label for="event-form-model-venueid">Lieu</label>
+      <select id="event-form-model-venueid" class="select" [(ngModel)]="model.venueId" name="venueId">
         <option value="">— aucun —</option>
         @for (v of venues; track v.id) {
           <option [value]="v.id">{{ v.name }}</option>
@@ -144,8 +144,8 @@
 
   @if (model.activityId && subjects.length) {
     <div>
-      <label>Sujets <span class="muted">(le jeu / le genre / la discipline — plusieurs possibles)</span></label>
-      <select class="select" multiple [(ngModel)]="model.subjectIds" name="subjectIds">
+      <label for="event-form-model-subjectids">Sujets <span class="muted">(le jeu / le genre / la discipline — plusieurs possibles)</span></label>
+      <select id="event-form-model-subjectids" class="select" multiple [(ngModel)]="model.subjectIds" name="subjectIds">
         @for (s of subjects; track s.id) {
           <option [value]="s.id">{{ s.name }}</option>
         }
@@ -178,12 +178,12 @@
   @if (modalityDimensions.length) {
     <div>
       <div class="section-head">
-        <label>
+        <span id="ef-modalities-label" class="group-label">
           Modalités <span class="muted">(par dimension, facultatif)</span>
           @if (model.modalityIds.length) {
             <span class="count">{{ model.modalityIds.length }}</span>
           }
-        </label>
+        </span>
         <button type="button" class="btn btn-sm" (click)="modalitiesOpen = !modalitiesOpen"
                 [attr.aria-expanded]="modalitiesOpen">
           {{ modalitiesOpen ? '▲ Réduire' : '▼ Étendre' }}
@@ -194,8 +194,8 @@
           @for (dim of modalityDimensions; track dim.id) {
             @if (dim.modalities.length) {
               <div style="margin-bottom:0.4rem">
-                <span class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
-                <div class="tags">
+                <span [attr.id]="'ef-dim-' + dim.id" class="muted" style="font-size:0.78rem">{{ dim.name }}</span>
+                <div class="tags" role="group" [attr.aria-labelledby]="'ef-dim-' + dim.id">
                   @for (m of dim.modalities; track m.id) {
                     <button type="button" class="tag-chip" [class.on]="model.modalityIds.includes(m.id)"
                             (click)="toggleModality(m.id)">
@@ -213,8 +213,8 @@
 
   @if (orgAddresses.length) {
     <div>
-      <label>Adresses de l'organisation</label>
-      <div class="tags">
+      <span id="ef-org-addresses-label" class="group-label">Adresses de l'organisation</span>
+      <div class="tags" role="group" aria-labelledby="ef-org-addresses-label">
         @for (a of orgAddresses; track a.id) {
           <button type="button" class="tag-chip" (click)="useOrgAddress(a)">
             📍 {{ a.label }}@if (a.municipalityName) { — {{ a.municipalityName }} }
@@ -225,9 +225,9 @@
   }
 
   <div>
-    <label>Localisation (pays + code postal)</label>
+    <label for="event-form-model-countryid">Localisation (pays + code postal)</label>
     <div class="row" style="grid-template-columns:1fr 1fr">
-      <select class="select" [(ngModel)]="model.countryId" name="countryId"
+      <select id="event-form-model-countryid" class="select" [(ngModel)]="model.countryId" name="countryId"
               (ngModelChange)="onCountryChange()">
         <option value="">Pays…</option>
         @for (c of countries; track c.id) {
@@ -263,8 +263,8 @@
 
   @if (tags.length) {
     <div>
-      <label>Tags</label>
-      <div class="tags">
+      <span id="ef-tags-label" class="group-label">Tags</span>
+      <div class="tags" role="group" aria-labelledby="ef-tags-label">
         @for (t of tags; track t.id) {
           <button type="button" class="tag-chip" [class.on]="model.tagIds.includes(t.id)"
                   (click)="toggleTag(t.id)">
@@ -277,23 +277,23 @@
 
   <div class="row">
     <div>
-      <label class="req">Début</label>
-      <input class="input" type="datetime-local" [(ngModel)]="model.startsAt" name="startsAt" required />
+      <label for="event-form-model-startsat" class="req">Début</label>
+      <input id="event-form-model-startsat" class="input" type="datetime-local" [(ngModel)]="model.startsAt" name="startsAt" required />
     </div>
     <div>
-      <label>Fin</label>
-      <input class="input" type="datetime-local" [(ngModel)]="model.endsAt" name="endsAt" />
+      <label for="event-form-model-endsat">Fin</label>
+      <input id="event-form-model-endsat" class="input" type="datetime-local" [(ngModel)]="model.endsAt" name="endsAt" />
     </div>
   </div>
 
   <div class="row">
     <div>
-      <label>Prix</label>
-      <input class="input" type="number" min="0" step="0.01" [(ngModel)]="model.price" name="price" />
+      <label for="event-form-model-price">Prix</label>
+      <input id="event-form-model-price" class="input" type="number" min="0" step="0.01" [(ngModel)]="model.price" name="price" />
     </div>
     <div>
-      <label>Devise</label>
-      <input class="input" maxlength="3" placeholder="EUR" [(ngModel)]="model.currency" name="currency" />
+      <label for="event-form-model-currency">Devise</label>
+      <input id="event-form-model-currency" class="input" maxlength="3" placeholder="EUR" [(ngModel)]="model.currency" name="currency" />
     </div>
   </div>
 

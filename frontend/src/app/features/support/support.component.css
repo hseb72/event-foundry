@@ -2,8 +2,10 @@
    clair (fond de carte quasi noir sous un texte foncé), d'où un rendu illisible. */
 .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
 .muted { color: var(--muted); font-size: 0.85rem; }
-.case { padding: 0.6rem 0.8rem; border-radius: 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color 0.15s ease; }
+.case { padding: 0.6rem 0.8rem; border-radius: 10px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: border-color 0.15s ease; }
 .case:hover { border-color: var(--exp); }
+/* L'en-tête porte le repli : bouton pleine largeur, sans habillage propre. */
+.case-head { display: block; width: 100%; padding: 0; text-align: left; font: inherit; color: inherit; background: transparent; border: 0; cursor: pointer; }
 .badge { font-size: 0.72rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 .field { display: grid; gap: 0.3rem; }
 textarea.input { min-height: 90px; }

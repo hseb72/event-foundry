@@ -1,5 +1,5 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { ReferentialItem } from '../models';
@@ -36,7 +36,7 @@ export interface ReferencePageQuery {
  */
 @Injectable({ providedIn: 'root' })
 export class AdminReferenceApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   /** Liste incluant les entrées désactivées (vue admin). */
   list(segment: string): Observable<ReferenceRow[]> {

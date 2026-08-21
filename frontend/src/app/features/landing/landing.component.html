@@ -2,8 +2,8 @@
 <nav class="nav">
   <app-logo [size]="30" />
   <div class="nav-links">
-    <a (click)="scrollTo('featured')">Explorer</a>
-    <a (click)="scrollTo('features')">Fonctionnalités</a>
+    <a href="#featured" (click)="scrollTo('featured', $event)">Explorer</a>
+    <a href="#features" (click)="scrollTo('features', $event)">Fonctionnalités</a>
     <a routerLink="/register">Publier un événement</a>
   </div>
   <div class="nav-cta">
@@ -24,7 +24,7 @@
       de chez vous. Organisez votre planning ou partagez vos propres événements.
     </p>
     <div class="hero-actions">
-      <a class="btn btn-brand btn-lg" (click)="scrollTo('featured')">
+      <a class="btn btn-brand btn-lg" href="#featured" (click)="scrollTo('featured', $event)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
         Explorer les événements
       </a>
@@ -157,8 +157,8 @@
     </div>
     <div class="col">
       <h4>Explorer</h4>
-      <a (click)="scrollTo('featured')">Tous les événements</a>
-      <a (click)="scrollTo('features')">Fonctionnalités</a>
+      <a href="#featured" (click)="scrollTo('featured', $event)">Tous les événements</a>
+      <a href="#features" (click)="scrollTo('features', $event)">Fonctionnalités</a>
       <a routerLink="/register">Aujourd'hui</a>
     </div>
     <div class="col">

@@ -91,11 +91,11 @@
     <section class="card">
       <h2>Validation <span class="muted">(brouillons à qualifier)</span></h2>
       @for (d of drafts(); track d.id) {
-        <div class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
+        <button type="button" class="draft-item" [class.on]="selected()?.id === d.id" (click)="select(d)">
           <strong>{{ draftTitle(d) }}</strong>
           <span class="muted"> · {{ d.createdAt | date: 'short' }}</span>
           @if (d.createdByName) { <span class="who"> — par <strong>{{ d.createdByName }}</strong></span> }
-        </div>
+        </button>
       }
       @if (holdNotice()) { <p class="hold">⏸️ {{ holdNotice() }}</p> }
       @if (selected(); as sel) {

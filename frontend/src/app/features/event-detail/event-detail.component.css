@@ -19,7 +19,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.55));
+  background: linear-gradient(180deg, rgb(0, 0, 0, 0) 35%, rgb(0, 0, 0, 0.55));
 }
 .cover .top {
   position: absolute;
@@ -42,13 +42,13 @@
   margin: 0;
   color: #fff;
   font-size: 1.7rem;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 2px 12px rgb(0, 0, 0, 0.45);
 }
 .cover .sub {
-  color: rgba(255, 255, 255, 0.92);
+  color: rgb(255, 255, 255, 0.92);
   font-size: 0.9rem;
   margin-top: 0.25rem;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 8px rgb(0, 0, 0, 0.45);
 }
 /* Filet de participation (remplace l'ancienne bordure gauche) — palette planning. */
 .filet {
@@ -64,17 +64,17 @@
   font-weight: 700;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgb(255, 255, 255, 0.92);
   color: #1f2333;
   vertical-align: middle;
   backdrop-filter: blur(4px);
 }
 .badge.archived {
-  background: rgba(220, 38, 38, 0.92);
+  background: rgb(220, 38, 38, 0.92);
   color: #fff;
 }
 .badge.private {
-  background: rgba(37, 99, 235, 0.92);
+  background: rgb(37, 99, 235, 0.92);
   color: #fff;
 }
 .notify-org {

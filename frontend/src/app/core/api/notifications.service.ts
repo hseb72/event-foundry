@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { NotificationDto, NotificationPreferences, NotificationSettings } from '../models';
@@ -10,10 +10,10 @@ import { NotificationDto, NotificationPreferences, NotificationSettings } from '
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationsApi {
+  private readonly http = inject(HttpClient);
+
   /** Nombre de notifications non lues (badge de navigation). */
   readonly unread = signal(0);
-
-  constructor(private readonly http: HttpClient) {}
 
   list(status?: 'UNREAD' | 'READ'): Observable<NotificationDto[]> {
     return this.http.get<NotificationDto[]>(`${API_BASE}/me/notifications`, {
@@ -52,7 +52,10 @@ export class NotificationsApi {
   }
 
   updatePreferences(input: NotificationPreferences): Observable<NotificationPreferences> {
-    return this.http.put<NotificationPreferences>(`${API_BASE}/me/notifications/preferences`, input);
+    return this.http.put<NotificationPreferences>(
+      `${API_BASE}/me/notifications/preferences`,
+      input,
+    );
   }
 
   // --- Réglages globaux (Operator) ---

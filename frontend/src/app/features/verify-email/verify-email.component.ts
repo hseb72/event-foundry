@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API_BASE } from '../../core/api.config';
 
@@ -15,13 +15,11 @@ import { API_BASE } from '../../core/api.config';
   styleUrl: './verify-email.component.css',
 })
 export class VerifyEmailComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
+
   readonly state = signal<'pending' | 'done' | 'error'>('pending');
   readonly error = signal('');
-
-  constructor(
-    private readonly http: HttpClient,
-    private readonly route: ActivatedRoute,
-  ) {}
 
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token');

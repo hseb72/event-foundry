@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { Recommendation, RecommendationAction } from '../models';
@@ -11,7 +11,7 @@ import { Recommendation, RecommendationAction } from '../models';
  */
 @Injectable({ providedIn: 'root' })
 export class RecommendationApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   list(surprise = false, take = 10): Observable<Recommendation[]> {
     return this.http.get<Recommendation[]>(`${API_BASE}/me/recommendations`, {

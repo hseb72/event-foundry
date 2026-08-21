@@ -19,7 +19,7 @@
 }
 .notif.unread {
   border-left: 4px solid var(--exp);
-  background: rgba(124, 58, 237, 0.04);
+  background: rgb(124, 58, 237, 0.04);
 }
 .dot {
   width: 9px;

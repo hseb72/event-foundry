@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { API_BASE } from '../../core/api.config';
@@ -17,17 +17,15 @@ import { API_BASE } from '../../core/api.config';
   styleUrl: './reset-password.component.css',
 })
 export class ResetPasswordComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
+
   password = '';
   confirm = '';
   private token = '';
   readonly loading = signal(false);
   readonly done = signal(false);
   readonly error = signal('');
-
-  constructor(
-    private readonly http: HttpClient,
-    private readonly route: ActivatedRoute,
-  ) {}
 
   ngOnInit(): void {
     this.token = this.route.snapshot.queryParamMap.get('token') ?? '';

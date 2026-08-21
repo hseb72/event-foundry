@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -12,6 +12,10 @@ import { LogoComponent } from '../../shared/logo.component';
   styleUrl: './login.component.css',
 })
 export class LoginComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
   email = '';
   password = '';
   mfaCode = '';
@@ -19,17 +23,14 @@ export class LoginComponent {
   error = '';
   loading = false;
 
-  constructor(
-    private readonly auth: AuthService,
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-  ) {}
-
   submit(): void {
     this.loading = true;
     this.error = '';
     this.auth.login(this.email, this.password, this.mfaCode || undefined).subscribe({
-      next: () => void this.router.navigateByUrl(this.route.snapshot.queryParamMap.get('next') || '/discover'),
+      next: () =>
+        void this.router.navigateByUrl(
+          this.route.snapshot.queryParamMap.get('next') || '/discover',
+        ),
       error: (err) => {
         this.loading = false;
         if (err?.error?.code === 'MFA_REQUIRED') {

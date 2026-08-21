@@ -313,6 +313,10 @@ Attention à deux notions post-V1 à ne pas confondre avec la V1 :
   `ng g c` produit la bonne structure sans option.
 - **Branche de développement** : `claude/event-foundry-documentation-jd17uo` (sauf
   indication contraire explicite).
+- **Contrôles** : `npm run lint` doit rester vert — il couvre le TypeScript (backend, workers,
+  frontend), les **gabarits Angular** (`@angular-eslint/template`, dont les règles
+  d'accessibilité) et les **feuilles de style** (stylelint). Un `<label>` doit désigner son
+  contrôle (`for`/`id`), un `(click)` doit porter sur un élément atteignable au clavier.
 - **Commits** : messages clairs et descriptifs, périmètre cohérent.
 - Toujours vérifier la doc `docs/` avant d'introduire une notion métier. Une divergence
   code/doc doit être signalée, pas tranchée en silence.

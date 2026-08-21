@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal, inject } from '@angular/core';
 import { finalize, map, Observable, shareReplay, tap, throwError } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { AuthTokens, Experience } from '../models';
@@ -19,6 +19,8 @@ interface JwtClaims {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
+
   /** Claims courants (signal) : toute l'UI réagit au changement de contexte via ce signal. */
   private readonly claims = signal<JwtClaims | null>(this.decodeToken());
 
@@ -30,8 +32,6 @@ export class AuthService {
 
   /** Rafraîchissement en cours, partagé pour dédupliquer les 401 concurrents. */
   private refresh$: Observable<string> | null = null;
-
-  constructor(private readonly http: HttpClient) {}
 
   login(email: string, password: string, mfaCode?: string): Observable<AuthTokens> {
     return this.http
@@ -78,14 +78,12 @@ export class AuthService {
       return throwError(() => new Error('Aucun refresh token.'));
     }
 
-    this.refresh$ = this.http
-      .post<AuthTokens>(`${API_BASE}/auth/refresh`, { refreshToken })
-      .pipe(
-        tap((tokens) => this.storeTokens(tokens)),
-        map((tokens) => tokens.accessToken),
-        finalize(() => (this.refresh$ = null)),
-        shareReplay(1),
-      );
+    this.refresh$ = this.http.post<AuthTokens>(`${API_BASE}/auth/refresh`, { refreshToken }).pipe(
+      tap((tokens) => this.storeTokens(tokens)),
+      map((tokens) => tokens.accessToken),
+      finalize(() => (this.refresh$ = null)),
+      shareReplay(1),
+    );
     return this.refresh$;
   }
 

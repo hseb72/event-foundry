@@ -27,9 +27,10 @@ export class ReferentialProvisioningService {
       return;
     }
     try {
-      let activityId: string | null = null;
       if (fields.activity) {
-        activityId = await this.repository.resolveOrCreateActivity(
+        // Le résultat n'est pas exploité : depuis DATA.01 v2.0 les autres référentiels sont
+        // transverses. Seul l'effet de bord — provisionner l'activité — nous intéresse ici.
+        await this.repository.resolveOrCreateActivity(
           fields.activity,
           config.provisioningDefaultDomainId,
         );

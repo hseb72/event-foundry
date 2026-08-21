@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 
@@ -29,7 +29,7 @@ export interface GeoImportStatus {
  */
 @Injectable({ providedIn: 'root' })
 export class GeoImportApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   start(country: string): Observable<unknown> {
     return this.http.post(`${API_BASE}/admin/reference/geo-import`, { country });

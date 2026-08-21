@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 
@@ -10,7 +10,7 @@ import { API_BASE } from '../api.config';
  */
 @Injectable({ providedIn: 'root' })
 export class AccountApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   changePassword(currentPassword: string, newPassword: string): Observable<{ changed: boolean }> {
     return this.http.post<{ changed: boolean }>(`${API_BASE}/account/password/change`, {
@@ -38,7 +38,9 @@ export class AccountApi {
 
   /** Suppression (anonymisation) du compte après réauthentification. Irréversible. */
   deleteAccount(currentPassword: string): Observable<{ deleted: boolean }> {
-    return this.http.post<{ deleted: boolean }>(`${API_BASE}/account/me/delete`, { currentPassword });
+    return this.http.post<{ deleted: boolean }>(`${API_BASE}/account/me/delete`, {
+      currentPassword,
+    });
   }
 
   // Onboarding (FSPEC.16/17)
@@ -51,7 +53,9 @@ export class AccountApi {
   }
 
   acceptOperatorInvitation(token: string): Observable<{ roleName: string }> {
-    return this.http.post<{ roleName: string }>(`${API_BASE}/operator-invitations/accept`, { token });
+    return this.http.post<{ roleName: string }>(`${API_BASE}/operator-invitations/accept`, {
+      token,
+    });
   }
 
   // MFA (FSPEC.18 §MFA)
@@ -60,15 +64,22 @@ export class AccountApi {
   }
 
   mfaSetup(): Observable<{ secret: string; otpauthUri: string }> {
-    return this.http.post<{ secret: string; otpauthUri: string }>(`${API_BASE}/account/me/mfa/setup`, {});
+    return this.http.post<{ secret: string; otpauthUri: string }>(
+      `${API_BASE}/account/me/mfa/setup`,
+      {},
+    );
   }
 
   mfaEnable(code: string): Observable<{ recoveryCodes: string[] }> {
-    return this.http.post<{ recoveryCodes: string[] }>(`${API_BASE}/account/me/mfa/enable`, { code });
+    return this.http.post<{ recoveryCodes: string[] }>(`${API_BASE}/account/me/mfa/enable`, {
+      code,
+    });
   }
 
   mfaDisable(currentPassword: string): Observable<{ disabled: boolean }> {
-    return this.http.post<{ disabled: boolean }>(`${API_BASE}/account/me/mfa/disable`, { currentPassword });
+    return this.http.post<{ disabled: boolean }>(`${API_BASE}/account/me/mfa/disable`, {
+      currentPassword,
+    });
   }
 }
 

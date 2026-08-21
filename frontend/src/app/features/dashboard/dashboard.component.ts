@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { StatsApi } from '../../core/api/stats.service';
 import { PlatformConfigApi } from '../../core/api/platform-config.service';
@@ -50,6 +50,9 @@ const SOURCE_LABELS: [string, string][] = [
   styleUrl: './dashboard.component.css',
 })
 export class DashboardComponent implements OnInit {
+  private readonly api = inject(StatsApi);
+  private readonly platformConfig = inject(PlatformConfigApi);
+
   stats: ImportStatsDto | null = null;
   overview: PlatformOverviewDto | null = null;
   eventRows: BarRow[] = [];
@@ -66,11 +69,6 @@ export class DashboardComponent implements OnInit {
 
   /** Observabilité des appels IA (RG-AI-04) : monitoring, distinct de la configuration. */
   aiStats: AiCallStats | null = null;
-
-  constructor(
-    private readonly api: StatsApi,
-    private readonly platformConfig: PlatformConfigApi,
-  ) {}
 
   ngOnInit(): void {
     this.loadAiStats();

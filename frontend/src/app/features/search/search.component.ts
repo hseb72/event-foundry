@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { SearchApi } from '../../core/api/search.service';
@@ -15,6 +15,9 @@ type FacetKind = 'activityId' | 'subjectId' | 'municipalityId' | 'tagId';
   styleUrl: './search.component.css',
 })
 export class SearchComponent implements OnInit {
+  private readonly searchApi = inject(SearchApi);
+  private readonly route = inject(ActivatedRoute);
+
   q = '';
   sort = 'relevance';
   activityId = '';
@@ -25,11 +28,6 @@ export class SearchComponent implements OnInit {
   facets: Facets | null = null;
   total = 0;
   loading = false;
-
-  constructor(
-    private readonly searchApi: SearchApi,
-    private readonly route: ActivatedRoute,
-  ) {}
 
   ngOnInit(): void {
     // Amorce depuis l'URL (barre de recherche de l'accueil, lien « Tout voir »).

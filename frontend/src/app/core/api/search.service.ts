@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
 import { Facets, PaginatedEvents } from '../models';
@@ -11,7 +11,7 @@ import { Facets, PaginatedEvents } from '../models';
  */
 @Injectable({ providedIn: 'root' })
 export class SearchApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   events(params: Record<string, string>): Observable<PaginatedEvents> {
     return this.http.get<PaginatedEvents>(`${API_BASE}/search/events`, { params });

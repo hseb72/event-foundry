@@ -5,28 +5,28 @@
   <app-expandable-card cardTitle="Informations générales">
     <p class="muted" style="font-size:0.78rem;margin:0 0 0.6rem">Identité publique de la plateforme.</p>
     <div class="two">
-      <div class="field"><label class="muted">Nom de la plateforme</label><input class="input" [(ngModel)]="general.platformName" /></div>
-      <div class="field"><label class="muted">E-mail de contact</label><input class="input" [(ngModel)]="general.contactEmail" /></div>
-      <div class="field"><label class="muted">E-mail support</label><input class="input" [(ngModel)]="general.supportEmail" /></div>
-      <div class="field"><label class="muted">E-mail recrutement</label><input class="input" [(ngModel)]="general.recruitmentEmail" placeholder="(facultatif)" /></div>
+      <div class="field"><label for="operator-config-general-platformname" class="muted">Nom de la plateforme</label><input id="operator-config-general-platformname" class="input" [(ngModel)]="general.platformName" /></div>
+      <div class="field"><label for="operator-config-general-contactemail" class="muted">E-mail de contact</label><input id="operator-config-general-contactemail" class="input" [(ngModel)]="general.contactEmail" /></div>
+      <div class="field"><label for="operator-config-general-supportemail" class="muted">E-mail support</label><input id="operator-config-general-supportemail" class="input" [(ngModel)]="general.supportEmail" /></div>
+      <div class="field"><label for="operator-config-general-recruitmentemail" class="muted">E-mail recrutement</label><input id="operator-config-general-recruitmentemail" class="input" [(ngModel)]="general.recruitmentEmail" placeholder="(facultatif)" /></div>
     </div>
-    <div class="field" style="margin-top:0.6rem"><label class="muted">Informations publiques</label>
-      <input class="input" [(ngModel)]="general.publicInfo" placeholder="Données institutionnelles (facultatif)" /></div>
+    <div class="field" style="margin-top:0.6rem"><label for="operator-config-general-publicinfo" class="muted">Informations publiques</label>
+      <input id="operator-config-general-publicinfo" class="input" [(ngModel)]="general.publicInfo" placeholder="Données institutionnelles (facultatif)" /></div>
     <div style="margin-top:0.6rem"><button class="btn btn-primary" (click)="saveGeneral()">Enregistrer</button>
       @if (generalSaved()) { <span class="status">Enregistré</span> }</div>
   </app-expandable-card>
 
   <app-expandable-card cardTitle="Configuration mail (SMTP)">
     <div class="two">
-      <div class="field"><label class="muted">Hôte</label><input class="input" [(ngModel)]="mail.host" placeholder="smtp.example.com" /></div>
-      <div class="field"><label class="muted">Port</label><input class="input" type="number" [(ngModel)]="mail.port" /></div>
+      <div class="field"><label for="operator-config-mail-host" class="muted">Hôte</label><input id="operator-config-mail-host" class="input" [(ngModel)]="mail.host" placeholder="smtp.example.com" /></div>
+      <div class="field"><label for="operator-config-mail-port" class="muted">Port</label><input id="operator-config-mail-port" class="input" type="number" [(ngModel)]="mail.port" /></div>
     </div>
     <label class="switch"><input type="checkbox" [(ngModel)]="mail.secure" /> Connexion sécurisée (TLS)</label>
-    <div class="field" style="margin-top:0.6rem"><label class="muted">Expéditeur</label><input class="input" [(ngModel)]="mail.from" placeholder="no-reply@eventfoundry.app" /></div>
+    <div class="field" style="margin-top:0.6rem"><label for="operator-config-mail-from" class="muted">Expéditeur</label><input id="operator-config-mail-from" class="input" [(ngModel)]="mail.from" placeholder="no-reply@eventfoundry.app" /></div>
     <div class="two">
-      <div class="field"><label class="muted">Identifiant</label><input class="input" [(ngModel)]="mail.username" /></div>
-      <div class="field"><label class="muted">Mot de passe</label>
-        <input class="input" type="password" [(ngModel)]="mailPassword"
+      <div class="field"><label for="operator-config-mail-username" class="muted">Identifiant</label><input id="operator-config-mail-username" class="input" [(ngModel)]="mail.username" /></div>
+      <div class="field"><label for="operator-config-mailpassword" class="muted">Mot de passe</label>
+        <input id="operator-config-mailpassword" class="input" type="password" [(ngModel)]="mailPassword"
                [placeholder]="mail.passwordMasked ? 'Enregistré (' + mail.passwordMasked + ') — vide = inchangé' : 'Mot de passe SMTP'" />
       </div>
     </div>
@@ -44,16 +44,16 @@
     </p>
     <label class="switch"><input type="checkbox" [(ngModel)]="ai.enabled" /> Activer l'IA plateforme</label>
     <div class="two" style="margin-top:0.6rem">
-      <div class="field"><label class="muted">Fournisseur</label>
-        <select class="select" [(ngModel)]="ai.provider">
+      <div class="field"><label for="operator-config-ai-provider" class="muted">Fournisseur</label>
+        <select id="operator-config-ai-provider" class="select" [(ngModel)]="ai.provider">
           <option value="">Fournisseur…</option>
           @for (p of providers; track p.id) {
             <option [value]="p.id">{{ p.label }}</option>
           }
         </select>
       </div>
-      <div class="field"><label class="muted">Modèle</label>
-        <input class="input" [(ngModel)]="ai.model" list="ope-ai-models" placeholder="Modèle (vision)" />
+      <div class="field"><label for="operator-config-ai-model" class="muted">Modèle</label>
+        <input id="operator-config-ai-model" class="input" [(ngModel)]="ai.model" list="ope-ai-models" placeholder="Modèle (vision)" />
         <datalist id="ope-ai-models">
           @for (m of modelsFor(ai.provider); track m) {
             <option [value]="m"></option>
@@ -61,8 +61,8 @@
         </datalist>
       </div>
     </div>
-    <div class="field"><label class="muted">Clé API</label>
-      <input class="input" type="password" [(ngModel)]="aiKey"
+    <div class="field"><label for="operator-config-aikey" class="muted">Clé API</label>
+      <input id="operator-config-aikey" class="input" type="password" [(ngModel)]="aiKey"
              [placeholder]="ai.secretMasked ? 'Enregistrée (' + ai.secretMasked + ') — vide = inchangée' : 'Clé API'" />
       @if (providerInfo(ai.provider); as pi) {
         <span class="muted" style="font-size:0.76rem">
@@ -92,12 +92,12 @@
       ({{ techHardMax() }} Mo).
     </p>
     <div class="field">
-      <label class="muted">Taille maximale d'un document (Mo)</label>
-      <input class="input" type="number" min="1" [max]="techHardMax()" [(ngModel)]="techMaxUploadMb" />
+      <label for="operator-config-techmaxuploadmb" class="muted">Taille maximale d'un document (Mo)</label>
+      <input id="operator-config-techmaxuploadmb" class="input" type="number" min="1" [max]="techHardMax()" [(ngModel)]="techMaxUploadMb" />
     </div>
     <div class="field">
-      <label class="muted">Plafond quotidien d'imports (0 = illimité)</label>
-      <input class="input" type="number" min="0" [(ngModel)]="techMaxImportsPerDay" />
+      <label for="operator-config-techmaximportsperday" class="muted">Plafond quotidien d'imports (0 = illimité)</label>
+      <input id="operator-config-techmaximportsperday" class="input" type="number" min="0" [(ngModel)]="techMaxImportsPerDay" />
     </div>
 
     <hr style="border:0;border-top:1px solid var(--border);margin:0.8rem 0" />
@@ -109,8 +109,8 @@
     </p>
     @if (techAutoProvision) {
       <div class="field">
-        <label class="muted">Domaine par défaut (pour les activités auto-créées)</label>
-        <select class="select" [(ngModel)]="techDefaultDomainId">
+        <label for="operator-config-techdefaultdomainid" class="muted">Domaine par défaut (pour les activités auto-créées)</label>
+        <select id="operator-config-techdefaultdomainid" class="select" [(ngModel)]="techDefaultDomainId">
           <option value="">— aucun (les activités inconnues ne seront pas auto-créées) —</option>
           @for (d of domains; track d.id) { <option [value]="d.id">{{ d.name }}</option> }
         </select>

@@ -30,7 +30,7 @@
   font-weight: 700;
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
+  background: rgb(0, 0, 0, 0.06);
 }
 .conf {
   display: flex;
@@ -42,18 +42,18 @@
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgb(0, 0, 0, 0.05);
 }
 .chip.low {
-  background: rgba(192, 57, 43, 0.12);
+  background: rgb(192, 57, 43, 0.12);
   color: #c0392b;
 }
 .chip.mid {
-  background: rgba(230, 126, 34, 0.14);
+  background: rgb(230, 126, 34, 0.14);
   color: #b9651a;
 }
 .chip.high {
-  background: rgba(39, 174, 96, 0.14);
+  background: rgb(39, 174, 96, 0.14);
   color: #1e8a4c;
 }
 .ocr {
@@ -62,7 +62,7 @@
   font-size: 0.8rem;
   max-height: 200px;
   overflow: auto;
-  background: rgba(0, 0, 0, 0.04);
+  background: rgb(0, 0, 0, 0.04);
   padding: 0.7rem;
   border-radius: 8px;
 }

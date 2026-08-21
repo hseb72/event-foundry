@@ -1,17 +1,12 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE } from '../api.config';
-import {
-  CreateEventInput,
-  EventCandidateDetailDto,
-  EventCandidateDto,
-  EventDto,
-} from '../models';
+import { CreateEventInput, EventCandidateDetailDto, EventCandidateDto, EventDto } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class EventCandidatesApi {
-  constructor(private readonly http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   /** Mes brouillons (FSPEC.22 §6) : candidats issus de mes propres soumissions. */
   listMine(status?: string): Observable<EventCandidateDto[]> {
@@ -31,7 +26,9 @@ export class EventCandidatesApi {
     if (status) {
       params['status'] = status;
     }
-    return this.http.get<EventCandidateDto[]>(`${API_BASE}/organization/event-candidates`, { params });
+    return this.http.get<EventCandidateDto[]>(`${API_BASE}/organization/event-candidates`, {
+      params,
+    });
   }
 
   list(status?: string): Observable<EventCandidateDto[]> {

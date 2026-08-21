@@ -429,7 +429,11 @@ export class OrganizationsComponent implements OnInit {
 
   toggleActivity(id: string): void {
     const next = new Set(this.selected());
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
     this.selected.set(next);
   }
 

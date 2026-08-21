@@ -25,6 +25,8 @@ import { EventFormComponent } from '../../shared/event-form.component';
   styleUrl: './validation.component.css',
 })
 export class ValidationComponent implements OnInit {
+  private readonly api = inject(EventCandidatesApi);
+
   candidates: EventCandidateDto[] = [];
   selected: EventCandidateDetailDto | null = null;
   draft: EventDraft | null = null;
@@ -37,8 +39,6 @@ export class ValidationComponent implements OnInit {
   actionError = '';
   /** Message « validation retenue pour vérification » (FSPEC.22 §13, 422). */
   holdNotice = '';
-
-  constructor(private readonly api: EventCandidatesApi) {}
 
   ngOnInit(): void {
     this.reload();

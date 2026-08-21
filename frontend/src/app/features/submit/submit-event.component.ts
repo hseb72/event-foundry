@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
 import { EventCandidatesApi } from '../../core/api/event-candidates.service';
 import { ImportsApi } from '../../core/api/imports.service';
@@ -40,7 +40,7 @@ type PrivateSortKey = 'startsAt' | 'title' | 'status';
 @Component({
   selector: 'app-submit-event',
   standalone: true,
-  imports: [FormsModule, DatePipe, EventFormComponent, FileDropComponent, DataTableComponent, IconComponent],
+  imports: [FormsModule, DatePipe, RouterLink, EventFormComponent, FileDropComponent, DataTableComponent, IconComponent],
   templateUrl: './submit-event.component.html',
   styleUrl: './submit-event.component.css',
 })

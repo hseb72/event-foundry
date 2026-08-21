@@ -28,6 +28,9 @@ import { ToastService } from '../core/toast.service';
   styleUrl: './event-form.component.css',
 })
 export class EventFormComponent implements OnInit {
+  private readonly referenceData = inject(ReferenceDataApi);
+  private readonly identity = inject(IdentityService);
+
   @Input() submitLabel = 'Enregistrer';
   @Input() showReject = false;
   @Input() busy = false;
@@ -101,11 +104,6 @@ export class EventFormComponent implements OnInit {
 
   // Adresses de l'organisation active proposées comme localisation (chantier §8.2 / RG-LOC-05).
   orgAddresses: OrganizationAddress[] = [];
-
-  constructor(
-    private readonly referenceData: ReferenceDataApi,
-    private readonly identity: IdentityService,
-  ) {}
 
   ngOnInit(): void {
     const me = this.identity.me();
@@ -211,17 +209,19 @@ export class EventFormComponent implements OnInit {
     if (!this.model.countryId || !postalCode) {
       return;
     }
-    this.referenceData.resolveMunicipalities(this.model.countryId, postalCode).subscribe((communes) => {
-      this.resolvedMunicipalities = communes;
-      this.postalSearched = true;
-      if (communes.length === 1) {
-        this.model.municipalityId = communes[0].id;
-        this.selectedRegionName = communes[0].regionName;
-      } else {
-        this.model.municipalityId = '';
-        this.selectedRegionName = '';
-      }
-    });
+    this.referenceData
+      .resolveMunicipalities(this.model.countryId, postalCode)
+      .subscribe((communes) => {
+        this.resolvedMunicipalities = communes;
+        this.postalSearched = true;
+        if (communes.length === 1) {
+          this.model.municipalityId = communes[0].id;
+          this.selectedRegionName = communes[0].regionName;
+        } else {
+          this.model.municipalityId = '';
+          this.selectedRegionName = '';
+        }
+      });
   }
 
   /** La région est dérivée de la commune choisie (jamais saisie — RG-LOC-02). */
@@ -443,7 +443,9 @@ export class EventFormComponent implements OnInit {
     this.refError = '';
     this.referenceData.createActivity(name, this.newActivityDomainId).subscribe({
       next: (created) => {
-        this.activities = [...this.activities, created].sort((a, b) => a.name.localeCompare(b.name));
+        this.activities = [...this.activities, created].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
         this.model.activityId = created.id;
         this.unresolved.activity = undefined;
         this.onActivityChange();
@@ -489,11 +491,14 @@ export class EventFormComponent implements OnInit {
     this.refError = '';
     this.referenceData.createOrganizer(name).subscribe({
       next: (created) => {
-        this.organizers = [...this.organizers, created].sort((a, b) => a.name.localeCompare(b.name));
+        this.organizers = [...this.organizers, created].sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
         this.model.organizerId = created.id;
         this.unresolved.organizer = undefined;
       },
-      error: (err) => (this.refError = err?.error?.message ?? 'Création de l’organisateur impossible.'),
+      error: (err) =>
+        (this.refError = err?.error?.message ?? 'Création de l’organisateur impossible.'),
     });
   }
 

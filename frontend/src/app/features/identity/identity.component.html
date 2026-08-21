@@ -26,8 +26,8 @@
       <app-expandable-card cardTitle="Données personnelles">
         @if (editing()) {
           <div style="display:grid;gap:0.5rem;max-width:280px">
-            <label class="muted" style="font-size:0.78rem">Pseudo (nom affiché)</label>
-            <input class="input" [(ngModel)]="draftName" placeholder="Pseudo" />
+            <label for="identity-draftname" class="muted" style="font-size:0.78rem">Pseudo (nom affiché)</label>
+            <input id="identity-draftname" class="input" [(ngModel)]="draftName" placeholder="Pseudo" />
             <div style="display:flex;gap:0.5rem">
               <button class="btn btn-primary" (click)="saveProfile()">Enregistrer</button>
               <button class="btn" (click)="editing.set(false)">Annuler</button>
@@ -105,8 +105,8 @@
                 @for (c of mfaRecovery(); track c) { <code style="font-size:0.8rem">{{ c }}</code> }
               </div>
             } @else {
-              <label class="muted" style="font-size:0.78rem">Méthode</label>
-              <div class="chips">
+              <span id="mfa-method-label" class="muted" style="font-size:0.78rem">Méthode</span>
+              <div class="chips" role="group" aria-labelledby="mfa-method-label">
                 @for (opt of mfaMethods; track opt.value) {
                   <button type="button" class="theme-opt" [class.on]="mfaMethod === opt.value"
                           [disabled]="!opt.available" [title]="opt.available ? '' : 'À venir'"

@@ -119,6 +119,9 @@ export class UrlImportService {
       channel: ImportChannel.URL,
       providerId,
       createdById,
+      // Origine de la soumission (FSPEC.22) : sans elle, un import URL réalisé depuis l'expérience
+      // Organizer aurait basculé dans l'inventaire personnel de son auteur.
+      organizationId,
     });
   }
 }

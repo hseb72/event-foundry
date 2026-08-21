@@ -21,6 +21,10 @@ import { eventCoverBackground } from '../../shared/event-cover';
   styleUrl: './event-detail.component.css',
 })
 export class EventDetailComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly eventsApi = inject(EventsApi);
+  private readonly participationApi = inject(ParticipationApi);
+
   event: EventDto | null = null;
   loading = true;
   /** Une action de la barre (duplication) est en cours : évite les doubles envois. */
@@ -73,18 +77,17 @@ export class EventDetailComponent implements OnInit {
       return;
     }
     this.moderation
-      .report({ objectType: 'EVENT', objectId: this.event.id, reason: this.reportReason, details: this.reportDetails.trim() })
+      .report({
+        objectType: 'EVENT',
+        objectId: this.event.id,
+        reason: this.reportReason,
+        details: this.reportDetails.trim(),
+      })
       .subscribe({
         next: (res) => this.reportRef.set(res.reference),
         error: () => this.reportRef.set(''),
       });
   }
-
-  constructor(
-    private readonly route: ActivatedRoute,
-    private readonly eventsApi: EventsApi,
-    private readonly participationApi: ParticipationApi,
-  ) {}
 
   canTranslate(): boolean {
     return this.aiEnabled['TRANSLATE'] === true;
@@ -116,7 +119,11 @@ export class EventDetailComponent implements OnInit {
   }
 
   statusLabel(): string {
-    const map: Record<string, string> = { DRAFT: 'Brouillon', PUBLISHED: 'Publié', ARCHIVED: 'Archivé' };
+    const map: Record<string, string> = {
+      DRAFT: 'Brouillon',
+      PUBLISHED: 'Publié',
+      ARCHIVED: 'Archivé',
+    };
     return this.event ? (map[this.event.status] ?? this.event.status) : '';
   }
 

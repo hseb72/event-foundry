@@ -40,10 +40,11 @@
     @for (f of entity.fields; track f.key) {
       @if (!(editingId && f.immutableOnEdit)) {
         <div>
-          <label [class.req]="f.required">{{ f.label }}</label>
+          <label [attr.for]="'ref-' + f.key" [class.req]="f.required">{{ f.label }}</label>
           @if (f.type === 'select') {
             <select
               class="select"
+              [attr.id]="'ref-' + f.key"
               [ngModel]="model[f.key]"
               (ngModelChange)="model[f.key] = $event"
               [name]="f.key"
@@ -56,6 +57,7 @@
           } @else {
             <input
               class="input"
+              [attr.id]="'ref-' + f.key"
               [type]="f.type === 'number' ? 'number' : 'text'"
               [ngModel]="model[f.key]"
               (ngModelChange)="model[f.key] = $event"
@@ -65,8 +67,8 @@
         </div>
       } @else {
         <div>
-          <label>{{ f.label }}</label>
-          <input class="input" [value]="immutableLabel(f)" disabled />
+          <label [attr.for]="'ref-ro-' + f.key">{{ f.label }}</label>
+          <input [attr.id]="'ref-ro-' + f.key" class="input" [value]="immutableLabel(f)" disabled />
         </div>
       }
     }

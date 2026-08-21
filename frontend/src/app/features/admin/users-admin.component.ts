@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { UsersAdminApi } from '../../core/api/users.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { AdminUserDto } from '../../core/models';
@@ -15,6 +15,8 @@ const ROLES = ['USER', 'ADMIN'];
   styleUrl: './users-admin.component.css',
 })
 export class UsersAdminComponent implements OnInit {
+  private readonly api = inject(UsersAdminApi);
+
   users: AdminUserDto[] = [];
   loading = true;
   busyId: string | null = null;
@@ -51,10 +53,9 @@ export class UsersAdminComponent implements OnInit {
     inactive: !row['isActive'],
   });
 
-  constructor(
-    private readonly api: UsersAdminApi,
-    auth: AuthService,
-  ) {
+  constructor() {
+    const auth = inject(AuthService);
+
     this.currentId = auth.userId();
   }
 

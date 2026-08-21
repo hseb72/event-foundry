@@ -3,8 +3,8 @@
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
-  background: rgba(219, 39, 119, 0.14);
-  border: 1px solid rgba(219, 39, 119, 0.35);
+  background: rgb(219, 39, 119, 0.14);
+  border: 1px solid rgb(219, 39, 119, 0.35);
   border-radius: 10px;
   padding: 0.6rem 0.9rem;
   margin: 0 0 1rem;
@@ -39,7 +39,7 @@
 .switcher {
   display: flex;
   gap: 0.3rem;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgb(255, 255, 255, 0.06);
   border-radius: 12px;
   padding: 0.25rem;
 }
@@ -71,8 +71,8 @@
   width: 100%;
   padding: 0.4rem 0.5rem;
   border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  background: rgb(255, 255, 255, 0.06);
   color: #fff;
   font: inherit;
   font-size: 0.8rem;
@@ -81,7 +81,7 @@
   display: inline-block;
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgb(255, 255, 255, 0.12);
   font-weight: 700;
   font-size: 0.7rem;
   letter-spacing: 0.03em;
@@ -92,6 +92,9 @@ nav {
   gap: 0.3rem;
 }
 nav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 0.55rem 0.8rem;
   border-radius: 10px;
   color: #d9d5e6;
@@ -99,16 +102,11 @@ nav a {
   font-size: 0.92rem;
 }
 nav a:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(255, 255, 255, 0.08);
 }
 nav a.active {
   background: var(--exp);
   color: #fff;
-}
-nav a {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 .badge {
   background: var(--exp);
@@ -131,7 +129,7 @@ nav a {
   align-items: center;
   gap: 0.4rem;
   padding-top: 0.6rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgb(255, 255, 255, 0.12);
 }
 .profile-link {
   flex: 1;
@@ -143,7 +141,7 @@ nav a {
   min-width: 0;
 }
 .profile-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgb(255, 255, 255, 0.08);
 }
 .profile-link.on {
   background: var(--exp);
@@ -162,7 +160,7 @@ nav a {
   letter-spacing: 0.02em;
 }
 .profile-link.on .avatar {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgb(255, 255, 255, 0.25);
 }
 .profile-info {
   display: grid;
@@ -189,14 +187,14 @@ nav a {
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgb(255, 255, 255, 0.2);
   background: transparent;
   color: #d9d5e6;
   font-size: 1rem;
   line-height: 1;
 }
 .logout-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255, 255, 255, 0.1);
 }
 .main {
   padding: 2rem;
